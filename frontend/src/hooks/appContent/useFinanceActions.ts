@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import {
+  attachFinanceStatementRecords,
   applyFinanceStatementAmount,
   createFinanceStatement,
   createFinancialRecord,
@@ -553,6 +554,36 @@ export const useFinanceActions = ({
     [addNotification, updateAppData],
   );
 
+  const handleAttachFinanceStatementRecords = useCallback(
+    async (statementId: string, recordIds: string[]) => {
+      try {
+        const result = await attachFinanceStatementRecords(statementId, recordIds);
+        const recordIdSet = new Set(result.attachedRecordIds);
+        updateAppData((prev) => {
+          const financialRecords = prev.financialRecords.map((record) =>
+            recordIdSet.has(record.id) ? { ...record, statementId: result.statement.id } : record,
+          );
+          const payments = prev.payments.map((payment) => ({
+            ...payment,
+            financialRecords: (payment.financialRecords ?? []).map((record) =>
+              recordIdSet.has(record.id) ? { ...record, statementId: result.statement.id } : record,
+            ),
+          }));
+          const statements = (prev.statements ?? []).map((statement) =>
+            statement.id === result.statement.id ? result.statement : statement,
+          );
+          return { financialRecords, payments, statements };
+        });
+        addNotification('Ведомость обновлена', 'success', 4000);
+        return result;
+      } catch (err) {
+        setError(formatErrorMessage(err, 'Ошибка при обновлении ведомости'));
+        throw err;
+      }
+    },
+    [addNotification, setError, updateAppData],
+  );
+
   const handleDeleteFinanceStatement = useCallback(
     async (statementId: string) => {
       try {
@@ -651,6 +682,7 @@ export const useFinanceActions = ({
     handleDeleteFinancialRecord,
     handleCreateFinanceStatement,
     handleUpdateFinanceStatement,
+    handleAttachFinanceStatementRecords,
     handleDeleteFinanceStatement,
     handleRemoveFinanceStatementRecords,
     handleApplyFinanceStatementAmount,

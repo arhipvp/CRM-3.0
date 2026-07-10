@@ -56,6 +56,7 @@ from .record_filters import apply_financial_record_filters
 from .serializers import (
     FinancialRecordSerializer,
     PaymentSerializer,
+    StatementFinancialRecordSerializer,
     StatementSerializer,
 )
 from .services import build_finance_summary_payload
@@ -113,8 +114,15 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ]
     ordering = ["-created_at"]
 
+    def get_serializer_class(self):
+        if self.request.query_params.get("statement"):
+            return StatementFinancialRecordSerializer
+        return super().get_serializer_class()
+
     def get_queryset(self):
         user = self.request.user
+        statement_id = self.request.query_params.get("statement")
+        is_statement_list = bool(statement_id)
         paid_balance_subquery = (
             FinancialRecord.objects.filter(
                 payment_id=OuterRef("payment_id"),
@@ -126,21 +134,21 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .annotate(total=Sum("amount"))
             .values("total")[:1]
         )
-        queryset = (
-            FinancialRecord.objects.select_related(
-                "statement",
-                "payment",
-                "payment__policy",
-                "payment__policy__client",
-                "payment__policy__insured_client",
-                "payment__policy__deal",
-                "payment__policy__deal__client",
-                "payment__policy__insurance_type",
-                "payment__policy__sales_channel",
-                "payment__deal",
-                "payment__deal__client",
-            )
-            .prefetch_related(
+        queryset = FinancialRecord.objects.select_related(
+            "statement",
+            "payment",
+            "payment__policy",
+            "payment__policy__client",
+            "payment__policy__insured_client",
+            "payment__policy__deal",
+            "payment__policy__deal__client",
+            "payment__policy__insurance_type",
+            "payment__policy__sales_channel",
+            "payment__deal",
+            "payment__deal__client",
+        )
+        if not is_statement_list:
+            queryset = queryset.prefetch_related(
                 Prefetch(
                     "payment__financial_records",
                     queryset=FinancialRecord.objects.filter(
@@ -152,35 +160,25 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     to_attr="paid_records",
                 )
             )
-            .all()
-            .order_by("-date", "-created_at")
-        )
-        queryset = queryset.annotate(
-            payment_is_paid=Case(
+        queryset = queryset.all().order_by("-date", "-created_at")
+        annotations = {
+            "payment_is_paid": Case(
                 When(payment__actual_date__isnull=False, then=Value(1)),
                 default=Value(0),
                 output_field=IntegerField(),
             ),
-            payment_sort_date=Coalesce(
+            "payment_sort_date": Coalesce(
                 F("payment__actual_date"),
                 F("payment__scheduled_date"),
                 output_field=DateField(),
             ),
-            payment_scheduled_date=F("payment__scheduled_date"),
-            payment_scheduled_date_is_null=Case(
+            "payment_scheduled_date": F("payment__scheduled_date"),
+            "payment_scheduled_date_is_null": Case(
                 When(payment__scheduled_date__isnull=True, then=Value(1)),
                 default=Value(0),
                 output_field=IntegerField(),
             ),
-            payment_paid_balance=Coalesce(
-                Subquery(
-                    paid_balance_subquery,
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
-                ),
-                0,
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            ),
-            record_comment_sort=Coalesce(
+            "record_comment_sort": Coalesce(
                 # NOTE: note is TextField, description/source are CharField.
                 # Cast to a single type to avoid "mixed types" FieldError in Postgres.
                 NullIf(F("note"), Value("", output_field=TextField())),
@@ -195,7 +193,16 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 Value("", output_field=TextField()),
                 output_field=TextField(),
             ),
+        }
+        annotations["payment_paid_balance"] = Coalesce(
+            Subquery(
+                paid_balance_subquery,
+                output_field=DecimalField(max_digits=12, decimal_places=2),
+            ),
+            0,
+            output_field=DecimalField(max_digits=12, decimal_places=2),
         )
+        queryset = queryset.annotate(**annotations)
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:
@@ -470,12 +477,6 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     output_field=DecimalField(max_digits=12, decimal_places=2),
                 ),
             )
-            .prefetch_related(
-                "records",
-                "records__payment",
-                "records__payment__policy__deal",
-                "records__payment__deal",
-            )
             .all()
             .order_by("-created_at")
         )
@@ -499,6 +500,102 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             deal = get_deal_from_payment(getattr(record, "payment", None))
             if not user_has_deal_access(self.request.user, deal, allow_executor=False):
                 raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
+
+    @staticmethod
+    def _parse_record_ids(data):
+        record_ids = data.get("record_ids") or []
+        if not isinstance(record_ids, list) or not record_ids:
+            raise ValidationError(
+                {"record_ids": "Укажите непустой список идентификаторов."}
+            )
+        return list(dict.fromkeys(record_ids))
+
+    @staticmethod
+    def _set_statement_summary(statement):
+        summary = FinancialRecord.objects.filter(
+            statement=statement,
+            deleted_at__isnull=True,
+        ).aggregate(records_count=Count("id"), total_amount=Sum("amount"))
+        statement.records_count = summary["records_count"] or 0
+        statement.total_amount = summary["total_amount"] or Decimal("0")
+        return statement
+
+    def _locked_statement(self, statement_id):
+        statement = Statement.objects.select_for_update().get(pk=statement_id)
+        if not self._can_modify(self.request.user, statement):
+            raise PermissionDenied(
+                "Только администратор или владелец может изменять ведомость."
+            )
+        if statement.paid_at:
+            raise ValidationError("Нельзя изменять выплаченную ведомость.")
+        return statement
+
+    def _locked_records(self, record_ids):
+        records = list(
+            FinancialRecord.objects.filter(id__in=record_ids, deleted_at__isnull=True)
+            .select_for_update(of=("self",))
+            .select_related(
+                "payment",
+                "payment__policy",
+                "payment__policy__deal",
+                "payment__deal",
+            )
+            .order_by("pk")
+        )
+        if len(records) != len(record_ids):
+            raise ValidationError(
+                {"record_ids": "Одна или несколько записей не найдены."}
+            )
+        self._validate_record_access(records)
+        return records
+
+    @action(detail=True, methods=["post"], url_path="attach-records")
+    def attach_records(self, request, *args, **kwargs):
+        record_ids = self._parse_record_ids(request.data)
+        with transaction.atomic():
+            statement = self._locked_statement(self.kwargs[self.lookup_field])
+            records = self._locked_records(record_ids)
+            wrong_type = [
+                record.id
+                for record in records
+                if record.record_type
+                != (
+                    FinancialRecord.RecordType.INCOME
+                    if statement.statement_type == Statement.TYPE_INCOME
+                    else FinancialRecord.RecordType.EXPENSE
+                )
+            ]
+            if wrong_type:
+                raise ValidationError(
+                    {"record_ids": "Тип записей не соответствует типу ведомости."}
+                )
+            conflicting_ids = [
+                record.id
+                for record in records
+                if record.statement_id and record.statement_id != statement.id
+            ]
+            if conflicting_ids:
+                raise ValidationError(
+                    {"record_ids": "Запись уже включена в другую ведомость."}
+                )
+            attached_ids = [record.id for record in records if not record.statement_id]
+            if attached_ids:
+                FinancialRecord.objects.filter(id__in=attached_ids).update(
+                    statement=statement
+                )
+                statement.updated_at = timezone.now()
+                statement.save(update_fields=["updated_at"])
+            self._set_statement_summary(statement)
+
+        return Response(
+            {
+                "attached_count": len(attached_ids),
+                "attached_record_ids": [str(record_id) for record_id in attached_ids],
+                "statement": StatementSerializer(
+                    statement, context={"request": request}
+                ).data,
+            }
+        )
 
     def _create_download_response(
         self,
@@ -528,20 +625,29 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="remove-records")
     def remove_records(self, request, *args, **kwargs):
-        statement = self.get_object()
-        if statement.paid_at:
-            raise ValidationError("Нельзя изменять выплаченную ведомость.")
+        record_ids = self._parse_record_ids(request.data)
+        with transaction.atomic():
+            statement = self._locked_statement(self.kwargs[self.lookup_field])
+            records = self._locked_records(record_ids)
+            if any(record.statement_id != statement.id for record in records):
+                raise ValidationError(
+                    {"record_ids": "Запись не входит в эту ведомость."}
+                )
+            FinancialRecord.objects.filter(id__in=record_ids).update(statement=None)
+            statement.updated_at = timezone.now()
+            statement.save(update_fields=["updated_at"])
+            self._set_statement_summary(statement)
 
-        record_ids = request.data.get("record_ids") or []
-        if not isinstance(record_ids, list):
-            raise ValidationError({"record_ids": "Ожидается список идентификаторов."})
-
-        records = FinancialRecord.objects.filter(
-            id__in=record_ids, statement=statement, deleted_at__isnull=True
+        return Response(
+            {
+                "removed": len(record_ids),
+                "removed_count": len(record_ids),
+                "removed_record_ids": [str(record_id) for record_id in record_ids],
+                "statement": StatementSerializer(
+                    statement, context={"request": request}
+                ).data,
+            }
         )
-        self._validate_record_access(records)
-        records.update(statement=None)
-        return Response({"removed": records.count()})
 
     @action(detail=True, methods=["post"], url_path="apply-amount")
     def apply_amount(self, request, *args, **kwargs):

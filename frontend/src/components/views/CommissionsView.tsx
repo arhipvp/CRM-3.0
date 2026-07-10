@@ -10,6 +10,7 @@ import type {
   StatementAmountApplyResult,
 } from '../../types';
 import { fetchPolicy } from '../../api';
+import type { AttachFinanceStatementRecordsResult } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
@@ -48,6 +49,10 @@ interface CommissionsViewProps {
     values: AddFinancialRecordFormValues,
   ) => Promise<void>;
   onDeleteStatement?: (statementId: string) => Promise<void>;
+  onAttachStatementRecords?: (
+    statementId: string,
+    recordIds: string[],
+  ) => Promise<AttachFinanceStatementRecordsResult>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
   onApplyStatementAmount?: (
     statementId: string,
@@ -104,6 +109,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onRequestEditPolicy,
   onUpdateFinancialRecord,
   onDeleteStatement,
+  onAttachStatementRecords,
   onRemoveStatementRecords,
   onApplyStatementAmount,
   onCreateStatement,
@@ -165,6 +171,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     allRecordsError,
     allRecordsHasMore,
     allRecordsTotalCount,
+    allRecordsFilterKey,
+    applyAttachedRecords,
     loadAllRecords,
     toggleAllRecordsSort,
     getAllRecordsSortLabel,
@@ -193,6 +201,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     statementRecords,
     isStatementRecordsLoading,
     statementRecordsError,
+    statementRecordsHasMore,
+    isStatementRecordsLoadingMore,
     loadStatementRecords,
   } = useStatementRecordsController({
     selectedStatementId,
@@ -320,6 +330,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     canAttachRow,
     toggleRecordSelection,
     handleAttachSelected,
+    isAttaching,
     handleRemoveSelected,
     toggleSelectAll,
     resetSelection,
@@ -329,24 +340,20 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     isAttachStatementPaid,
     filteredRows,
     viewMode,
-    onUpdateStatement: async (statementId, values) => {
-      const updated = await onUpdateStatement?.(statementId, values);
-      await onRefreshStatements?.();
-      return updated as Statement;
-    },
+    onAttachStatementRecords,
     onRemoveStatementRecords: async (statementId, recordIds) => {
       await onRemoveStatementRecords?.(statementId, recordIds);
       await onRefreshStatements?.();
     },
-    onRefreshAllRecords: async () => {
-      await loadAllRecords('reset');
+    onAttachAllRecords: (recordIds, statementId) => {
+      applyAttachedRecords(recordIds, statementId, allRecordsFilterKey);
     },
     onRefreshStatementRecords: loadStatementRecords,
   });
 
   useEffect(() => {
     resetSelection();
-  }, [resetSelection, selectedStatementId, targetStatementId, viewMode]);
+  }, [allRecordsFilterKey, resetSelection, selectedStatementId, targetStatementId, viewMode]);
 
   const {
     isStatementModalOpen,
@@ -416,10 +423,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       amountDrafts={amountDrafts}
       statementAmountDraft={statementAmountDraft}
       isApplyingStatementAmount={isApplyingStatementAmount}
+      isAttaching={isAttaching}
       isAllRecordsLoading={isAllRecordsLoading}
       isStatementRecordsLoading={isStatementRecordsLoading}
       isRecordAmountEditable={Boolean(onUpdateFinancialRecord)}
-      canAttachSelectedAction={Boolean(onUpdateStatement)}
+      canAttachSelectedAction={Boolean(onAttachStatementRecords)}
       canRemoveSelectedAction={Boolean(onRemoveStatementRecords)}
       normalizeText={normalizeText}
       canAttachRow={canAttachRow}
@@ -797,6 +805,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         </div>
                       )}
                       {recordsTable}
+                      {statementRecordsHasMore && (
+                        <div className="mt-4 flex justify-center">
+                          <button
+                            type="button"
+                            className={BTN_SM_SECONDARY}
+                            disabled={isStatementRecordsLoading || isStatementRecordsLoadingMore}
+                            onClick={() => void loadStatementRecords('more')}
+                          >
+                            {isStatementRecordsLoadingMore ? 'Загружаем...' : 'Показать ещё'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div
                       role="tabpanel"

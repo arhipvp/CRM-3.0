@@ -1,4 +1,4 @@
-import type { FilterParams } from '../../api';
+import type { AttachFinanceStatementRecordsResult, FilterParams } from '../../api';
 import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/deals';
 import type { AddFinancialRecordFormValues } from '../../components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm';
@@ -137,6 +137,10 @@ export interface AppRouteFinanceActions {
     recordIds?: string[];
   }) => Promise<Statement>;
   onDeleteFinanceStatement: (statementId: string) => Promise<void>;
+  onAttachFinanceStatementRecords?: (
+    statementId: string,
+    recordIds: string[],
+  ) => Promise<AttachFinanceStatementRecordsResult>;
   onRemoveFinanceStatementRecords: (statementId: string, recordIds: string[]) => Promise<void>;
   onApplyFinanceStatementAmount: (
     statementId: string,

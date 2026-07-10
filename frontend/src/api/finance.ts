@@ -145,6 +145,20 @@ export async function fetchStatementFinancialRecords(
   );
 }
 
+export async function fetchStatementFinancialRecordsWithPagination(
+  statementId: string,
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<PaginatedResponse<FinancialRecord>> {
+  return fetchFinancialRecordsWithPagination(
+    {
+      ...(filters ?? {}),
+      statement: statementId,
+    },
+    options,
+  );
+}
+
 export async function fetchFinancialRecordsWithPagination(
   filters?: FilterParams,
   options?: RequestInit,
@@ -277,6 +291,35 @@ export async function updateFinanceStatement(
     }),
   });
   return mapStatement(payload);
+}
+
+export type AttachFinanceStatementRecordsResult = {
+  statement: Statement;
+  attachedRecordIds: string[];
+};
+
+export async function attachFinanceStatementRecords(
+  id: string,
+  recordIds: string[],
+): Promise<AttachFinanceStatementRecordsResult> {
+  const payload = await request<Record<string, unknown>>(
+    `/finance_statements/${id}/attach-records/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ record_ids: recordIds }),
+    },
+  );
+  const rawStatement =
+    typeof payload.statement === 'object' && payload.statement !== null
+      ? (payload.statement as Record<string, unknown>)
+      : payload;
+  const rawRecordIds = payload.attached_record_ids ?? payload.attachedRecordIds ?? [];
+  return {
+    statement: mapStatement(rawStatement),
+    attachedRecordIds: Array.isArray(rawRecordIds)
+      ? rawRecordIds.filter((id): id is string => typeof id === 'string')
+      : [],
+  };
 }
 
 export async function deleteFinanceStatement(id: string): Promise<void> {

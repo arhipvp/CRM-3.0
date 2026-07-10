@@ -138,7 +138,7 @@ describe('useAllRecordsController', () => {
 
     await act(async () => {
       result.current.applyAllRecordsSearch('гриша');
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 1));
     });
 
     expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
@@ -195,7 +195,7 @@ describe('useAllRecordsController', () => {
       result.current.setPaymentScheduledDateFrom('2026-03-01');
       result.current.setPaymentScheduledDateTo('2026-03-31');
       result.current.toggleAllRecordsSort('paymentDate');
-      await Promise.resolve();
+      await new Promise((resolve) => setTimeout(resolve, 1));
     });
 
     expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(

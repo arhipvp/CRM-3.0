@@ -344,3 +344,16 @@ class PaymentSerializer(serializers.ModelSerializer):
         if policy:
             attrs["deal"] = policy.deal
         return attrs
+
+
+class StatementFinancialRecordSerializer(FinancialRecordSerializer):
+    """Лёгкое представление записи в составе ведомости.
+
+    Для таблицы ведомости не нужна история проведённых записей. Сальдо платежа
+    остаётся в ответе: оно используется при массовом изменении суммы в процентах.
+    """
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields.pop("payment_paid_entries", None)
+        return fields

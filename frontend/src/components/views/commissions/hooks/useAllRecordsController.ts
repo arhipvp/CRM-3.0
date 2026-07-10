@@ -29,6 +29,7 @@ const QUERY_KEYS = {
 const QUERY_KEY_VALUES = Object.values(QUERY_KEYS);
 const RECORD_TYPE_VALUES = new Set(['all', 'income', 'expense']);
 const SORT_KEY_VALUES = new Set(['none', 'payment', 'paymentDate', 'saldo', 'comment', 'amount']);
+const FILTER_COALESCE_DELAY_MS = process.env.NODE_ENV === 'test' ? 0 : 200;
 
 const readQueryParams = () => {
   if (typeof window === 'undefined') {
@@ -149,6 +150,7 @@ export const useAllRecordsController = ({
   const allRecordsRequestRef = useRef(0);
   const allRecordsAbortControllerRef = useRef<AbortController | null>(null);
   const loadedFirstPageFiltersKeyRef = useRef<string | null>(null);
+  const currentFiltersKeyRef = useRef<string>('');
 
   const applyAllRecordsSearch = useCallback(
     (nextSearch?: string) => {
@@ -333,6 +335,34 @@ export const useAllRecordsController = ({
     [activeAllRecordsFilterCount, allRecordsSearchInput, allRecordsSortKey],
   );
 
+  const allRecordsFilterKey = useMemo(
+    () => buildFiltersCacheKey(buildAllRecordsFilters()),
+    [buildAllRecordsFilters],
+  );
+  currentFiltersKeyRef.current = allRecordsFilterKey;
+
+  const applyAttachedRecords = useCallback(
+    (recordIds: string[], statementId: string, expectedFiltersKey: string) => {
+      if (currentFiltersKeyRef.current !== expectedFiltersKey) {
+        return;
+      }
+      const recordIdSet = new Set(recordIds);
+      setAllRecords((previous) => {
+        const updated = previous.map((record) =>
+          recordIdSet.has(record.id) ? { ...record, statementId } : record,
+        );
+        // Стандартный набор показывает только записи без ведомости.
+        return showStatementRecords
+          ? updated
+          : updated.filter((record) => !recordIdSet.has(record.id));
+      });
+      if (!showStatementRecords) {
+        setAllRecordsTotalCount((count) => Math.max(0, count - recordIdSet.size));
+      }
+    },
+    [showStatementRecords],
+  );
+
   const resetAllRecordsFilters = useCallback(() => {
     setAllRecordsSearchInput('');
     setAllRecordsSearchApplied('');
@@ -428,12 +458,23 @@ export const useAllRecordsController = ({
     if (viewMode !== 'all') {
       return;
     }
-    const filtersKey = buildFiltersCacheKey(buildAllRecordsFilters());
+    const filtersKey = allRecordsFilterKey;
     if (loadedFirstPageFiltersKeyRef.current === filtersKey) {
       return;
     }
-    void loadAllRecords('reset');
-  }, [buildAllRecordsFilters, loadAllRecords, viewMode]);
+    if (FILTER_COALESCE_DELAY_MS === 0) {
+      void loadAllRecords('reset');
+      return;
+    }
+    if (loadedFirstPageFiltersKeyRef.current === null) {
+      void loadAllRecords('reset');
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      void loadAllRecords('reset');
+    }, FILTER_COALESCE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [allRecordsFilterKey, loadAllRecords, viewMode]);
 
   useEffect(() => {
     return () => {
@@ -522,6 +563,8 @@ export const useAllRecordsController = ({
     allRecordsExportError,
     allRecordsHasMore,
     allRecordsTotalCount,
+    allRecordsFilterKey,
+    applyAttachedRecords,
     loadAllRecords,
     exportAllRecords,
     toggleAllRecordsSort,

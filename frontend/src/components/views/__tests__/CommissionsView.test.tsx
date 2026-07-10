@@ -6,7 +6,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   fetchFinancialRecordsWithPagination,
   fetchPolicy,
-  fetchStatementFinancialRecords,
+  fetchStatementFinancialRecordsWithPagination,
 } from '../../../api';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
 import type { FinancialRecord, Policy } from '../../../types';
@@ -16,13 +16,15 @@ vi.mock('../../../api', async () => {
   const actual = await vi.importActual<typeof import('../../../api')>('../../../api');
   return {
     ...actual,
-    fetchStatementFinancialRecords: vi.fn(),
+    fetchStatementFinancialRecordsWithPagination: vi.fn(),
     fetchFinancialRecordsWithPagination: vi.fn(),
     fetchPolicy: vi.fn(),
   };
 });
 
-const mockedFetchStatementFinancialRecords = vi.mocked(fetchStatementFinancialRecords);
+const mockedFetchStatementFinancialRecords = vi.mocked(
+  fetchStatementFinancialRecordsWithPagination,
+);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
 const mockedFetchPolicy = vi.mocked(fetchPolicy);
 
@@ -61,7 +63,12 @@ const buildFinancialRecord = (overrides: Partial<FinancialRecord> = {}): Financi
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mockedFetchStatementFinancialRecords.mockResolvedValue([]);
+  mockedFetchStatementFinancialRecords.mockResolvedValue({
+    count: 0,
+    next: null,
+    previous: null,
+    results: [],
+  });
   mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
     count: 0,
     next: null,
@@ -93,23 +100,28 @@ describe('CommissionsView', () => {
   });
 
   it('loads statement records lazily and does not request all records on initial render', async () => {
-    mockedFetchStatementFinancialRecords.mockResolvedValueOnce([
-      {
-        id: 'record-1',
-        paymentId: 'payment-1',
-        statementId: 'statement-1',
-        paymentAmount: '10000',
-        paymentActualDate: '2026-03-10',
-        dealTitle: 'Сделка 1',
-        dealClientName: 'Клиент 1',
-        policyClientName: 'Клиент А',
-        paymentPaidBalance: '1000',
-        amount: '300',
-        date: '2026-03-10',
-        createdAt: '2026-03-06T10:00:00Z',
-        updatedAt: '2026-03-06T10:00:00Z',
-      },
-    ]);
+    mockedFetchStatementFinancialRecords.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'record-1',
+          paymentId: 'payment-1',
+          statementId: 'statement-1',
+          paymentAmount: '10000',
+          paymentActualDate: '2026-03-10',
+          dealTitle: 'Сделка 1',
+          dealClientName: 'Клиент 1',
+          policyClientName: 'Клиент А',
+          paymentPaidBalance: '1000',
+          amount: '300',
+          date: '2026-03-10',
+          createdAt: '2026-03-06T10:00:00Z',
+          updatedAt: '2026-03-06T10:00:00Z',
+        },
+      ],
+    });
 
     render(
       <MemoryRouter>
@@ -139,6 +151,7 @@ describe('CommissionsView', () => {
     expect(await screen.findAllByText('Клиент А')).toHaveLength(2);
     expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith(
       'statement-1',
+      expect.objectContaining({ page: 1, page_size: 100 }),
       expect.any(Object),
     );
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
@@ -194,38 +207,43 @@ describe('CommissionsView', () => {
         updatedAt: '2026-03-06T10:00:00Z',
       },
     });
-    mockedFetchStatementFinancialRecords.mockResolvedValueOnce([
-      {
-        id: 'record-1',
-        paymentId: 'payment-1',
-        statementId: 'statement-1',
-        paymentAmount: '10000',
-        paymentActualDate: '2026-03-10',
-        dealTitle: 'Сделка 1',
-        dealClientName: 'Клиент 1',
-        policyClientName: 'Клиент А',
-        paymentPaidBalance: '1000',
-        amount: '300',
-        date: '2026-03-10',
-        createdAt: '2026-03-06T10:00:00Z',
-        updatedAt: '2026-03-06T10:00:00Z',
-      },
-      {
-        id: 'record-2',
-        paymentId: 'payment-2',
-        statementId: 'statement-1',
-        paymentAmount: '12000',
-        paymentActualDate: '2026-03-11',
-        dealTitle: 'Сделка 2',
-        dealClientName: 'Клиент 2',
-        policyClientName: 'Клиент Б',
-        paymentPaidBalance: '2000',
-        amount: '100',
-        date: '2026-03-11',
-        createdAt: '2026-03-06T10:00:00Z',
-        updatedAt: '2026-03-06T10:00:00Z',
-      },
-    ]);
+    mockedFetchStatementFinancialRecords.mockResolvedValueOnce({
+      count: 2,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'record-1',
+          paymentId: 'payment-1',
+          statementId: 'statement-1',
+          paymentAmount: '10000',
+          paymentActualDate: '2026-03-10',
+          dealTitle: 'Сделка 1',
+          dealClientName: 'Клиент 1',
+          policyClientName: 'Клиент А',
+          paymentPaidBalance: '1000',
+          amount: '300',
+          date: '2026-03-10',
+          createdAt: '2026-03-06T10:00:00Z',
+          updatedAt: '2026-03-06T10:00:00Z',
+        },
+        {
+          id: 'record-2',
+          paymentId: 'payment-2',
+          statementId: 'statement-1',
+          paymentAmount: '12000',
+          paymentActualDate: '2026-03-11',
+          dealTitle: 'Сделка 2',
+          dealClientName: 'Клиент 2',
+          policyClientName: 'Клиент Б',
+          paymentPaidBalance: '2000',
+          amount: '100',
+          date: '2026-03-11',
+          createdAt: '2026-03-06T10:00:00Z',
+          updatedAt: '2026-03-06T10:00:00Z',
+        },
+      ],
+    });
 
     render(
       <MemoryRouter>

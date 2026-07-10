@@ -1,7 +1,9 @@
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO
+from unittest import skipUnless
 from unittest.mock import patch
 
 from apps.clients.models import Client
@@ -13,7 +15,8 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import Role, UserRole
 from django.contrib.auth.models import User
-from django.db import connection
+from django.db import close_old_connections, connection
+from django.test import TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from openpyxl import load_workbook
@@ -1836,6 +1839,202 @@ class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.income_record.refresh_from_db()
         self.assertIsNone(self.income_record.statement_id)
+
+    def test_remove_records_returns_current_statement_summary(self):
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{self.statement.id}/remove-records/",
+            {"record_ids": [str(self.income_record.id)]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["removed_count"], 1)
+        self.assertEqual(
+            response.data["removed_record_ids"], [str(self.income_record.id)]
+        )
+        self.assertEqual(response.data["statement"]["records_count"], 0)
+        self.assertEqual(
+            Decimal(response.data["statement"]["total_amount"]), Decimal("0")
+        )
+
+
+class FinanceStatementAttachRecordsTests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.seller = User.objects.create_user(  # pragma: allowlist secret
+            username="attach-seller", password="pass"  # pragma: allowlist secret
+        )
+        self.other_seller = User.objects.create_user(  # pragma: allowlist secret
+            username="attach-other", password="pass"  # pragma: allowlist secret
+        )
+        client = Client.objects.create(name="Attach Client")
+        self.deal = Deal.objects.create(
+            title="Attach Deal",
+            client=client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        self.payment = Payment.objects.create(deal=self.deal, amount=Decimal("1000"))
+        self.record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("100"),
+            record_type=FinancialRecord.RecordType.INCOME,
+        )
+        self.statement = Statement.objects.create(
+            name="Attach income",
+            statement_type=Statement.TYPE_INCOME,
+            created_by=self.seller,
+        )
+
+    def test_attach_records_returns_updated_summary_and_is_idempotent(self):
+        self.authenticate(self.seller)
+        url = f"/api/v1/finance_statements/{self.statement.id}/attach-records/"
+
+        response = self.api_client.post(
+            url, {"record_ids": [str(self.record.id)]}, format="json"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["attached_count"], 1)
+        self.assertEqual(response.data["attached_record_ids"], [str(self.record.id)])
+        self.assertEqual(response.data["statement"]["records_count"], 1)
+        self.assertEqual(
+            Decimal(response.data["statement"]["total_amount"]), Decimal("100")
+        )
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.statement_id, self.statement.id)
+
+        second_response = self.api_client.post(
+            url, {"record_ids": [str(self.record.id)]}, format="json"
+        )
+        self.assertEqual(second_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(second_response.data["attached_count"], 0)
+
+    def test_attach_rejects_record_claimed_by_another_statement(self):
+        self.authenticate(self.seller)
+        other_statement = Statement.objects.create(
+            name="Other attach income",
+            statement_type=Statement.TYPE_INCOME,
+            created_by=self.seller,
+        )
+        self.record.statement = other_statement
+        self.record.save(update_fields=["statement"])
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{self.statement.id}/attach-records/",
+            {"record_ids": [str(self.record.id)]},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.record.refresh_from_db()
+        self.assertEqual(self.record.statement_id, other_statement.id)
+
+    def test_attach_rejects_paid_statement_and_non_owner(self):
+        self.statement.paid_at = timezone.now().date()
+        self.statement.save(update_fields=["paid_at"])
+        self.authenticate(self.seller)
+
+        paid_response = self.api_client.post(
+            f"/api/v1/finance_statements/{self.statement.id}/attach-records/",
+            {"record_ids": [str(self.record.id)]},
+            format="json",
+        )
+        self.assertEqual(paid_response.status_code, status.HTTP_400_BAD_REQUEST)
+
+        self.statement.paid_at = None
+        self.statement.save(update_fields=["paid_at"])
+        self.authenticate(self.other_seller)
+        permission_response = self.api_client.post(
+            f"/api/v1/finance_statements/{self.statement.id}/attach-records/",
+            {"record_ids": [str(self.record.id)]},
+            format="json",
+        )
+        self.assertEqual(permission_response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_statement_records_list_omits_paid_entries_but_keeps_balance(self):
+        self.record.statement = self.statement
+        self.record.save(update_fields=["statement"])
+        self.authenticate(self.seller)
+
+        response = self.api_client.get(
+            f"/api/v1/financial_records/?statement={self.statement.id}"
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = response.data.get("results", response.data)[0]
+        self.assertNotIn("payment_paid_entries", result)
+        self.assertIn("payment_paid_balance", result)
+
+
+@skipUnless(connection.vendor == "postgresql", "Requires PostgreSQL row locking")
+class FinanceStatementAttachConcurrencyTests(TransactionTestCase):
+    reset_sequences = True
+
+    def setUp(self):
+        self.seller = User.objects.create_user(  # pragma: allowlist secret
+            username="concurrent-attach-seller",
+            password="pass",  # pragma: allowlist secret
+        )
+        client = Client.objects.create(name="Concurrent Attach Client")
+        deal = Deal.objects.create(
+            title="Concurrent Attach Deal",
+            client=client,
+            seller=self.seller,
+            status="open",
+            stage_name="initial",
+        )
+        payment = Payment.objects.create(deal=deal, amount=Decimal("1000"))
+        self.record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("100"),
+            record_type=FinancialRecord.RecordType.INCOME,
+        )
+        self.first_statement = Statement.objects.create(
+            name="Concurrent Attach First",
+            statement_type=Statement.TYPE_INCOME,
+            created_by=self.seller,
+        )
+        self.second_statement = Statement.objects.create(
+            name="Concurrent Attach Second",
+            statement_type=Statement.TYPE_INCOME,
+            created_by=self.seller,
+        )
+
+    def _attach(self, statement_id):
+        from rest_framework.test import APIClient
+
+        close_old_connections()
+        client = APIClient()
+        client.force_authenticate(self.seller)
+        response = client.post(
+            f"/api/v1/finance_statements/{statement_id}/attach-records/",
+            {"record_ids": [str(self.record.id)]},
+            format="json",
+        )
+        close_old_connections()
+        return response.status_code
+
+    def test_concurrent_attach_allows_exactly_one_statement_to_claim_record(self):
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            statuses = list(
+                executor.map(
+                    self._attach,
+                    [self.first_statement.id, self.second_statement.id],
+                )
+            )
+
+        self.assertEqual(
+            sorted(statuses), [status.HTTP_200_OK, status.HTTP_400_BAD_REQUEST]
+        )
+        self.record.refresh_from_db()
+        self.assertIn(
+            self.record.statement_id,
+            {self.first_statement.id, self.second_statement.id},
+        )
 
 
 class StatementDriveDownloadTests(AuthenticatedAPITestCase):

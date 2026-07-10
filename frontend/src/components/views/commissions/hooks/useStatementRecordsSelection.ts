@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { AttachFinanceStatementRecordsResult } from '../../../../api';
 import type { Statement } from '../../../../types';
 import type { IncomeExpenseRow } from '../RecordsTable';
 
@@ -9,14 +10,18 @@ interface UseStatementRecordsSelectionArgs {
   isAttachStatementPaid: boolean;
   filteredRows: IncomeExpenseRow[];
   viewMode: 'all' | 'statements';
+  onAttachStatementRecords?: (
+    statementId: string,
+    recordIds: string[],
+  ) => Promise<AttachFinanceStatementRecordsResult>;
   onUpdateStatement?: (
     statementId: string,
-    values: Partial<{
-      recordIds: string[];
-    }>,
+    values: Partial<{ recordIds: string[] }>,
   ) => Promise<Statement>;
   onRemoveStatementRecords?: (statementId: string, recordIds: string[]) => Promise<void>;
-  onRefreshAllRecords: () => Promise<void>;
+  onAttachAllRecords?: (recordIds: string[], statementId: string) => void;
+  /** @deprecated используется только со старым PATCH-контрактом. */
+  onRefreshAllRecords?: () => Promise<void>;
   onRefreshStatementRecords?: () => Promise<void>;
 }
 
@@ -26,12 +31,15 @@ export const useStatementRecordsSelection = ({
   isAttachStatementPaid,
   filteredRows,
   viewMode,
+  onAttachStatementRecords,
   onUpdateStatement,
   onRemoveStatementRecords,
+  onAttachAllRecords,
   onRefreshAllRecords,
   onRefreshStatementRecords,
 }: UseStatementRecordsSelectionArgs) => {
   const [selectedRecordIds, setSelectedRecordIds] = useState<string[]>([]);
+  const [isAttaching, setIsAttaching] = useState(false);
   const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const canAttachRow = useCallback(
@@ -69,17 +77,44 @@ export const useStatementRecordsSelection = ({
   );
 
   const handleAttachSelected = useCallback(async () => {
-    if (!attachStatement || !onUpdateStatement || !selectedRecordIds.length) {
+    if (
+      !attachStatement ||
+      (!onAttachStatementRecords && !onUpdateStatement) ||
+      !selectedRecordIds.length ||
+      isAttaching
+    ) {
       return;
     }
-    await onUpdateStatement(attachStatement.id, {
-      recordIds: selectedRecordIds,
-    });
-    if (viewMode === 'all') {
-      await onRefreshAllRecords();
+    setIsAttaching(true);
+    try {
+      const result = onAttachStatementRecords
+        ? await onAttachStatementRecords(attachStatement.id, selectedRecordIds)
+        : {
+            statement: await onUpdateStatement!(attachStatement.id, {
+              recordIds: selectedRecordIds,
+            }),
+            attachedRecordIds: selectedRecordIds,
+          };
+      if (viewMode === 'all') {
+        onAttachAllRecords?.(result.attachedRecordIds, result.statement.id);
+        if (!onAttachStatementRecords) {
+          await onRefreshAllRecords?.();
+        }
+      }
+      setSelectedRecordIds([]);
+    } finally {
+      setIsAttaching(false);
     }
-    setSelectedRecordIds([]);
-  }, [attachStatement, onRefreshAllRecords, onUpdateStatement, selectedRecordIds, viewMode]);
+  }, [
+    attachStatement,
+    isAttaching,
+    onAttachAllRecords,
+    onAttachStatementRecords,
+    onRefreshAllRecords,
+    onUpdateStatement,
+    selectedRecordIds,
+    viewMode,
+  ]);
 
   const handleRemoveSelected = useCallback(async () => {
     if (!selectedStatement || !onRemoveStatementRecords || !selectedRecordIds.length) {
@@ -136,6 +171,7 @@ export const useStatementRecordsSelection = ({
     canAttachRow,
     toggleRecordSelection,
     handleAttachSelected,
+    isAttaching,
     handleRemoveSelected,
     toggleSelectAll,
     resetSelection,

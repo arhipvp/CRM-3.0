@@ -59,6 +59,7 @@ interface RecordsTableProps {
   amountDrafts: Record<string, AmountDraft>;
   statementAmountDraft: StatementAmountDraft;
   isApplyingStatementAmount: boolean;
+  isAttaching?: boolean;
   isAllRecordsLoading: boolean;
   isStatementRecordsLoading: boolean;
   isRecordAmountEditable: boolean;
@@ -397,6 +398,7 @@ export const RecordsTable = ({
   amountDrafts,
   statementAmountDraft,
   isApplyingStatementAmount,
+  isAttaching = false,
   isAllRecordsLoading,
   isStatementRecordsLoading,
   isRecordAmountEditable,
@@ -499,10 +501,11 @@ export const RecordsTable = ({
                   !selectedRecordIds.length ||
                   !canAttachSelectedAction ||
                   !attachStatement ||
-                  isAttachStatementPaid
+                  isAttachStatementPaid ||
+                  isAttaching
                 }
               >
-                Добавить выбранные
+                {isAttaching ? 'Добавляем...' : 'Добавить выбранные'}
               </button>
             )}
             {selectedRecordIds.length > 0 && (
