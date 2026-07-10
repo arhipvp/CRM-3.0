@@ -34,18 +34,18 @@ export const useStatementRecordsController = ({
 
       requestRef.current += 1;
       const requestId = requestRef.current;
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    if (mode === 'reset') {
-      pageRef.current = 0;
-      setStatementRecordsHasMore(false);
-      setIsStatementRecordsLoading(true);
-      setStatementRecordsError(null);
-    } else {
-      setIsStatementRecordsLoadingMore(true);
-    }
-    const nextPage = mode === 'more' ? pageRef.current + 1 : 1;
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      if (mode === 'reset') {
+        pageRef.current = 0;
+        setStatementRecordsHasMore(false);
+        setIsStatementRecordsLoading(true);
+        setStatementRecordsError(null);
+      } else {
+        setIsStatementRecordsLoadingMore(true);
+      }
+      const nextPage = mode === 'more' ? pageRef.current + 1 : 1;
 
       try {
         const payload = await fetchStatementFinancialRecordsWithPagination(
