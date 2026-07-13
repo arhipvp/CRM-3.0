@@ -214,7 +214,7 @@ export const useDealActions = ({
         addNotification('Сделка закреплена', 'success', 3000);
       } catch (err) {
         if (err instanceof APIError && err.status === 400) {
-          addNotification(err.message || 'Нельзя закрепить больше 5 сделок', 'error', 4000);
+          addNotification(err.message || 'Не удалось закрепить сделку', 'error', 4000);
         } else {
           setError(formatErrorMessage(err, 'Ошибка при закреплении сделки'));
         }

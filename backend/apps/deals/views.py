@@ -408,21 +408,7 @@ class DealViewSet(
                 },
                 status=status.HTTP_403_FORBIDDEN,
             )
-        pin, created = DealPin.objects.get_or_create(user=request.user, deal=deal)
-        if created:
-            pins_count = DealPin.objects.filter(user=request.user).count()
-            if pins_count > settings.DEAL_PIN_LIMIT:
-                pin.delete()
-                return Response(
-                    {
-                        "detail": (
-                            "Нельзя закрепить "
-                            f"больше {settings.DEAL_PIN_LIMIT} "
-                            "сделок."
-                        )
-                    },
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        DealPin.objects.get_or_create(user=request.user, deal=deal)
         serializer = self.get_serializer(deal)
         return Response(serializer.data)
 

@@ -195,8 +195,9 @@ export const useAppData = () => {
         return payload.results;
       }
       const results = payload.results;
+      const regularDealsCount = results.filter((deal) => !deal.isPinned).length;
       const nextPage = payload.next
-        ? Math.max(2, Math.floor(results.length / DEALS_PAGE_SIZE) + 1)
+        ? Math.max(2, Math.floor(regularDealsCount / DEALS_PAGE_SIZE) + 1)
         : null;
       dealsCacheRef.current.set(cacheKey, {
         results,

@@ -188,6 +188,63 @@ describe('useAppData loading strategy', () => {
     expect(result.current.dataState.deals).toHaveLength(60);
   });
 
+  it('loads page two after pinned deals without skipping regular deals', async () => {
+    const pinnedDeals = Array.from({ length: 25 }, (_, index) => ({
+      id: `pinned-${index}`,
+      title: `Pinned ${index}`,
+      clientId: 'client-1',
+      status: 'open' as const,
+      isPinned: true,
+      createdAt: `2026-02-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+      quotes: [],
+      documents: [],
+    }));
+    const regularDeals = Array.from({ length: 40 }, (_, index) => ({
+      id: `regular-${index}`,
+      title: `Regular ${index}`,
+      clientId: 'client-1',
+      status: 'open' as const,
+      isPinned: false,
+      createdAt: `2026-03-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+      quotes: [],
+      documents: [],
+    }));
+
+    mockedFetchDealsWithPagination
+      .mockResolvedValueOnce({
+        count: 65,
+        next: '/deals/?page=2',
+        previous: null,
+        results: [...pinnedDeals, ...regularDeals.slice(0, 20)],
+      })
+      .mockResolvedValueOnce({
+        count: 65,
+        next: null,
+        previous: '/deals/?page=1',
+        results: regularDeals.slice(20),
+      });
+
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.refreshDeals();
+    });
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(mockedFetchDealsWithPagination).toHaveBeenNthCalledWith(
+      2,
+      {
+        ordering: 'next_contact_date',
+        page: 2,
+        page_size: 20,
+      },
+      { embed: 'none' },
+    );
+    expect(result.current.dataState.deals).toHaveLength(65);
+  });
+
   it('loadData does not request payments/records/statements/tasks on startup', async () => {
     const { result } = renderHook(() => useAppData());
 
