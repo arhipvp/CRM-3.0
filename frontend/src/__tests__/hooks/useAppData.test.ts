@@ -245,6 +245,89 @@ describe('useAppData loading strategy', () => {
     expect(result.current.dataState.deals).toHaveLength(65);
   });
 
+  it('preserves the displayed count when refreshing a list with pinned deals', async () => {
+    const pinnedDeals = Array.from({ length: 2 }, (_, index) => ({
+      id: `pinned-refresh-${index}`,
+      title: `Pinned refresh ${index}`,
+      clientId: 'client-1',
+      status: 'open' as const,
+      isPinned: true,
+      createdAt: `2026-02-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+      quotes: [],
+      documents: [],
+    }));
+    const regularDeals = Array.from({ length: 60 }, (_, index) => ({
+      id: `regular-refresh-${index}`,
+      title: `Regular refresh ${index}`,
+      clientId: 'client-1',
+      status: 'open' as const,
+      isPinned: false,
+      createdAt: `2026-03-${String(index + 1).padStart(2, '0')}T00:00:00Z`,
+      quotes: [],
+      documents: [],
+    }));
+
+    mockedFetchDealsWithPagination
+      .mockResolvedValueOnce({
+        count: 62,
+        next: '/deals/?page=2',
+        previous: null,
+        results: [...pinnedDeals, ...regularDeals.slice(0, 20)],
+      })
+      .mockResolvedValueOnce({
+        count: 62,
+        next: '/deals/?page=3',
+        previous: '/deals/?page=1',
+        results: regularDeals.slice(20, 40),
+      })
+      .mockResolvedValueOnce({
+        count: 62,
+        next: '/deals/?page=2',
+        previous: null,
+        results: [...pinnedDeals, ...regularDeals.slice(0, 40)],
+      })
+      .mockResolvedValueOnce({
+        count: 62,
+        next: null,
+        previous: '/deals/?page=2',
+        results: regularDeals.slice(40),
+      });
+
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.refreshDeals();
+    });
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(result.current.dataState.deals).toHaveLength(42);
+
+    await act(async () => {
+      await result.current.refreshDeals(undefined, { force: true, preserveLoadedCount: true });
+    });
+
+    expect(mockedFetchDealsWithPagination).toHaveBeenNthCalledWith(
+      3,
+      {
+        ordering: 'next_contact_date',
+        page: 1,
+        page_size: 40,
+      },
+      { embed: 'none' },
+    );
+    expect(result.current.dataState.deals).toHaveLength(42);
+    expect(new Set(result.current.dataState.deals.map((deal) => deal.id)).size).toBe(42);
+
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(result.current.dataState.deals).toHaveLength(62);
+    expect(new Set(result.current.dataState.deals.map((deal) => deal.id)).size).toBe(62);
+  });
+
   it('loadData does not request payments/records/statements/tasks on startup', async () => {
     const { result } = renderHook(() => useAppData());
 

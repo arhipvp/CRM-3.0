@@ -168,7 +168,10 @@ export const useAppData = () => {
       const cacheKey = buildDealsCacheKey(resolvedFilters);
       const force = options?.force ?? false;
       const pageSize = options?.preserveLoadedCount
-        ? Math.max(DEALS_PAGE_SIZE, dataStateRef.current.deals.length)
+        ? Math.max(
+            DEALS_PAGE_SIZE,
+            dataStateRef.current.deals.filter((deal) => !deal.isPinned).length,
+          )
         : DEALS_PAGE_SIZE;
       if (!force) {
         const cached = dealsCacheRef.current.get(cacheKey);
