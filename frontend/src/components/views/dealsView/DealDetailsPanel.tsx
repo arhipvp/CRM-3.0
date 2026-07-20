@@ -1081,7 +1081,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             <input
               id="deal-manual-event-date"
               type="date"
-              className="input w-full"
+              className="field field-input w-full"
               value={manualEventDate}
               onChange={(event) => setManualEventDate(event.target.value)}
             />
@@ -1090,7 +1090,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             <input
               id="deal-manual-event-reason"
               type="text"
-              className="input w-full"
+              className="field field-input w-full"
               value={manualEventReason}
               onChange={(event) => setManualEventReason(event.target.value)}
               placeholder="Например: предположительно купит квартиру, предложить застраховать"

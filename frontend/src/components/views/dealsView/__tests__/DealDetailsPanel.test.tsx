@@ -672,9 +672,9 @@ describe('DealDetailsPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
     const dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
 
-    expect(within(dialog).getByLabelText('Дата')).toHaveClass('w-full');
+    expect(within(dialog).getByLabelText('Дата')).toHaveClass('field', 'field-input', 'w-full');
     expect(within(dialog).queryByLabelText('Тип')).not.toBeInTheDocument();
-    expect(within(dialog).getByLabelText('Причина')).toHaveClass('w-full');
+    expect(within(dialog).getByLabelText('Причина')).toHaveClass('field', 'field-input', 'w-full');
 
     fireEvent.change(within(dialog).getByLabelText('Дата'), {
       target: { value: '2027-06-16' },
