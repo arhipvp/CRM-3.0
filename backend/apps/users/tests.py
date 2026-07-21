@@ -96,7 +96,10 @@ class UserRoleModelTest(TestCase):
     """Тесты для модели UserRole"""
 
     def setUp(self):
-        self.user = User.objects.create_user(username="testuser", password="pass123")
+        test_password = "pass123"  # pragma: allowlist secret
+        self.user = User.objects.create_user(  # pragma: allowlist secret
+            username="testuser", password=test_password
+        )
         self.role = Role.objects.create(name="Тестовая роль")
         self.user_role = UserRole.objects.create(user=self.user, role=self.role)
 
@@ -189,13 +192,17 @@ class UserAPITest(APITestCase):
 
         # Администратор
         self.admin_user = User.objects.create_superuser(
-            username="admin", email="admin@test.com", password="adminpass123"
+            username="admin",
+            email="admin@test.com",
+            password="adminpass123",  # pragma: allowlist secret
         )
         UserRole.objects.create(user=self.admin_user, role=self.admin_role)
 
         # Обычный менеджер
         self.manager_user = User.objects.create_user(
-            username="manager", email="manager@test.com", password="managerpass123"
+            username="manager",
+            email="manager@test.com",
+            password="managerpass123",  # pragma: allowlist secret
         )
         UserRole.objects.create(user=self.manager_user, role=self.manager_role)
 
@@ -220,7 +227,7 @@ class UserAPITest(APITestCase):
         data = {
             "username": "newuser",
             "email": "newuser@test.com",
-            "password": "newpass123",
+            "password": "newpass123",  # pragma: allowlist secret
             "first_name": "New",
             "last_name": "User",
             "role_ids": [str(self.manager_role.id)],
@@ -299,7 +306,9 @@ class RoleAPITest(APITestCase):
 
         # Создать и аутентифицировать пользователя
         admin_user = User.objects.create_superuser(
-            username="admin_test", email="admin_test@test.com", password="testpass123"
+            username="admin_test",
+            email="admin_test@test.com",
+            password="testpass123",  # pragma: allowlist secret
         )
         from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -378,7 +387,10 @@ class RoleAPITest(APITestCase):
 
     def test_assign_user_to_role(self):
         """Тест назначения роли пользователю"""
-        user = User.objects.create_user(username="testuser", password="pass123")
+        test_password = "pass123"  # pragma: allowlist secret
+        user = User.objects.create_user(  # pragma: allowlist secret
+            username="testuser", password=test_password
+        )
         data = {"user_id": user.id, "role_id": str(self.role.id)}
         response = self.client.post("/api/v1/roles/assign_user/", data, format="json")
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -396,7 +408,9 @@ class PermissionAPITest(APITestCase):
 
         # Создать и аутентифицировать пользователя
         admin_user = User.objects.create_superuser(
-            username="admin_perm", email="admin_perm@test.com", password="testpass123"
+            username="admin_perm",
+            email="admin_perm@test.com",
+            password="testpass123",  # pragma: allowlist secret
         )
         from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -442,12 +456,18 @@ class AuthenticationTest(APITestCase):
     def setUp(self):
         self.client = APIClient()
         self.user = User.objects.create_user(
-            username="testuser", email="test@test.com", password="testpass123"
+            username="testuser",
+            email="test@test.com",
+            password="testpass123",  # pragma: allowlist secret
         )
 
     def test_login(self):
         """Тест входа пользователя и получения токенов"""
-        data = {"username": "testuser", "password": "testpass123"}
+        login_password = "testpass123"  # pragma: allowlist secret
+        data = {
+            "username": "testuser",
+            "password": login_password,
+        }
         response = self.client.post("/api/v1/auth/login/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -457,7 +477,10 @@ class AuthenticationTest(APITestCase):
 
     def test_login_invalid_credentials(self):
         """Тест входа с неверными учетными данными"""
-        data = {"username": "testuser", "password": "wrongpassword"}
+        data = {
+            "username": "testuser",
+            "password": "wrongpassword",  # pragma: allowlist secret
+        }
         response = self.client.post("/api/v1/auth/login/", data, format="json")
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
@@ -465,9 +488,13 @@ class AuthenticationTest(APITestCase):
     def test_current_user_with_token(self):
         """Тест получения информации о текущем пользователе с валидным токеном"""
         # Получить токен
+        current_password = "testpass123"  # pragma: allowlist secret
         login_response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "testuser", "password": "testpass123"},
+            {
+                "username": "testuser",
+                "password": current_password,
+            },
             format="json",
         )
         token = login_response.data["access"]
@@ -495,9 +522,10 @@ class AuthenticationTest(APITestCase):
     def test_protected_endpoint_with_token(self):
         """Тест доступ к защищённому эндпоинту с токеном"""
         # Получить токен
+        current_password = "testpass123"  # pragma: allowlist secret
         login_response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "testuser", "password": "testpass123"},
+            {"username": "testuser", "password": current_password},
             format="json",
         )
         token = login_response.data["access"]
@@ -569,7 +597,7 @@ class AuditLogTestCase(TestCase):
     def setUp(self):
         """Подготовка тестовых данных"""
         self.admin_user = User.objects.create_user(
-            username="auditor", password="testpass123"
+            username="auditor", password="testpass123"  # pragma: allowlist secret
         )
 
     def test_audit_log_created_on_role_creation(self):
@@ -629,7 +657,11 @@ class AuditLogTestCase(TestCase):
         self.assertEqual(AuditLog.objects.count(), initial_count + 1)
 
         # Проверить содержимое лога
-        audit = AuditLog.objects.latest("created_at")
+        audit = AuditLog.objects.filter(
+            object_type="user_role",
+            object_id=f"{user.id}-{role.id}",
+            action="revoke",
+        ).latest("id")
         self.assertEqual(audit.object_type, "user_role")
         self.assertEqual(audit.action, "revoke")
 
