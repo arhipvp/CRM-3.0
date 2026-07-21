@@ -1,3 +1,4 @@
+from apps.common.pagination import StandardPageNumberPagination
 from django.contrib.auth.models import User
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
@@ -5,8 +6,6 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
-
-from apps.common.pagination import StandardPageNumberPagination
 
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
 from .response_helpers import error_response, message_response
@@ -203,15 +202,9 @@ class UserViewSet(ModelViewSet):
         roles = user.user_roles.values_list("role", flat=True)
 
         # Получить все права из этих ролей
-        permissions = (
-            RolePermission.objects.filter(role_id__in=roles)
-            .select_related("permission")
-            .distinct("permission")
-        )
+        permissions = Permission.objects.filter(roles__role_id__in=roles).distinct()
 
-        serializer = PermissionSerializer(
-            [rp.permission for rp in permissions], many=True
-        )
+        serializer = PermissionSerializer(permissions, many=True)
 
         return Response({"user": user.username, "permissions": serializer.data})
 

@@ -1,8 +1,6 @@
 from apps.common.pagination import DealPageNumberPagination
-from apps.finances.models import Payment
-from apps.policies.models import Policy
-from apps.policies.status import with_computed_status_flags
 from apps.common.permissions import EditProtectedMixin
+from apps.finances.models import Payment
 from apps.mailboxes.mailcow_client import MailcowClient, MailcowError
 from apps.mailboxes.models import Mailbox
 from apps.mailboxes.services import (
@@ -12,6 +10,8 @@ from apps.mailboxes.services import (
     generate_mailbox_password,
     process_mailbox_messages,
 )
+from apps.policies.models import Policy
+from apps.policies.status import with_computed_status_flags
 from apps.users.models import AuditLog
 from django.conf import settings
 from django.db.models import (

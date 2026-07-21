@@ -211,7 +211,9 @@ class UserAPITest(APITestCase):
         """Тест получения списка пользователей"""
         response = self.client.get("/api/v1/users/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertEqual(len(response.data), 2)
+        self.assertEqual(response.data["count"], 2)
+        self.assertEqual(len(response.data["results"]), 2)
+        self.assertIsNone(response.data["next"])
 
     def test_create_user(self):
         """Тест создания пользователя"""
@@ -582,7 +584,7 @@ class AuditLogTestCase(TestCase):
         self.assertEqual(AuditLog.objects.count(), initial_count + 1)
 
         # Проверить содержимое лога
-        audit = AuditLog.objects.latest("created_at")
+        audit = AuditLog.objects.latest("created_at", "id")
         self.assertEqual(audit.object_type, "role")
         self.assertEqual(audit.object_id, str(role.id))
         self.assertEqual(audit.action, "create")
@@ -604,7 +606,7 @@ class AuditLogTestCase(TestCase):
         self.assertEqual(AuditLog.objects.count(), initial_count + 1)
 
         # Проверить содержимое лога
-        audit = AuditLog.objects.latest("created_at")
+        audit = AuditLog.objects.latest("created_at", "id")
         self.assertEqual(audit.object_type, "user_role")
         self.assertEqual(audit.action, "assign")
         self.assertIn("testuser", audit.object_name)
@@ -691,7 +693,8 @@ class AuditLogTestCase(TestCase):
 
         self.assertEqual(response.status_code, 200)
         # Должен быть только логи для role1
-        for item in response.data:
+        self.assertIn("results", response.data)
+        for item in response.data["results"]:
             self.assertEqual(item["object_id"], str(role1.id))
 
     def test_observer_role_has_only_view_permission(self):
