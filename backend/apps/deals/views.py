@@ -155,12 +155,16 @@ class DealViewSet(
         )
         queryset = queryset.annotate(
             payments_total=Coalesce(
-                Subquery(payment_totals.values("total")[:1], output_field=self.decimal_field),
+                Subquery(
+                    payment_totals.values("total")[:1], output_field=self.decimal_field
+                ),
                 Value(0),
                 output_field=self.decimal_field,
             ),
             payments_paid=Coalesce(
-                Subquery(payment_totals.values("paid")[:1], output_field=self.decimal_field),
+                Subquery(
+                    payment_totals.values("paid")[:1], output_field=self.decimal_field
+                ),
                 Value(0),
                 output_field=self.decimal_field,
             ),
@@ -212,28 +216,43 @@ class DealViewSet(
             queryset = queryset.prefetch_related(*prefetch_fields)
         if "policies" in requested_embeds:
             decimal_field = DecimalField(max_digits=12, decimal_places=2)
-            policy_queryset = Policy.objects.alive().select_related(
-                "insurance_company",
-                "insurance_type",
-                "client",
-                "insured_client",
-                "sales_channel",
-                "deal",
-            ).annotate(
-                payments_total=Coalesce(Sum("payments__amount"), Value(0), output_field=decimal_field),
-                payments_paid=Coalesce(
-                    Sum("payments__amount", filter=Q(payments__actual_date__isnull=False)),
-                    Value(0),
-                    output_field=decimal_field,
-                ),
-            ).prefetch_related(
-                Prefetch(
-                    "issuance_executions",
-                    to_attr="prefetched_issuance_executions",
+            policy_queryset = (
+                Policy.objects.alive()
+                .select_related(
+                    "insurance_company",
+                    "insurance_type",
+                    "client",
+                    "insured_client",
+                    "sales_channel",
+                    "deal",
                 )
-            ).order_by("-created_at")
+                .annotate(
+                    payments_total=Coalesce(
+                        Sum("payments__amount"), Value(0), output_field=decimal_field
+                    ),
+                    payments_paid=Coalesce(
+                        Sum(
+                            "payments__amount",
+                            filter=Q(payments__actual_date__isnull=False),
+                        ),
+                        Value(0),
+                        output_field=decimal_field,
+                    ),
+                )
+                .prefetch_related(
+                    Prefetch(
+                        "issuance_executions",
+                        to_attr="prefetched_issuance_executions",
+                    )
+                )
+                .order_by("-created_at")
+            )
             queryset = queryset.prefetch_related(
-                Prefetch("policies", queryset=with_computed_status_flags(policy_queryset), to_attr="embedded_policies")
+                Prefetch(
+                    "policies",
+                    queryset=with_computed_status_flags(policy_queryset),
+                    to_attr="embedded_policies",
+                )
             )
         queryset = queryset.order_by(
             F("next_contact_date").asc(nulls_last=True),

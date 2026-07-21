@@ -153,7 +153,11 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             *list_related_fields,
         )
         queryset = FinancialRecord.objects.select_related(
-            *(list_related_fields if is_list and not is_statement_list else detail_related_fields)
+            *(
+                list_related_fields
+                if is_list and not is_statement_list
+                else detail_related_fields
+            )
         )
         if is_list and not is_statement_list:
             queryset = queryset.prefetch_related(
