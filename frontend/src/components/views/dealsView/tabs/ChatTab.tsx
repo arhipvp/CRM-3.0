@@ -5,18 +5,22 @@ interface ChatTabProps {
   selectedDeal: Deal | null;
   chatMessages: ChatMessage[];
   isChatLoading: boolean;
+  chatError: string | null;
   currentUser: User | null;
   onSendMessage: (body: string) => Promise<ChatMessage>;
   onDeleteMessage: (messageId: string) => Promise<void>;
+  onRetryLoad: () => Promise<void>;
 }
 
 export const ChatTab: React.FC<ChatTabProps> = ({
   selectedDeal,
   chatMessages,
   isChatLoading,
+  chatError,
   currentUser,
   onSendMessage,
   onDeleteMessage,
+  onRetryLoad,
 }) => {
   if (!selectedDeal) {
     return null;
@@ -28,7 +32,18 @@ export const ChatTab: React.FC<ChatTabProps> = ({
         <p className="app-label">Чат</p>
       </div>
 
-      {isChatLoading ? (
+      {chatError ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          <p>{chatError}</p>
+          <button
+            type="button"
+            className="mt-2 font-semibold underline"
+            onClick={() => void onRetryLoad()}
+          >
+            Повторить
+          </button>
+        </div>
+      ) : isChatLoading ? (
         <div className="space-y-3 animate-pulse">
           <div className="h-3 w-1/3 rounded bg-slate-200" />
           <div className="h-3 w-2/3 rounded bg-slate-200" />

@@ -19,6 +19,22 @@ const focusMock = vi.fn();
 const scrollIntoViewMock = vi.fn();
 const DEALS_LIST_HEIGHT_STORAGE_KEY = 'crm:deals:list-height';
 
+const mockMatchMedia = (matches: boolean) => {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+};
+
 const mockTableHeight = (element: HTMLElement, height: number) => {
   vi.spyOn(element, 'getBoundingClientRect').mockReturnValue({
     bottom: height,
@@ -81,6 +97,7 @@ const renderDealsList = (params?: {
 describe('DealsList dealRowFocusRequest', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    mockMatchMedia(true);
     Object.defineProperty(window, 'innerHeight', {
       configurable: true,
       value: 1000,
@@ -231,6 +248,7 @@ describe('DealsList dealRowFocusRequest', () => {
   });
 
   it('selects deal from the mobile card list', () => {
+    mockMatchMedia(false);
     const onSelectDeal = vi.fn();
     const selectedDeal = createDeal({ id: 'mobile-deal', title: 'Mobile Deal' });
 
@@ -240,6 +258,7 @@ describe('DealsList dealRowFocusRequest', () => {
       onSelectDeal,
     });
 
+    expect(screen.queryByTestId('deals-list-scroll')).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Открыть сделку Mobile Deal' }));
 
     expect(onSelectDeal).toHaveBeenCalledWith('mobile-deal');
@@ -248,6 +267,7 @@ describe('DealsList dealRowFocusRequest', () => {
   it('uses compact default height for the desktop deals table', () => {
     renderDealsList();
 
+    expect(screen.queryByRole('button', { name: 'Открыть сделку Deal 1' })).not.toBeInTheDocument();
     expect(screen.getByTestId('deals-list-scroll')).toHaveStyle({ height: '26vh' });
   });
 

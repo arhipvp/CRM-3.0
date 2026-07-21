@@ -6,6 +6,7 @@ import { useAppBootstrapNavigation } from './useAppBootstrapNavigation';
 export const useAppBootstrapShell = ({
   ensureCommissionsDataLoaded,
   ensureFinanceDataLoaded,
+  ensureReferenceData,
   ensureTasksLoaded,
   isAuthenticated,
   locationSearch,
@@ -30,7 +31,9 @@ export const useAppBootstrapShell = ({
   const { deepLinkedDealId, pendingPostLoginRedirect } = useAppBootstrapNavigation({
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
+    ensureReferenceData,
     ensureTasksLoaded,
+    isClientsRoute: routeFlags.isClientsRoute,
     isAuthenticated,
     isCommissionsRoute: routeFlags.isCommissionsRoute,
     isDealsRoute: routeFlags.isDealsRoute,

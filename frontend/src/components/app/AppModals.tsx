@@ -1,9 +1,6 @@
-import React from 'react';
-import { ClientForm } from '../forms/ClientForm';
-import { DealForm } from '../forms/DealForm';
+import React, { Suspense, lazy } from 'react';
 import type { DealFormValues } from '../forms/DealForm';
-import { AddQuoteForm, QuoteFormValues } from '../forms/AddQuoteForm';
-import { AddPolicyForm } from '../forms/AddPolicyForm';
+import type { QuoteFormValues } from '../forms/AddQuoteForm';
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type {
@@ -19,12 +16,36 @@ import type {
 } from '../../types';
 import type { ModalType } from './types';
 import type { PolicyFormValues } from '../forms/addPolicy/types';
-import { FinancialRecordModal } from '../financialRecords/FinancialRecordModal';
-import { PaymentModal } from '../payments/PaymentModal';
 import { FormModal } from '../common/modal/FormModal';
 import { buildPolicyFormValues } from './policyFormValues';
 
 const APP_OVERLAY_MODAL_Z_INDEX = 70;
+
+const ClientForm = lazy(async () => {
+  const module = await import('../forms/ClientForm');
+  return { default: module.ClientForm };
+});
+const DealForm = lazy(async () => {
+  const module = await import('../forms/DealForm');
+  return { default: module.DealForm };
+});
+const AddQuoteForm = lazy(async () => {
+  const module = await import('../forms/AddQuoteForm');
+  return { default: module.AddQuoteForm };
+});
+const AddPolicyForm = lazy(async () => {
+  const module = await import('../forms/AddPolicyForm');
+  return { default: module.AddPolicyForm };
+});
+const PaymentModal = lazy(async () => {
+  const module = await import('../payments/PaymentModal');
+  return { default: module.PaymentModal };
+});
+const FinancialRecordModal = lazy(async () => {
+  const module = await import('../financialRecords/FinancialRecordModal');
+  return { default: module.FinancialRecordModal };
+});
+const ModalLoadingFallback = () => <div className="py-8 text-sm text-slate-500">Загрузка...</div>;
 
 interface PolicyPrefill {
   values: PolicyFormValues;
@@ -192,158 +213,162 @@ export const AppModals: React.FC<AppModalsProps> = ({
   };
 
   return (
-    <>
-      {modal === 'client' && (
-        <FormModal isOpen title="Новый клиент" onClose={closeClientModal}>
-          <ClientForm onSubmit={handleAddClient} />
-        </FormModal>
-      )}
+    <Suspense fallback={<ModalLoadingFallback />}>
+      <>
+        {modal === 'client' && (
+          <FormModal isOpen title="Новый клиент" onClose={closeClientModal}>
+            <ClientForm onSubmit={handleAddClient} />
+          </FormModal>
+        )}
 
-      {modal === 'deal' && (
-        <FormModal
-          isOpen
-          title="Новая сделка"
-          onClose={() => setModal(null)}
-          closeOnOverlayClick={false}
-        >
-          <DealForm
-            clients={clients}
-            users={users}
-            onSubmit={handleAddDeal}
-            preselectedClientId={pendingDealClientId}
-            onPreselectedClientConsumed={onPendingDealClientConsumed}
-            onRequestAddClient={() => openClientModal('deal')}
-          />
-        </FormModal>
-      )}
+        {modal === 'deal' && (
+          <FormModal
+            isOpen
+            title="Новая сделка"
+            onClose={() => setModal(null)}
+            closeOnOverlayClick={false}
+          >
+            <DealForm
+              clients={clients}
+              users={users}
+              onSubmit={handleAddDeal}
+              preselectedClientId={pendingDealClientId}
+              onPreselectedClientConsumed={onPendingDealClientConsumed}
+              onRequestAddClient={() => openClientModal('deal')}
+            />
+          </FormModal>
+        )}
 
-      {quoteDealId && (
-        <FormModal
-          isOpen
-          title="Добавить расчёт"
-          onClose={() => setQuoteDealId(null)}
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-        >
-          <AddQuoteForm
-            onSubmit={(values) => handleAddQuote(quoteDealId, values)}
-            onCancel={() => setQuoteDealId(null)}
-          />
-        </FormModal>
-      )}
+        {quoteDealId && (
+          <FormModal
+            isOpen
+            title="Добавить расчёт"
+            onClose={() => setQuoteDealId(null)}
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+          >
+            <AddQuoteForm
+              onSubmit={(values) => handleAddQuote(quoteDealId, values)}
+              onCancel={() => setQuoteDealId(null)}
+            />
+          </FormModal>
+        )}
 
-      {editingQuote && (
-        <FormModal
-          isOpen
-          title="Редактировать расчёт"
-          onClose={() => setEditingQuote(null)}
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-        >
-          <AddQuoteForm
-            initialValues={editingQuote}
-            onSubmit={handleUpdateQuote}
-            onCancel={() => setEditingQuote(null)}
-          />
-        </FormModal>
-      )}
+        {editingQuote && (
+          <FormModal
+            isOpen
+            title="Редактировать расчёт"
+            onClose={() => setEditingQuote(null)}
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+          >
+            <AddQuoteForm
+              initialValues={editingQuote}
+              onSubmit={handleUpdateQuote}
+              onCancel={() => setEditingQuote(null)}
+            />
+          </FormModal>
+        )}
 
-      {policyDealId && (
-        <FormModal
-          isOpen
-          title="Добавить полис"
-          onClose={() => {
-            void requestClosePolicyModal();
-          }}
-          size="xl"
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-          closeOnOverlayClick={false}
-          panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
-          bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
-          bodyScrollable={false}
-        >
-          <AddPolicyForm
-            salesChannels={salesChannels}
-            initialValues={policyPrefill?.values}
-            isEditing={false}
-            initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-            initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-            defaultCounterparty={policyDefaultCounterparty}
-            executorName={policyDealExecutorName}
-            clients={clients}
-            onRequestAddClient={() => openClientModal()}
-            onDirtyChange={setIsAddPolicyDirty}
-            onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-            onCancel={() => {
+        {policyDealId && (
+          <FormModal
+            isOpen
+            title="Добавить полис"
+            onClose={() => {
               void requestClosePolicyModal();
             }}
-          />
-        </FormModal>
-      )}
+            size="xl"
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+            closeOnOverlayClick={false}
+            panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
+            bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
+            bodyScrollable={false}
+          >
+            <AddPolicyForm
+              salesChannels={salesChannels}
+              initialValues={policyPrefill?.values}
+              isEditing={false}
+              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+              defaultCounterparty={policyDefaultCounterparty}
+              executorName={policyDealExecutorName}
+              clients={clients}
+              onRequestAddClient={() => openClientModal()}
+              onDirtyChange={setIsAddPolicyDirty}
+              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+              onCancel={() => {
+                void requestClosePolicyModal();
+              }}
+            />
+          </FormModal>
+        )}
 
-      {editingPolicy && (
-        <FormModal
-          isOpen
-          title="Редактировать полис"
-          onClose={() => {
-            void requestCloseEditingPolicyModal();
-          }}
-          size="xl"
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-          closeOnOverlayClick={false}
-          panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
-          bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
-          bodyScrollable={false}
-        >
-          <AddPolicyForm
-            salesChannels={salesChannels}
-            initialValues={editingPolicyInitialValues}
-            isEditing
-            initialInsuranceCompanyName={editingPolicy.insuranceCompany}
-            initialInsuranceTypeName={editingPolicy.insuranceType}
-            executorName={editingPolicyExecutorName}
-            clients={clients}
-            onRequestAddClient={() => openClientModal()}
-            onDirtyChange={setIsEditPolicyDirty}
-            onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
-            onCancel={() => {
+        {editingPolicy && (
+          <FormModal
+            isOpen
+            title="Редактировать полис"
+            onClose={() => {
               void requestCloseEditingPolicyModal();
             }}
+            size="xl"
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+            closeOnOverlayClick={false}
+            panelClassName="flex max-h-[92vh] flex-col overflow-hidden"
+            bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
+            bodyScrollable={false}
+          >
+            <AddPolicyForm
+              salesChannels={salesChannels}
+              initialValues={editingPolicyInitialValues}
+              isEditing
+              initialInsuranceCompanyName={editingPolicy.insuranceCompany}
+              initialInsuranceTypeName={editingPolicy.insuranceType}
+              executorName={editingPolicyExecutorName}
+              clients={clients}
+              onRequestAddClient={() => openClientModal()}
+              onDirtyChange={setIsEditPolicyDirty}
+              onSubmit={(values) => handleUpdatePolicy(editingPolicy.id, values)}
+              onCancel={() => {
+                void requestCloseEditingPolicyModal();
+              }}
+            />
+          </FormModal>
+        )}
+
+        {paymentModal && (
+          <PaymentModal
+            isOpen
+            title="Редактировать платёж"
+            payment={payments.find((p) => p.id === paymentModal.paymentId)}
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+            onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
+            onClose={() => setPaymentModal(null)}
           />
-        </FormModal>
-      )}
+        )}
 
-      {paymentModal && (
-        <PaymentModal
-          isOpen
-          title="Редактировать платёж"
-          payment={payments.find((p) => p.id === paymentModal.paymentId)}
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-          onSubmit={(values) => handleUpdatePayment(paymentModal.paymentId!, values)}
-          onClose={() => setPaymentModal(null)}
-        />
-      )}
+        {financialRecordModal && (
+          <FinancialRecordModal
+            isOpen
+            title="Редактировать запись"
+            paymentId={financialRecordModal.paymentId!}
+            record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+            onClose={() => setFinancialRecordModal(null)}
+            onSubmit={(values) =>
+              handleUpdateFinancialRecord(financialRecordModal.recordId!, values)
+            }
+          />
+        )}
 
-      {financialRecordModal && (
-        <FinancialRecordModal
-          isOpen
-          title="Редактировать запись"
-          paymentId={financialRecordModal.paymentId!}
-          record={financialRecords.find((r) => r.id === financialRecordModal.recordId)}
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-          onClose={() => setFinancialRecordModal(null)}
-          onSubmit={(values) => handleUpdateFinancialRecord(financialRecordModal.recordId!, values)}
-        />
-      )}
-
-      {isClientModalOverlayOpen && (
-        <FormModal
-          isOpen
-          title="Новый клиент"
-          onClose={closeClientModal}
-          zIndex={APP_OVERLAY_MODAL_Z_INDEX}
-        >
-          <ClientForm onSubmit={handleAddClient} />
-        </FormModal>
-      )}
-    </>
+        {isClientModalOverlayOpen && (
+          <FormModal
+            isOpen
+            title="Новый клиент"
+            onClose={closeClientModal}
+            zIndex={APP_OVERLAY_MODAL_Z_INDEX}
+          >
+            <ClientForm onSubmit={handleAddClient} />
+          </FormModal>
+        )}
+      </>
+    </Suspense>
   );
 };

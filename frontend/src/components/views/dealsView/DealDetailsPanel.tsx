@@ -120,11 +120,19 @@ export interface DealDetailsPanelProps {
   onDriveFolderCreated: (dealId: string, folderId: string) => void;
   onCreateDealMailbox: (dealId: string) => Promise<DealMailboxCreateResult>;
   onCheckDealMailbox: (dealId: string) => Promise<DealMailboxSyncResult>;
-  onFetchChatMessages: (dealId: string) => Promise<ChatMessage[]>;
+  onFetchChatMessages: (dealId: string, options?: RequestInit) => Promise<ChatMessage[]>;
   onSendChatMessage: (dealId: string, body: string) => Promise<ChatMessage>;
   onDeleteChatMessage: (messageId: string) => Promise<void>;
-  onFetchDealHistory: (dealId: string, includeDeleted?: boolean) => Promise<ActivityLog[]>;
-  onFetchDealEvents: (dealId: string, includeDeleted?: boolean) => Promise<DealTimelineEvent[]>;
+  onFetchDealHistory: (
+    dealId: string,
+    includeDeleted?: boolean,
+    options?: RequestInit,
+  ) => Promise<ActivityLog[]>;
+  onFetchDealEvents: (
+    dealId: string,
+    includeDeleted?: boolean,
+    options?: RequestInit,
+  ) => Promise<DealTimelineEvent[]>;
   dealEventsRefreshToken?: number;
   onCreateDealEvent?: (
     dealId: string,
@@ -507,6 +515,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   const {
     chatMessages,
     isChatLoading,
+    chatError,
     activityLogs,
     isActivityLoading,
     activityError,
@@ -945,9 +954,11 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     selectedDeal,
                     chatMessages,
                     isChatLoading,
+                    chatError,
                     currentUser,
                     onSendMessage: handleChatSendMessage,
                     onDeleteMessage: handleChatDelete,
+                    onRetryLoad: loadChatMessages,
                   }}
                   activityProps={{
                     activityError,

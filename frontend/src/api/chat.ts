@@ -3,8 +3,11 @@ import { unwrapList } from './helpers';
 import { mapChatMessage } from './mappers';
 import type { ChatMessage } from '../types';
 
-export async function fetchChatMessages(dealId: string): Promise<ChatMessage[]> {
-  const payload = await request(`/chat_messages/?deal=${dealId}`);
+export async function fetchChatMessages(
+  dealId: string,
+  options?: RequestInit,
+): Promise<ChatMessage[]> {
+  const payload = await request(`/chat_messages/?deal=${dealId}`, options);
   return unwrapList<Record<string, unknown>>(payload).map(mapChatMessage);
 }
 

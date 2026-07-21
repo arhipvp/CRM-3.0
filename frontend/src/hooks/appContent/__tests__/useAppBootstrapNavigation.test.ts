@@ -11,6 +11,7 @@ vi.mock('../../../api', () => ({
 describe('useAppBootstrapNavigation', () => {
   const ensureCommissionsDataLoaded = vi.fn().mockResolvedValue(undefined);
   const ensureFinanceDataLoaded = vi.fn().mockResolvedValue(undefined);
+  const ensureReferenceData = vi.fn().mockResolvedValue(undefined);
   const ensureTasksLoaded = vi.fn().mockResolvedValue(undefined);
   const navigate = vi.fn();
   const refreshPolicies = vi.fn().mockResolvedValue(undefined);
@@ -26,8 +27,10 @@ describe('useAppBootstrapNavigation', () => {
       useAppBootstrapNavigation({
         ensureCommissionsDataLoaded,
         ensureFinanceDataLoaded,
+        ensureReferenceData,
         ensureTasksLoaded,
         isAuthenticated: true,
+        isClientsRoute: false,
         isCommissionsRoute: false,
         isDealsRoute: true,
         isLoginRoute: false,
@@ -43,6 +46,7 @@ describe('useAppBootstrapNavigation', () => {
 
     await waitFor(() => {
       expect(ensureFinanceDataLoaded).not.toHaveBeenCalled();
+      expect(ensureReferenceData).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -51,8 +55,10 @@ describe('useAppBootstrapNavigation', () => {
       useAppBootstrapNavigation({
         ensureCommissionsDataLoaded,
         ensureFinanceDataLoaded,
+        ensureReferenceData,
         ensureTasksLoaded,
         isAuthenticated: true,
+        isClientsRoute: false,
         isCommissionsRoute: false,
         isDealsRoute: false,
         isLoginRoute: false,
@@ -68,6 +74,7 @@ describe('useAppBootstrapNavigation', () => {
 
     await waitFor(() => {
       expect(ensureFinanceDataLoaded).toHaveBeenCalledTimes(1);
+      expect(ensureReferenceData).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -76,8 +83,10 @@ describe('useAppBootstrapNavigation', () => {
       useAppBootstrapNavigation({
         ensureCommissionsDataLoaded,
         ensureFinanceDataLoaded,
+        ensureReferenceData,
         ensureTasksLoaded,
         isAuthenticated: true,
+        isClientsRoute: false,
         isCommissionsRoute: true,
         isDealsRoute: false,
         isLoginRoute: false,
@@ -94,6 +103,7 @@ describe('useAppBootstrapNavigation', () => {
     await waitFor(() => {
       expect(ensureCommissionsDataLoaded).toHaveBeenCalledTimes(1);
       expect(ensureFinanceDataLoaded).not.toHaveBeenCalled();
+      expect(ensureReferenceData).toHaveBeenCalledTimes(1);
       expect(refreshPolicies).not.toHaveBeenCalled();
     });
   });

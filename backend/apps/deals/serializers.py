@@ -233,6 +233,9 @@ class DealSerializer(serializers.ModelSerializer):
     def get_policies(self, obj: Deal):
         if not self.context.get("include_policies"):
             return []
+        prefetched = getattr(obj, "embedded_policies", None)
+        if prefetched is not None:
+            return PolicySerializer(prefetched, many=True).data
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
         policies = (
             obj.policies.select_related(

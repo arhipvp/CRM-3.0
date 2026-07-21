@@ -3,6 +3,10 @@
 ## Обзор
 Backend — это одиночный Django-проект, распределённый по приложениям: каждый домен (`clients`, `deals`, `tasks`, `notes`, `finances`, `documents`, `chat`, `policies`, `notifications`, `users`) реализует модели, сериализаторы, permissions, ViewSet и роутер. Общие компоненты собираются в `apps/common`, а `config/` управляет настройками и маршрутизацией.
 
+### Важные контракты API
+- `GET /api/v1/deals/` и `GET /api/v1/deals/{id}/` по умолчанию возвращают только поля сделки. Вложенные `quotes`, `documents` и `policies` запрашиваются явно: `?embed=quotes,documents,policies`.
+- `GET /api/v1/users/` и `GET /api/v1/audit_logs/` всегда используют ответ пагинации DRF: `{ count, next, previous, results }`; поддерживаются `page` и ограниченный `page_size` (не более 200).
+
 ### Приложения и их назначение
 - `clients`: `Client` содержит имя, телефон, email, дату рождения, заметки и связку с менеджером; служит источником для сделок и полисов.
 - `deals`: `Deal`, `Quote`, `InsuranceCompany`, `InsuranceType`, `SalesChannel` и связанные сущности описывают весь цикл сделки — статусы, стадии, менеджеры, ожидаемые даты и Google Drive-метки.

@@ -1,24 +1,42 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 
 import { ActivityTimeline } from '../../ActivityTimeline';
 import { DealEventTimeline } from '../../DealEventTimeline';
 import { InlineAlert } from '../../common/InlineAlert';
 import { DealNotesSection } from './DealNotesSection';
 import { ChatTab } from './tabs/ChatTab';
-import { FilesTab } from './tabs/FilesTab';
-import { PoliciesTab } from './tabs/PoliciesTab';
-import { QuotesTab } from './tabs/QuotesTab';
-import { TasksTab } from './tabs/TasksTab';
+import type { FilesTab as FilesTabComponent } from './tabs/FilesTab';
+import type { PoliciesTab as PoliciesTabComponent } from './tabs/PoliciesTab';
+import type { QuotesTab as QuotesTabComponent } from './tabs/QuotesTab';
+import type { TasksTab as TasksTabComponent } from './tabs/TasksTab';
 import type { ActivityLog } from '../../../types';
 import type { DealTabId } from './helpers';
+
+const TasksTab = lazy(async () => {
+  const module = await import('./tabs/TasksTab');
+  return { default: module.TasksTab };
+});
+const PoliciesTab = lazy(async () => {
+  const module = await import('./tabs/PoliciesTab');
+  return { default: module.PoliciesTab };
+});
+const QuotesTab = lazy(async () => {
+  const module = await import('./tabs/QuotesTab');
+  return { default: module.QuotesTab };
+});
+const FilesTab = lazy(async () => {
+  const module = await import('./tabs/FilesTab');
+  return { default: module.FilesTab };
+});
+const TabLoadingFallback = () => <div className="py-8 text-sm text-slate-500">Загрузка...</div>;
 
 interface DealDetailsPanelTabContentProps {
   activeTab: DealTabId;
   notesSectionProps: React.ComponentProps<typeof DealNotesSection>;
-  tasksTabProps: React.ComponentProps<typeof TasksTab>;
-  policiesTabProps: React.ComponentProps<typeof PoliciesTab>;
-  quotesTabProps: React.ComponentProps<typeof QuotesTab>;
-  filesTabProps: React.ComponentProps<typeof FilesTab>;
+  tasksTabProps: React.ComponentProps<typeof TasksTabComponent>;
+  policiesTabProps: React.ComponentProps<typeof PoliciesTabComponent>;
+  quotesTabProps: React.ComponentProps<typeof QuotesTabComponent>;
+  filesTabProps: React.ComponentProps<typeof FilesTabComponent>;
   chatTabProps: React.ComponentProps<typeof ChatTab>;
   activityProps: {
     activityError: string | null;
@@ -53,13 +71,29 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
         </div>
       );
     case 'tasks':
-      return <TasksTab {...tasksTabProps} />;
+      return (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <TasksTab {...tasksTabProps} />
+        </Suspense>
+      );
     case 'policies':
-      return <PoliciesTab {...policiesTabProps} />;
+      return (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <PoliciesTab {...policiesTabProps} />
+        </Suspense>
+      );
     case 'quotes':
-      return <QuotesTab {...quotesTabProps} />;
+      return (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <QuotesTab {...quotesTabProps} />
+        </Suspense>
+      );
     case 'files':
-      return <FilesTab {...filesTabProps} />;
+      return (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <FilesTab {...filesTabProps} />
+        </Suspense>
+      );
     case 'chat':
       return <ChatTab {...chatTabProps} />;
     case 'events':

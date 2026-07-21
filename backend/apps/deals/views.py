@@ -1,4 +1,7 @@
 from apps.common.pagination import DealPageNumberPagination
+from apps.finances.models import Payment
+from apps.policies.models import Policy
+from apps.policies.status import with_computed_status_flags
 from apps.common.permissions import EditProtectedMixin
 from apps.mailboxes.mailcow_client import MailcowClient, MailcowError
 from apps.mailboxes.models import Mailbox
@@ -20,6 +23,7 @@ from django.db.models import (
     F,
     IntegerField,
     OuterRef,
+    Prefetch,
     Q,
     Subquery,
     Sum,
@@ -128,7 +132,19 @@ class DealViewSet(
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
     _allowed_embed_fields = {"quotes", "documents", "policies"}
 
+    def _payment_totals_subquery(self):
+        return (
+            Payment.objects.filter(deal_id=OuterRef("pk"), deleted_at__isnull=True)
+            .order_by()
+            .values("deal_id")
+            .annotate(
+                total=Sum("amount"),
+                paid=Sum("amount", filter=Q(actual_date__isnull=False)),
+            )
+        )
+
     def _annotate_queryset(self, queryset, user=None):
+        payment_totals = self._payment_totals_subquery()
         queryset = queryset.annotate(
             id_text=Cast("id", output_field=CharField()),
             client_active_deals_count=Coalesce(
@@ -139,12 +155,12 @@ class DealViewSet(
         )
         queryset = queryset.annotate(
             payments_total=Coalesce(
-                Sum("payments__amount"),
+                Subquery(payment_totals.values("total")[:1], output_field=self.decimal_field),
                 Value(0),
                 output_field=self.decimal_field,
             ),
             payments_paid=Coalesce(
-                Sum("payments__amount", filter=Q(payments__actual_date__isnull=False)),
+                Subquery(payment_totals.values("paid")[:1], output_field=self.decimal_field),
                 Value(0),
                 output_field=self.decimal_field,
             ),
@@ -175,7 +191,7 @@ class DealViewSet(
     def _requested_deal_embeds(self):
         raw_value = self.request.query_params.get("embed")
         if raw_value is None:
-            return None
+            return set()
         tokens = {
             item.strip().lower() for item in str(raw_value).split(",") if item.strip()
         }
@@ -188,12 +204,37 @@ class DealViewSet(
         queryset = manager.select_related(
             "client", "seller", "executor", "mailbox"
         ).all()
-        requested_embeds = {"quotes", "documents"} if embeds is None else embeds
+        requested_embeds = embeds or set()
         prefetch_fields = [
             field for field in ("quotes", "documents") if field in requested_embeds
         ]
         if prefetch_fields:
             queryset = queryset.prefetch_related(*prefetch_fields)
+        if "policies" in requested_embeds:
+            decimal_field = DecimalField(max_digits=12, decimal_places=2)
+            policy_queryset = Policy.objects.alive().select_related(
+                "insurance_company",
+                "insurance_type",
+                "client",
+                "insured_client",
+                "sales_channel",
+                "deal",
+            ).annotate(
+                payments_total=Coalesce(Sum("payments__amount"), Value(0), output_field=decimal_field),
+                payments_paid=Coalesce(
+                    Sum("payments__amount", filter=Q(payments__actual_date__isnull=False)),
+                    Value(0),
+                    output_field=decimal_field,
+                ),
+            ).prefetch_related(
+                Prefetch(
+                    "issuance_executions",
+                    to_attr="prefetched_issuance_executions",
+                )
+            ).order_by("-created_at")
+            queryset = queryset.prefetch_related(
+                Prefetch("policies", queryset=with_computed_status_flags(policy_queryset), to_attr="embedded_policies")
+            )
         queryset = queryset.order_by(
             F("next_contact_date").asc(nulls_last=True),
             F("next_review_date").desc(nulls_last=True),
@@ -465,11 +506,8 @@ class DealViewSet(
     def get_serializer_context(self):
         context = super().get_serializer_context()
         embeds = self._requested_deal_embeds()
-        context["deal_embed"] = {"quotes", "documents"} if embeds is None else embeds
-        if embeds is None:
-            context["include_policies"] = False
-        else:
-            context["include_policies"] = "policies" in embeds
+        context["deal_embed"] = embeds
+        context["include_policies"] = "policies" in embeds
         return context
 
     def _reject_viewer_update(self, request, instance):

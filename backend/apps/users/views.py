@@ -6,6 +6,8 @@ from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from apps.common.pagination import StandardPageNumberPagination
+
 from .models import AuditLog, Permission, Role, RolePermission, UserRole
 from .response_helpers import error_response, message_response
 from .serializers import (
@@ -133,7 +135,7 @@ class UserViewSet(ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = None
+    pagination_class = StandardPageNumberPagination
 
     def get_serializer_class(self):
         if (
@@ -220,7 +222,7 @@ class AuditLogViewSet(ModelViewSet):
     queryset = AuditLog.objects.all()
     serializer_class = AuditLogSerializer
     permission_classes = [permissions.IsAuthenticated]
-    pagination_class = None
+    pagination_class = StandardPageNumberPagination
 
     def get_queryset(self):
         """Админы видят все логи, остальные видят логи только своих действий"""

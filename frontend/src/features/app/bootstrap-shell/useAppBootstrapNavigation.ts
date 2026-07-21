@@ -6,8 +6,10 @@ import { formatErrorMessage } from '../../../utils/formatErrorMessage';
 export interface UseAppBootstrapNavigationArgs {
   ensureCommissionsDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureFinanceDataLoaded: (options?: { force?: boolean }) => Promise<void>;
+  ensureReferenceData: (options?: { force?: boolean }) => Promise<void>;
   ensureTasksLoaded: (options?: { force?: boolean }) => Promise<void>;
   isAuthenticated: boolean;
+  isClientsRoute: boolean;
   isCommissionsRoute: boolean;
   isDealsRoute: boolean;
   isLoginRoute: boolean;
@@ -23,8 +25,10 @@ export interface UseAppBootstrapNavigationArgs {
 export const useAppBootstrapNavigation = ({
   ensureCommissionsDataLoaded,
   ensureFinanceDataLoaded,
+  ensureReferenceData,
   ensureTasksLoaded,
   isAuthenticated,
+  isClientsRoute,
   isCommissionsRoute,
   isDealsRoute,
   isLoginRoute,
@@ -66,6 +70,25 @@ export const useAppBootstrapNavigation = ({
     }
     selectDealById(deepLinkedDealId);
   }, [deepLinkedDealId, isAuthenticated, selectDealById]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    if (isClientsRoute || isDealsRoute || isPoliciesRoute || isCommissionsRoute) {
+      ensureReferenceData().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке справочников'));
+      });
+    }
+  }, [
+    ensureReferenceData,
+    isAuthenticated,
+    isClientsRoute,
+    isCommissionsRoute,
+    isDealsRoute,
+    isPoliciesRoute,
+    setError,
+  ]);
 
   useEffect(() => {
     if (!isAuthenticated) {

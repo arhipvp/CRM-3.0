@@ -69,7 +69,7 @@ class DealEmbedTests(AuthenticatedAPITestCase):
         self.assertNotIn("policies", row)
         self.assertEqual(len(row["quotes"]), 1)
 
-    def test_default_contract_remains_backward_compatible(self):
+    def test_default_contract_excludes_nested_fields(self):
         response = self.api_client.get(
             "/api/v1/deals/",
             {"show_closed": "1"},
@@ -77,8 +77,8 @@ class DealEmbedTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         row = self._first_result(response)
-        self.assertIn("quotes", row)
-        self.assertIn("documents", row)
+        self.assertNotIn("quotes", row)
+        self.assertNotIn("documents", row)
         self.assertNotIn("policies", row)
 
     def test_retrieve_excludes_policies_by_default(self):

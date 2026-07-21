@@ -195,9 +195,10 @@ export async function restoreDeal(id: string): Promise<Deal> {
 export async function fetchDealHistory(
   dealId: string,
   includeDeleted = false,
+  options?: RequestInit,
 ): Promise<ActivityLog[]> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
-  const payload = await request(`/deals/${dealId}/history/${suffix}`);
+  const payload = await request(`/deals/${dealId}/history/${suffix}`, options);
   if (!Array.isArray(payload)) {
     return [];
   }
@@ -207,9 +208,10 @@ export async function fetchDealHistory(
 export async function fetchDealEvents(
   dealId: string,
   includeDeleted = false,
+  options?: RequestInit,
 ): Promise<DealTimelineEvent[]> {
   const suffix = includeDeleted ? '?show_deleted=1' : '';
-  const payload = await request(`/deals/${dealId}/events/${suffix}`);
+  const payload = await request(`/deals/${dealId}/events/${suffix}`, options);
   if (!Array.isArray(payload)) {
     return [];
   }

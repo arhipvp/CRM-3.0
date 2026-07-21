@@ -471,7 +471,7 @@ describe('DealDetailsPanel', () => {
       0,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Проверить почту' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Проверить почту' }));
 
     await waitFor(() => {
       expect(onCheckDealMailbox).toHaveBeenCalledWith('deal-1');
@@ -1174,7 +1174,7 @@ describe('DealDetailsPanel', () => {
     expect(screen.getByTestId('quotes-tab-loading')).toBeInTheDocument();
   });
 
-  it('passes only selected deal quotes to quotes tab', () => {
+  it('passes only selected deal quotes to quotes tab', async () => {
     const dealWithMixedQuotes: Deal = {
       ...selectedDeal,
       quotes: [
@@ -1266,9 +1266,11 @@ describe('DealDetailsPanel', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Open Quotes' }));
 
-    const latestCall = quotesTabPropsSpy.mock.calls.at(-1)?.[0] as {
-      quotes?: Array<{ id: string }>;
-    };
-    expect(latestCall.quotes?.map((quote) => quote.id)).toEqual(['quote-current']);
+    await waitFor(() => {
+      const latestCall = quotesTabPropsSpy.mock.calls.at(-1)?.[0] as {
+        quotes?: Array<{ id: string }>;
+      };
+      expect(latestCall.quotes?.map((quote) => quote.id)).toEqual(['quote-current']);
+    });
   });
 });

@@ -470,19 +470,16 @@ export const useClientActions = ({
       setIsMergingClients(false);
     }
   }, [
-    addNotification,
     clientMergeFieldOverrides.email,
     clientMergeFieldOverrides.name,
     clientMergeFieldOverrides.notes,
     clientMergeFieldOverrides.phone,
     clientMergePreview,
-    closeMergeModal,
     continueClientMergeSession,
     isClientMergePreviewConfirmed,
     mergeClientTargetId,
     mergeSources,
     setIsSyncing,
-    setError,
   ]);
 
   const handleClientMergeRetry = useCallback(async () => {

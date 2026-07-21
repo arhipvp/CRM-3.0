@@ -4,7 +4,7 @@ import {
   DEFAULT_TASKS_API_ORDERING,
   fetchClients,
   fetchDealsWithPagination,
-  fetchFinancialRecords,
+  fetchFinancialRecordsWithPagination,
   fetchFinanceStatements,
   fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
@@ -111,9 +111,11 @@ export const useAppData = () => {
   const tasksRequestRef = useRef(0);
   const commissionsLoadPromiseRef = useRef<Promise<void> | null>(null);
   const financeLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const referenceDataLoadPromiseRef = useRef<Promise<void> | null>(null);
   const financeRevisionRef = useRef(0);
   const commissionsDataLoadedRef = useRef(false);
   const financeDataLoadedRef = useRef(false);
+  const referenceDataLoadedRef = useRef(false);
   const tasksLoadedRef = useRef(false);
   const tasksLoadKeyRef = useRef<string | null>(null);
   const dealsCacheRef = useRef(
@@ -382,22 +384,45 @@ export const useAppData = () => {
     }
   }, [isLoadingMorePolicies, policiesFilters, policiesListNextPage, setError]);
 
-  const fetchAllPayments = useCallback(async () => {
-    const PAGE_SIZE = 200;
-    let page = 1;
-    const retrieved: Payment[] = [];
-
-    while (true) {
-      const payload = await fetchPaymentsWithPagination({ page, page_size: PAGE_SIZE });
-      retrieved.push(...payload.results);
-      if (!payload.next) {
-        break;
-      }
-      page += 1;
-    }
-
-    return retrieved;
+  const fetchFinancePage = useCallback(async () => {
+    const pageSize = 100;
+    const [paymentsPayload, recordsPayload] = await Promise.all([
+      fetchPaymentsWithPagination({ page: 1, page_size: pageSize }),
+      fetchFinancialRecordsWithPagination({ page: 1, page_size: pageSize }),
+    ]);
+    return {
+      payments: paymentsPayload.results,
+      financialRecords: recordsPayload.results,
+    };
   }, []);
+
+  const ensureReferenceData = useCallback(
+    async (options?: { force?: boolean }) => {
+      const force = options?.force ?? false;
+      if (referenceDataLoadedRef.current && !force) {
+        return;
+      }
+      if (referenceDataLoadPromiseRef.current) {
+        return referenceDataLoadPromiseRef.current;
+      }
+      const loadPromise = (async () => {
+        try {
+          const [clients, users, salesChannels] = await Promise.all([
+            fetchClients(),
+            fetchUsers(),
+            fetchSalesChannels(),
+          ]);
+          setAppData({ clients, users, salesChannels });
+          referenceDataLoadedRef.current = true;
+        } finally {
+          referenceDataLoadPromiseRef.current = null;
+        }
+      })();
+      referenceDataLoadPromiseRef.current = loadPromise;
+      return loadPromise;
+    },
+    [setAppData],
+  );
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -412,18 +437,7 @@ export const useAppData = () => {
     tasksLoadKeyRef.current = null;
     setIsTasksLoading(false);
     try {
-      const dealsPromise = refreshDeals();
-      const [clientsData, usersData, salesChannelsData] = await Promise.all([
-        fetchClients(),
-        fetchUsers(),
-        fetchSalesChannels(),
-      ]);
-      await dealsPromise;
-      setAppData({
-        clients: clientsData,
-        users: usersData,
-        salesChannels: salesChannelsData,
-      });
+      await refreshDeals();
     } catch (err) {
       setError(
         formatErrorMessage(
@@ -435,7 +449,7 @@ export const useAppData = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [refreshDeals, setAppData]);
+  }, [refreshDeals]);
 
   const ensureCommissionsDataLoaded = useCallback(
     async (options?: { force?: boolean }) => {
@@ -500,10 +514,7 @@ export const useAppData = () => {
       const loadPromise = (async () => {
         try {
           const startedRevision = financeRevisionRef.current;
-          const [paymentsData, financialRecordsData] = await Promise.all([
-            fetchAllPayments(),
-            fetchFinancialRecords(),
-          ]);
+          const financePage = await fetchFinancePage();
           if (financeRequestRef.current !== requestId) {
             return;
           }
@@ -511,8 +522,8 @@ export const useAppData = () => {
             return;
           }
           setAppData({
-            payments: paymentsData,
-            financialRecords: financialRecordsData,
+            payments: financePage.payments,
+            financialRecords: financePage.financialRecords,
           });
           financeDataLoadedRef.current = true;
           setHasFinanceSnapshotLoaded(true);
@@ -536,7 +547,7 @@ export const useAppData = () => {
       financeLoadPromiseRef.current = loadPromise;
       return loadPromise;
     },
-    [fetchAllPayments, setAppData, setError],
+    [fetchFinancePage, setAppData, setError],
   );
 
   const ensureFinanceDataLoaded = useCallback(
@@ -612,6 +623,7 @@ export const useAppData = () => {
   return {
     dataState,
     loadData,
+    ensureReferenceData,
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,

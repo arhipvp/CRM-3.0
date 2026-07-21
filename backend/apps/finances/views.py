@@ -40,6 +40,7 @@ from django.utils import timezone
 from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 from openpyxl.styles import Alignment, Font, PatternFill
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
@@ -123,6 +124,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         user = self.request.user
         statement_id = self.request.query_params.get("statement")
         is_statement_list = bool(statement_id)
+        is_list = self.action == "list"
         paid_balance_subquery = (
             FinancialRecord.objects.filter(
                 payment_id=OuterRef("payment_id"),
@@ -134,8 +136,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             .annotate(total=Sum("amount"))
             .values("total")[:1]
         )
-        queryset = FinancialRecord.objects.select_related(
-            "statement",
+        list_related_fields = (
             "payment",
             "payment__policy",
             "payment__policy__client",
@@ -147,7 +148,14 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             "payment__deal",
             "payment__deal__client",
         )
-        if not is_statement_list:
+        detail_related_fields = (
+            "statement",
+            *list_related_fields,
+        )
+        queryset = FinancialRecord.objects.select_related(
+            *(list_related_fields if is_list and not is_statement_list else detail_related_fields)
+        )
+        if is_list and not is_statement_list:
             queryset = queryset.prefetch_related(
                 Prefetch(
                     "payment__financial_records",
@@ -242,7 +250,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="export-xlsx")
     def export_xlsx(self, request, *args, **kwargs):
-        records = list(self.filter_queryset(self.get_queryset()))
+        records = self.filter_queryset(self.get_queryset()).iterator(chunk_size=500)
 
         def format_date(value) -> str:
             if not value:
@@ -257,8 +265,8 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             except Exception:
                 return f"{value} ₽"
 
-        workbook = Workbook()
-        ws = workbook.active
+        workbook = Workbook(write_only=True)
+        ws = workbook.create_sheet()
         ws.title = "Финансовые записи"
 
         headers = [
@@ -277,11 +285,14 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         wrap_top = Alignment(wrap_text=True, vertical="top")
         currency_number_format = "# ##0.00 [$₽-419]"
 
-        ws.append(headers)
-        for cell in ws[1]:
+        header_cells = []
+        for header in headers:
+            cell = WriteOnlyCell(ws, value=header)
             cell.font = header_font
             cell.fill = header_fill
             cell.alignment = wrap_top
+            header_cells.append(cell)
+        ws.append(header_cells)
 
         ws.freeze_panes = "A2"
         for column, width in {
@@ -361,25 +372,25 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                     comment_cell += f"\nВедомость: {statement.name}"
 
             client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
-            ws.append(
-                [
-                    client_cell,
-                    policy_number,
-                    policy_type,
-                    sales_channel,
-                    format_date(payment_scheduled),
-                    payment_cell,
-                    saldo_value,
-                    comment_cell,
-                    abs(record.amount),
-                ]
-            )
-
-        for row in ws.iter_rows(min_row=2):
-            for cell in row:
+            values = [
+                client_cell,
+                policy_number,
+                policy_type,
+                sales_channel,
+                format_date(payment_scheduled),
+                payment_cell,
+                saldo_value,
+                comment_cell,
+                abs(record.amount),
+            ]
+            cells = []
+            for index, value in enumerate(values):
+                cell = WriteOnlyCell(ws, value=value)
                 cell.alignment = wrap_top
-            row[6].number_format = currency_number_format
-            row[8].number_format = currency_number_format
+                if index in {6, 8}:
+                    cell.number_format = currency_number_format
+                cells.append(cell)
+            ws.append(cells)
 
         buffer = BytesIO()
         workbook.save(buffer)

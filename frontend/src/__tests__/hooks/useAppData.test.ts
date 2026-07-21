@@ -8,7 +8,7 @@ import type { FilterParams } from '../../api';
 import {
   fetchClients,
   fetchDealsWithPagination,
-  fetchFinancialRecords,
+  fetchFinancialRecordsWithPagination,
   fetchFinanceStatements,
   fetchPaymentsWithPagination,
   fetchSalesChannels,
@@ -20,7 +20,7 @@ vi.mock('../../api', () => ({
   DEFAULT_TASKS_API_ORDERING: '-priority,created_at',
   fetchClients: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
-  fetchFinancialRecords: vi.fn(),
+  fetchFinancialRecordsWithPagination: vi.fn(),
   fetchFinanceStatements: vi.fn(),
   fetchPaymentsWithPagination: vi.fn(),
   fetchSalesChannels: vi.fn(),
@@ -30,7 +30,7 @@ vi.mock('../../api', () => ({
 
 const mockedFetchClients = vi.mocked(fetchClients);
 const mockedFetchDealsWithPagination = vi.mocked(fetchDealsWithPagination);
-const mockedFetchFinancialRecords = vi.mocked(fetchFinancialRecords);
+const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
 const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatements);
 const mockedFetchPaymentsWithPagination = vi.mocked(fetchPaymentsWithPagination);
 const mockedFetchSalesChannels = vi.mocked(fetchSalesChannels);
@@ -74,7 +74,12 @@ beforeEach(() => {
     previous: null,
     results: [],
   });
-  mockedFetchFinancialRecords.mockResolvedValue([]);
+  mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
+    count: 0,
+    next: null,
+    previous: null,
+    results: [],
+  });
   mockedFetchFinanceStatements.mockResolvedValue([]);
   mockedFetchTasks.mockResolvedValue([]);
 });
@@ -328,21 +333,48 @@ describe('useAppData loading strategy', () => {
     expect(new Set(result.current.dataState.deals.map((deal) => deal.id)).size).toBe(62);
   });
 
-  it('loadData does not request payments/records/statements/tasks on startup', async () => {
+  it('loadData requests only deals on startup', async () => {
     const { result } = renderHook(() => useAppData());
 
     await act(async () => {
       await result.current.loadData();
     });
 
+    expect(mockedFetchClients).not.toHaveBeenCalled();
+    expect(mockedFetchUsers).not.toHaveBeenCalled();
+    expect(mockedFetchSalesChannels).not.toHaveBeenCalled();
+    expect(mockedFetchDealsWithPagination).toHaveBeenCalled();
+    expect(mockedFetchPaymentsWithPagination).not.toHaveBeenCalled();
+    expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
+    expect(mockedFetchFinanceStatements).not.toHaveBeenCalled();
+    expect(mockedFetchTasks).not.toHaveBeenCalled();
+  });
+
+  it('loads reference data once when concurrent consumers request it', async () => {
+    const clientsDeferred = deferred<never[]>();
+    mockedFetchClients.mockReturnValueOnce(clientsDeferred.promise);
+    const { result } = renderHook(() => useAppData());
+
+    let firstPromise: Promise<void> | undefined;
+    let secondPromise: Promise<void> | undefined;
+    await act(async () => {
+      firstPromise = result.current.ensureReferenceData();
+      secondPromise = result.current.ensureReferenceData();
+    });
+
     expect(mockedFetchClients).toHaveBeenCalledTimes(1);
     expect(mockedFetchUsers).toHaveBeenCalledTimes(1);
     expect(mockedFetchSalesChannels).toHaveBeenCalledTimes(1);
-    expect(mockedFetchDealsWithPagination).toHaveBeenCalled();
-    expect(mockedFetchPaymentsWithPagination).not.toHaveBeenCalled();
-    expect(mockedFetchFinancialRecords).not.toHaveBeenCalled();
-    expect(mockedFetchFinanceStatements).not.toHaveBeenCalled();
-    expect(mockedFetchTasks).not.toHaveBeenCalled();
+
+    await act(async () => {
+      clientsDeferred.resolve([]);
+      await Promise.all([firstPromise, secondPromise]);
+    });
+
+    await act(async () => {
+      await result.current.ensureReferenceData();
+    });
+    expect(mockedFetchClients).toHaveBeenCalledTimes(1);
   });
 
   it('loads finance and tasks lazily via ensure* methods', async () => {
@@ -360,7 +392,7 @@ describe('useAppData loading strategy', () => {
 
     await waitFor(() => {
       expect(mockedFetchPaymentsWithPagination).toHaveBeenCalledTimes(1);
-      expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
+      expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
     });
@@ -414,7 +446,7 @@ describe('useAppData loading strategy', () => {
       await result.current.ensureCommissionsDataLoaded();
     });
 
-    expect(mockedFetchFinancialRecords).not.toHaveBeenCalled();
+    expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
     expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
     expect(mockedFetchPaymentsWithPagination).not.toHaveBeenCalled();
     expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
@@ -427,9 +459,14 @@ describe('useAppData loading strategy', () => {
       previous: string | null;
       results: never[];
     }>();
-    const recordsDeferred = deferred<never[]>();
+    const recordsDeferred = deferred<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: never[];
+    }>();
     mockedFetchPaymentsWithPagination.mockReturnValueOnce(paymentsDeferred.promise);
-    mockedFetchFinancialRecords.mockReturnValueOnce(recordsDeferred.promise);
+    mockedFetchFinancialRecordsWithPagination.mockReturnValueOnce(recordsDeferred.promise);
 
     const { result } = renderHook(() => useAppData());
 
@@ -441,11 +478,11 @@ describe('useAppData loading strategy', () => {
       secondPromise = result.current.ensureFinanceDataLoaded();
     });
 
-    expect(mockedFetchFinancialRecords).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
     expect(mockedFetchFinanceStatements).not.toHaveBeenCalled();
 
     await act(async () => {
-      recordsDeferred.resolve([]);
+      recordsDeferred.resolve({ count: 0, next: null, previous: null, results: [] });
       await Promise.resolve();
     });
 
@@ -478,7 +515,12 @@ describe('useAppData loading strategy', () => {
     }>();
 
     mockedFetchPaymentsWithPagination.mockReturnValueOnce(paymentsDeferred.promise as never);
-    mockedFetchFinancialRecords.mockResolvedValueOnce([]);
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
     mockedFetchFinanceStatements.mockResolvedValueOnce([]);
 
     const { result } = renderHook(() => useAppData());
@@ -620,15 +662,20 @@ describe('useAppData loading strategy', () => {
     mockedFetchClients.mockReturnValueOnce(clientsDeferred.promise);
     mockedFetchUsers.mockReturnValueOnce(usersDeferred.promise);
     mockedFetchSalesChannels.mockReturnValueOnce(channelsDeferred.promise);
-    mockedFetchFinancialRecords.mockResolvedValueOnce([
-      {
-        id: 'record-1',
-        paymentId: 'payment-1',
-        amount: '120',
-        createdAt: '2026-01-02T00:00:00Z',
-        updatedAt: '2026-01-02T00:00:00Z',
-      } as never,
-    ]);
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'record-1',
+          paymentId: 'payment-1',
+          amount: '120',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        } as never,
+      ],
+    });
     mockedFetchFinanceStatements.mockResolvedValueOnce([
       {
         id: 'statement-1',

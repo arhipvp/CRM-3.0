@@ -573,9 +573,9 @@ export const useDealActions = ({
   );
 
   const handleFetchChatMessages = useCallback(
-    async (dealId: string) => {
+    async (dealId: string, options?: RequestInit) => {
       try {
-        return await fetchChatMessages(dealId);
+        return await fetchChatMessages(dealId, options);
       } catch (err) {
         setError(formatErrorMessage(err, 'Не удалось загрузить сообщения'));
         throw err;

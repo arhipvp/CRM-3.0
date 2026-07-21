@@ -96,6 +96,7 @@ const fetchQuotesByDealMock = vi.hoisted(() => vi.fn());
 const createDealMock = vi.hoisted(() => vi.fn());
 const ensureCommissionsDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const ensureFinanceDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const ensureReferenceDataMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -113,6 +114,7 @@ vi.mock('../hooks/useAppData', () => ({
     loadData: vi.fn(),
     ensureCommissionsDataLoaded: ensureCommissionsDataLoadedMock,
     ensureFinanceDataLoaded: ensureFinanceDataLoadedMock,
+    ensureReferenceData: ensureReferenceDataMock,
     ensureTasksLoaded: vi.fn().mockResolvedValue(undefined),
     refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
     invalidateDealsCache: invalidateDealsCacheMock,
@@ -359,6 +361,8 @@ describe('AppContent hotkeys integration', () => {
     ensureCommissionsDataLoadedMock.mockResolvedValue(undefined);
     ensureFinanceDataLoadedMock.mockReset();
     ensureFinanceDataLoadedMock.mockResolvedValue(undefined);
+    ensureReferenceDataMock.mockReset();
+    ensureReferenceDataMock.mockResolvedValue(undefined);
     fetchDealMock.mockImplementation(async (dealId: string) => ({
       id: dealId,
       title: `Сделка ${dealId}`,

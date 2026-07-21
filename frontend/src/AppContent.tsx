@@ -71,6 +71,7 @@ const AppContent: React.FC = () => {
     loadData,
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
+    ensureReferenceData,
     ensureTasksLoaded,
     refreshDeals,
     invalidateDealsCache,
@@ -190,6 +191,7 @@ const AppContent: React.FC = () => {
   } = useAppBootstrapShell({
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
+    ensureReferenceData,
     ensureTasksLoaded,
     isAuthenticated,
     locationSearch: location.search,

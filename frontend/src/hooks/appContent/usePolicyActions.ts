@@ -275,7 +275,6 @@ export const usePolicyActions = ({
     [
       closePolicyModal,
       dealFilters,
-      dealsById,
       invalidateDealPoliciesCache,
       invalidateDealsCache,
       loadDealPolicies,

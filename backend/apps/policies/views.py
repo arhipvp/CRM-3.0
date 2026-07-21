@@ -12,7 +12,7 @@ from apps.deals.permissions import build_deal_visibility_q
 from apps.finances.models import Payment
 from apps.finances.serializers import PaymentSerializer
 from django.core.exceptions import ValidationError as DjangoValidationError
-from django.db.models import DecimalField, Prefetch, Q, Sum, Value
+from django.db.models import Count, DecimalField, Prefetch, Q, Sum, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status, viewsets
@@ -149,20 +149,27 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if expiring_days_int < 0:
             expiring_days_int = 30
         expiring_to = today + timedelta(days=expiring_days_int)
+        counts = queryset.aggregate(
+            total=Count("id"),
+            problem_count=Count("id", filter=Q(has_unpaid_record=True)),
+            due_count=Count(
+                "id",
+                filter=Q(has_unpaid_record=False, has_unpaid_payment=True),
+            ),
+            expiring_soon_count=Count(
+                "id",
+                filter=Q(
+                    has_unpaid_record=False,
+                    has_unpaid_payment=False,
+                    is_renewed=False,
+                    end_date__isnull=False,
+                    end_date__gte=today,
+                    end_date__lte=expiring_to,
+                ),
+            ),
+        )
         payload = {
-            "total": queryset.count(),
-            "problem_count": queryset.filter(has_unpaid_record=True).count(),
-            "due_count": queryset.filter(
-                has_unpaid_record=False, has_unpaid_payment=True
-            ).count(),
-            "expiring_soon_count": queryset.filter(
-                has_unpaid_record=False,
-                has_unpaid_payment=False,
-                is_renewed=False,
-                end_date__isnull=False,
-                end_date__gte=today,
-                end_date__lte=expiring_to,
-            ).count(),
+            **counts,
             "expiring_days": expiring_days_int,
             "status_values": {
                 "problem": STATUS_VALUES.PROBLEM,

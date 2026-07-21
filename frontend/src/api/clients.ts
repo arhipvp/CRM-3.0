@@ -94,9 +94,17 @@ export async function fetchClients(filters?: FilterParams): Promise<Client[]> {
 }
 
 export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
-  const qs = buildQueryString(filters);
-  const payload = await request(`/users/${qs}`);
-  return unwrapList<Record<string, unknown>>(payload).map(mapUser);
+  const users: User[] = [];
+  let page = 1;
+  while (true) {
+    const qs = buildQueryString({ ...(filters ?? {}), page, page_size: 200 });
+    const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/users/${qs}`);
+    users.push(...unwrapList<Record<string, unknown>>(payload).map(mapUser));
+    if (!payload.next) {
+      return users;
+    }
+    page += 1;
+  }
 }
 
 export async function createClient(data: {
