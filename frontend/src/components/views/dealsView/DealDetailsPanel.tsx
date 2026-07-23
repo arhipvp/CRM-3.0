@@ -622,7 +622,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [loadDriveFiles, selectedDeal?.id]);
 
   useEffect(() => {
-    if (activeTab === 'files') {
+    if (activeTab === 'files' || activeTab === 'recognition') {
       void loadDriveFiles();
     }
   }, [activeTab, loadDriveFiles]);
@@ -949,6 +949,16 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                     mailboxActionSuccess,
                     onCreateMailbox: handleCreateMailbox,
                     onCheckMailbox: handleCheckMailbox,
+                  }}
+                  calculationTabProps={{
+                    selectedDeal,
+                    sortedDriveFiles,
+                    selectedDriveFileIds,
+                    toggleDriveFileSelection,
+                    isDriveLoading,
+                    driveError,
+                    loadDriveFiles,
+                    onRefreshDeal,
                   }}
                   chatTabProps={{
                     selectedDeal,

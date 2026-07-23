@@ -139,6 +139,31 @@ class Deal(SoftDeleteModel):
     drive_folder_id = models.CharField(
         max_length=255, blank=True, null=True, help_text="Google Drive folder ID"
     )
+    calculation_type = models.CharField(
+        max_length=32, blank=True, help_text="Тип расчёта для формализованных данных"
+    )
+    calculation_data = models.JSONField(
+        default=dict, blank=True, help_text="Подтверждённые данные для расчёта"
+    )
+    calculation_source_text = models.TextField(
+        blank=True, help_text="Текстовый источник данных для расчёта"
+    )
+    calculation_source_file_ids = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="ID файлов Google Drive, использованных для расчёта",
+    )
+    calculation_updated_at = models.DateTimeField(
+        null=True, blank=True, help_text="Дата подтверждения данных расчёта"
+    )
+    calculation_updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="updated_deal_calculations",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Пользователь, подтвердивший данные расчёта",
+    )
     visible_users = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
         through="deals.DealViewer",

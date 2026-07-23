@@ -98,7 +98,7 @@ export const useDealDriveFiles = ({
   }, [selectedDeal?.id]);
 
   useEffect(() => {
-    setSelectedDriveFileIds([]);
+    setSelectedDriveFileIds(selectedDeal?.calculationSourceFileIds ?? []);
     setRecognitionResults([]);
     setRecognitionMessage(null);
     setTrashMessage(null);
@@ -108,7 +108,7 @@ export const useDealDriveFiles = ({
     setExpandedFolderIds(new Set());
     setLoadingFolderIds(new Set());
     setFolderErrors({});
-  }, [selectedDeal?.id]);
+  }, [selectedDeal?.calculationSourceFileIds, selectedDeal?.id]);
 
   const sortedRootFiles = useMemo(
     () => sortDriveFiles(rootFiles, driveSortDirection),

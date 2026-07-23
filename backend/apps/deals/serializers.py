@@ -183,6 +183,12 @@ class DealSerializer(serializers.ModelSerializer):
             "drive_folder_id",
             "payments_total",
             "payments_paid",
+            "calculation_type",
+            "calculation_data",
+            "calculation_source_text",
+            "calculation_source_file_ids",
+            "calculation_updated_at",
+            "calculation_updated_by",
         )
         extra_kwargs = {}
 
@@ -350,6 +356,48 @@ class DealDocumentRecognitionRequestSerializer(serializers.Serializer):
         allow_empty=False,
         required=True,
     )
+
+
+class DealCalculationRecognitionRequestSerializer(serializers.Serializer):
+    calculation_type = serializers.ChoiceField(choices=("osago",))
+    file_ids = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True, default=list
+    )
+    source_text = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        file_ids = [str(value).strip() for value in attrs.get("file_ids", [])]
+        source_text = attrs.get("source_text", "").strip()
+        if not file_ids and not source_text:
+            raise serializers.ValidationError(
+                "Выберите хотя бы один файл или заполните текстовый источник."
+            )
+        attrs["file_ids"] = list(dict.fromkeys(file_ids))
+        attrs["source_text"] = source_text
+        return attrs
+
+
+class DealCalculationSaveSerializer(serializers.Serializer):
+    calculation_type = serializers.ChoiceField(choices=("osago",))
+    calculation_data = serializers.JSONField()
+    source_text = serializers.CharField(required=False, allow_blank=True, default="")
+    source_file_ids = serializers.ListField(
+        child=serializers.CharField(), required=False, allow_empty=True, default=list
+    )
+
+    def validate_calculation_data(self, value):
+        if not isinstance(value, dict):
+            raise serializers.ValidationError("Данные расчёта должны быть объектом.")
+        for section in ("policyholder", "vehicle", "insurance"):
+            if not isinstance(value.get(section), dict):
+                raise serializers.ValidationError(
+                    f"Раздел calculation_data.{section} должен быть объектом."
+                )
+        if not isinstance(value.get("drivers"), list):
+            raise serializers.ValidationError(
+                "Раздел calculation_data.drivers должен быть массивом."
+            )
+        return value
 
 
 class ManualDealEventSerializer(serializers.Serializer):

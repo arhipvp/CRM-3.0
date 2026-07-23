@@ -26,6 +26,7 @@ export const DEAL_TABS = [
   { id: 'overview', label: 'Обзор' },
   { id: 'tasks', label: 'Задачи' },
   { id: 'quotes', label: 'Расчёты' },
+  { id: 'recognition', label: 'Данные' },
   { id: 'policies', label: 'Полисы' },
   { id: 'chat', label: 'Чат' },
   { id: 'files', label: 'Файлы' },

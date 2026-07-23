@@ -247,6 +247,60 @@ export interface Deal {
   paymentsPaid?: string;
   paymentsTotal?: string;
   visibleUsers?: string[];
+  calculationType?: 'osago' | string;
+  calculationData?: OsagoCalculationData;
+  calculationSourceText?: string;
+  calculationSourceFileIds?: string[];
+  calculationUpdatedAt?: string | null;
+  calculationUpdatedBy?: string | null;
+}
+
+export interface OsagoCalculationData {
+  policyholder: {
+    full_name: string;
+    birth_date: string;
+    passport_series: string;
+    passport_number: string;
+    registration_address: string;
+  };
+  drivers: Array<{
+    full_name: string;
+    birth_date: string;
+    license_series: string;
+    license_number: string;
+    license_issue_date: string;
+  }>;
+  vehicle: {
+    vin: string;
+    brand: string;
+    model: string;
+    year: number | null;
+    plate_number: string;
+    sts_series: string;
+    sts_number: string;
+  };
+  insurance: {
+    start_date: string;
+    region: string;
+    usage_purpose: string;
+    unlimited_drivers: boolean;
+  };
+}
+
+export interface OsagoRecognitionResponse {
+  calculationType: 'osago';
+  data: OsagoCalculationData;
+  warnings: string[];
+  confidence: number | null;
+  sources: { files: Array<{ id: string; name: string }>; textIncluded: boolean };
+  fileResults: Array<{
+    fileId: string;
+    fileName?: string;
+    status: 'parsed' | 'error';
+    documentType?: string | null;
+    confidence?: number | null;
+    message?: string;
+  }>;
 }
 
 export interface DealTimeTrackingSummary {

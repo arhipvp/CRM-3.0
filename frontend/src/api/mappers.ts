@@ -240,6 +240,20 @@ export const mapDeal = (raw: Record<string, unknown>): Deal => {
     visibleUsers: Array.isArray(raw.visible_users)
       ? raw.visible_users.map((value) => String(value))
       : undefined,
+    calculationType: raw.calculation_type == null ? undefined : String(raw.calculation_type),
+    calculationData:
+      raw.calculation_data && typeof raw.calculation_data === 'object'
+        ? (raw.calculation_data as Deal['calculationData'])
+        : undefined,
+    calculationSourceText:
+      raw.calculation_source_text == null ? undefined : String(raw.calculation_source_text),
+    calculationSourceFileIds: Array.isArray(raw.calculation_source_file_ids)
+      ? raw.calculation_source_file_ids.map((value) => String(value))
+      : undefined,
+    calculationUpdatedAt:
+      raw.calculation_updated_at == null ? null : String(raw.calculation_updated_at),
+    calculationUpdatedBy:
+      raw.calculation_updated_by == null ? null : String(raw.calculation_updated_by),
     deletedAt: raw.deleted_at === undefined ? null : toNullableString(raw.deleted_at),
   };
 };

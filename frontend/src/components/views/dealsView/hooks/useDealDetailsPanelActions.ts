@@ -82,7 +82,15 @@ export const useDealDetailsPanelActions = ({
   const [delayLeadDays, setDelayLeadDays] = useState<number | null>(null);
   const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'tasks' | 'policies' | 'quotes' | 'files' | 'chat' | 'events' | 'history'
+    | 'overview'
+    | 'tasks'
+    | 'policies'
+    | 'quotes'
+    | 'recognition'
+    | 'files'
+    | 'chat'
+    | 'events'
+    | 'history'
   >('overview');
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);

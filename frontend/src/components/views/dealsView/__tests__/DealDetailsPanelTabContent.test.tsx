@@ -13,6 +13,7 @@ describe('DealDetailsPanelTabContent', () => {
         policiesTabProps={{} as never}
         quotesTabProps={{} as never}
         filesTabProps={{} as never}
+        calculationTabProps={{} as never}
         chatTabProps={{} as never}
         activityProps={{
           activityError: null,

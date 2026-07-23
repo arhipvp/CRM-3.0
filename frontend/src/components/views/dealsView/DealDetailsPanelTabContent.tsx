@@ -11,6 +11,7 @@ import type { QuotesTab as QuotesTabComponent } from './tabs/QuotesTab';
 import type { TasksTab as TasksTabComponent } from './tabs/TasksTab';
 import type { ActivityLog } from '../../../types';
 import type { DealTabId } from './helpers';
+import type { OsagoCalculationTab as OsagoCalculationTabComponent } from './tabs/OsagoCalculationTab';
 
 const TasksTab = lazy(async () => {
   const module = await import('./tabs/TasksTab');
@@ -28,6 +29,10 @@ const FilesTab = lazy(async () => {
   const module = await import('./tabs/FilesTab');
   return { default: module.FilesTab };
 });
+const OsagoCalculationTab = lazy(async () => {
+  const module = await import('./tabs/OsagoCalculationTab');
+  return { default: module.OsagoCalculationTab };
+});
 const TabLoadingFallback = () => <div className="py-8 text-sm text-slate-500">Загрузка...</div>;
 
 interface DealDetailsPanelTabContentProps {
@@ -37,6 +42,7 @@ interface DealDetailsPanelTabContentProps {
   policiesTabProps: React.ComponentProps<typeof PoliciesTabComponent>;
   quotesTabProps: React.ComponentProps<typeof QuotesTabComponent>;
   filesTabProps: React.ComponentProps<typeof FilesTabComponent>;
+  calculationTabProps: React.ComponentProps<typeof OsagoCalculationTabComponent>;
   chatTabProps: React.ComponentProps<typeof ChatTab>;
   activityProps: {
     activityError: string | null;
@@ -60,6 +66,7 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
   policiesTabProps,
   quotesTabProps,
   filesTabProps,
+  calculationTabProps,
   chatTabProps,
   activityProps,
 }) => {
@@ -92,6 +99,12 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
       return (
         <Suspense fallback={<TabLoadingFallback />}>
           <FilesTab {...filesTabProps} />
+        </Suspense>
+      );
+    case 'recognition':
+      return (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <OsagoCalculationTab {...calculationTabProps} />
         </Suspense>
       );
     case 'chat':

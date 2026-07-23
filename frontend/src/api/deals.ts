@@ -12,6 +12,8 @@ import type {
   DealSimilarityResponse,
   DealTimeTrackingSummary,
   DealTimeTrackingTickResponse,
+  OsagoCalculationData,
+  OsagoRecognitionResponse,
   Quote,
 } from '../types';
 
@@ -163,6 +165,75 @@ export async function updateDeal(
   const payload = await request<Record<string, unknown>>(`/deals/${id}/`, {
     method: 'PATCH',
     body: JSON.stringify(body),
+  });
+  return mapDeal(payload);
+}
+
+export async function recognizeDealCalculation(data: {
+  dealId: string;
+  calculationType: 'osago';
+  fileIds: string[];
+  sourceText: string;
+}): Promise<OsagoRecognitionResponse> {
+  const payload = await request<Record<string, unknown>>(
+    `/deals/${data.dealId}/recognize-calculation/`,
+    {
+      method: 'POST',
+      body: JSON.stringify({
+        calculation_type: data.calculationType,
+        file_ids: data.fileIds,
+        source_text: data.sourceText,
+      }),
+    },
+  );
+  return {
+    calculationType: 'osago',
+    data: payload.data as OsagoCalculationData,
+    warnings: Array.isArray(payload.warnings) ? payload.warnings.map(String) : [],
+    confidence: payload.confidence == null ? null : Number(payload.confidence),
+    sources: {
+      files:
+        payload.sources &&
+        typeof payload.sources === 'object' &&
+        Array.isArray((payload.sources as Record<string, unknown>).files)
+          ? (
+              (payload.sources as Record<string, unknown>).files as Array<Record<string, unknown>>
+            ).map((file) => ({ id: String(file.id ?? ''), name: String(file.name ?? '') }))
+          : [],
+      textIncluded: Boolean(
+        payload.sources &&
+        typeof payload.sources === 'object' &&
+        (payload.sources as Record<string, unknown>).textIncluded,
+      ),
+    },
+    fileResults: Array.isArray(payload.fileResults)
+      ? (payload.fileResults as Array<Record<string, unknown>>).map((item) => ({
+          fileId: String(item.fileId ?? ''),
+          fileName: item.fileName == null ? undefined : String(item.fileName),
+          status: item.status === 'parsed' ? 'parsed' : 'error',
+          documentType: item.documentType == null ? undefined : String(item.documentType),
+          confidence: item.confidence == null ? null : Number(item.confidence),
+          message: item.message == null ? undefined : String(item.message),
+        }))
+      : [],
+  };
+}
+
+export async function saveDealCalculation(data: {
+  dealId: string;
+  calculationType: 'osago';
+  calculationData: OsagoCalculationData;
+  sourceText: string;
+  sourceFileIds: string[];
+}): Promise<Deal> {
+  const payload = await request<Record<string, unknown>>(`/deals/${data.dealId}/calculation/`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      calculation_type: data.calculationType,
+      calculation_data: data.calculationData,
+      source_text: data.sourceText,
+      source_file_ids: data.sourceFileIds,
+    }),
   });
   return mapDeal(payload);
 }
