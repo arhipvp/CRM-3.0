@@ -54,6 +54,24 @@ const deal = {
 } as Deal;
 
 describe('OsagoCalculationTab', () => {
+  it('starts on the sources step and disables recognition without sources', () => {
+    render(
+      <OsagoCalculationTab
+        selectedDeal={deal}
+        sortedDriveFiles={[]}
+        selectedDriveFileIds={[]}
+        toggleDriveFileSelection={vi.fn()}
+        isDriveLoading={false}
+        driveError={null}
+        loadDriveFiles={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Источники данных')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Сохранить данные' })).not.toBeInTheDocument();
+  });
+
   it('renders when saved calculation data has incomplete nested objects', () => {
     expect(() =>
       render(
@@ -68,11 +86,11 @@ describe('OsagoCalculationTab', () => {
         />,
       ),
     ).not.toThrow();
-    expect(screen.getAllByLabelText('ФИО')).not.toHaveLength(0);
+    expect(screen.getByText('Источники данных')).toBeInTheDocument();
   });
 
   it('recognizes selected file, renders editable result and saves it', async () => {
-    vi.mocked(recognizeDealCalculation).mockResolvedValueOnce(recognitionPayload);
+    vi.mocked(recognizeDealCalculation).mockResolvedValue(recognitionPayload);
     vi.mocked(saveDealCalculation).mockResolvedValueOnce(deal);
 
     render(
@@ -102,10 +120,41 @@ describe('OsagoCalculationTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
 
     await waitFor(() => expect(recognizeDealCalculation).toHaveBeenCalled());
+    expect(screen.getByText('Проверка результата')).toBeInTheDocument();
     expect(screen.getByDisplayValue('ИВАНОВ ИВАН ИВАНОВИЧ')).toBeInTheDocument();
     expect(screen.getByText('Проверьте VIN')).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole('button', { name: 'Назад к источникам' }));
+    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Сохранить данные' })).toBeInTheDocument(),
+    );
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить данные' }));
     await waitFor(() => expect(saveDealCalculation).toHaveBeenCalled());
+  });
+
+  it('shows recognition errors on the sources step', async () => {
+    vi.mocked(recognizeDealCalculation).mockRejectedValueOnce(new Error('Ошибка сервиса'));
+
+    render(
+      <OsagoCalculationTab
+        selectedDeal={deal}
+        sortedDriveFiles={[]}
+        selectedDriveFileIds={[]}
+        toggleDriveFileSelection={vi.fn()}
+        isDriveLoading={false}
+        driveError={null}
+        loadDriveFiles={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText('Текстовый источник'), {
+      target: { value: 'данные' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
+
+    await waitFor(() => expect(screen.getByText('Ошибка сервиса')).toBeInTheDocument());
+    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeInTheDocument();
   });
 });
