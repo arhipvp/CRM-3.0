@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from copy import deepcopy
 from typing import Any
 
@@ -11,6 +12,7 @@ from apps.common.drive import (
     ensure_deal_folder,
 )
 from apps.policies.ai_service import PolicyRecognitionError, recognize_policy_from_text
+from django.conf import settings
 
 from .document_recognition import DocumentRecognitionError, recognize_document_from_file
 
@@ -47,6 +49,9 @@ class CalculationRecognitionFolderMissing(Exception):
     pass
 
 
+DEFAULT_CALCULATION_RECOGNITION_BUDGET_SECONDS = 240
+
+
 def recognize_osago_calculation(
     deal, file_ids: list[str], source_text: str
 ) -> dict[str, Any]:
@@ -63,6 +68,14 @@ def recognize_osago_calculation(
     candidates: dict[str, list[tuple[Any, float, str]]] = {}
     file_results: list[dict[str, Any]] = []
     used_files: list[dict[str, str]] = []
+    budget_seconds = float(
+        getattr(
+            settings,
+            "CALCULATION_RECOGNITION_BUDGET_SECONDS",
+            DEFAULT_CALCULATION_RECOGNITION_BUDGET_SECONDS,
+        )
+    )
+    deadline = time.monotonic() + max(budget_seconds, 1.0)
 
     file_map = build_drive_file_tree_map(folder_id) if file_ids else {}
     for file_id in file_ids:
@@ -79,9 +92,28 @@ def recognize_osago_calculation(
             continue
 
         file_name = str(file_info.get("name") or file_id)
+        file_started = time.monotonic()
+        logger.info("Начало распознавания файла расчёта file_id=%s", file_id)
+        if time.monotonic() >= deadline:
+            message = "Превышен общий лимит времени распознавания сделки."
+            file_results.append(
+                {
+                    "fileId": file_id,
+                    "fileName": file_name,
+                    "status": "error",
+                    "message": message,
+                }
+            )
+            warnings.append(f"{file_name}: {message}")
+            logger.warning(
+                "Пропуск файла расчёта из-за общего лимита file_id=%s elapsed=%.2f",
+                file_id,
+                time.monotonic() - file_started,
+            )
+            continue
         try:
             recognition = recognize_document_from_file(
-                download_drive_file(file_id), file_name
+                download_drive_file(file_id), file_name, deadline=deadline
             )
             confidence = float(recognition.confidence or 0.0)
             _add_document_candidates(
@@ -102,8 +134,18 @@ def recognize_osago_calculation(
                 }
             )
             used_files.append({"id": file_id, "name": file_name})
+            logger.info(
+                "Файл расчёта распознан file_id=%s elapsed=%.2f",
+                file_id,
+                time.monotonic() - file_started,
+            )
         except (DriveError, DocumentRecognitionError) as exc:
-            logger.exception("Ошибка распознавания файла расчёта %s", file_id)
+            logger.warning(
+                "Ошибка распознавания файла расчёта file_id=%s elapsed=%.2f: %s",
+                file_id,
+                time.monotonic() - file_started,
+                exc,
+            )
             file_results.append(
                 {
                     "fileId": file_id,
@@ -114,7 +156,11 @@ def recognize_osago_calculation(
             )
             warnings.append(f"{file_name}: {exc}")
         except Exception:
-            logger.exception("Непредвиденная ошибка распознавания файла %s", file_id)
+            logger.exception(
+                "Непредвиденная ошибка распознавания файла file_id=%s elapsed=%.2f",
+                file_id,
+                time.monotonic() - file_started,
+            )
             file_results.append(
                 {
                     "fileId": file_id,

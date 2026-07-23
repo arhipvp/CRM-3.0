@@ -59,6 +59,10 @@ describe('OsagoCalculationTab', () => {
       <OsagoCalculationTab
         selectedDeal={deal}
         sortedDriveFiles={[]}
+        expandedFolderIds={new Set()}
+        toggleFolderExpanded={vi.fn()}
+        isFolderLoading={vi.fn().mockReturnValue(false)}
+        getDriveFileDepth={vi.fn().mockReturnValue(0)}
         selectedDriveFileIds={[]}
         toggleDriveFileSelection={vi.fn()}
         isDriveLoading={false}
@@ -67,8 +71,12 @@ describe('OsagoCalculationTab', () => {
       />,
     );
 
-    expect(screen.getByText('Источники данных')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: /Источники данных/ })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.getByRole('tab', { name: /Проверка результата/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Далее: распознать' })).toBeDisabled();
     expect(screen.queryByRole('button', { name: 'Сохранить данные' })).not.toBeInTheDocument();
   });
 
@@ -78,6 +86,10 @@ describe('OsagoCalculationTab', () => {
         <OsagoCalculationTab
           selectedDeal={{ ...deal, calculationData: { drivers: [undefined] } as never }}
           sortedDriveFiles={[]}
+          expandedFolderIds={new Set()}
+          toggleFolderExpanded={vi.fn()}
+          isFolderLoading={vi.fn().mockReturnValue(false)}
+          getDriveFileDepth={vi.fn().mockReturnValue(0)}
           selectedDriveFileIds={[]}
           toggleDriveFileSelection={vi.fn()}
           isDriveLoading={false}
@@ -87,6 +99,39 @@ describe('OsagoCalculationTab', () => {
       ),
     ).not.toThrow();
     expect(screen.getByText('Источники данных')).toBeInTheDocument();
+  });
+
+  it('renders the Drive folder structure and nested file selection', () => {
+    const toggleFolderExpanded = vi.fn();
+    render(
+      <OsagoCalculationTab
+        selectedDeal={deal}
+        sortedDriveFiles={[
+          { id: 'folder-1', name: 'Документы', mimeType: 'folder', isFolder: true },
+          {
+            id: 'file-1',
+            name: 'Паспорт.jpg',
+            mimeType: 'image/jpeg',
+            isFolder: false,
+            parentId: 'folder-1',
+          },
+        ]}
+        expandedFolderIds={new Set(['folder-1'])}
+        toggleFolderExpanded={toggleFolderExpanded}
+        isFolderLoading={vi.fn().mockReturnValue(false)}
+        getDriveFileDepth={vi.fn((fileId) => (fileId === 'file-1' ? 1 : 0))}
+        selectedDriveFileIds={[]}
+        toggleDriveFileSelection={vi.fn()}
+        isDriveLoading={false}
+        driveError={null}
+        loadDriveFiles={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText('Документы')).toBeInTheDocument();
+    expect(screen.getByLabelText('Выбрать файл: Паспорт.jpg')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Свернуть папку Документы' }));
+    expect(toggleFolderExpanded).toHaveBeenCalledWith('folder-1');
   });
 
   it('recognizes selected file, renders editable result and saves it', async () => {
@@ -104,6 +149,10 @@ describe('OsagoCalculationTab', () => {
             isFolder: false,
           },
         ]}
+        expandedFolderIds={new Set()}
+        toggleFolderExpanded={vi.fn()}
+        isFolderLoading={vi.fn().mockReturnValue(false)}
+        getDriveFileDepth={vi.fn().mockReturnValue(0)}
         selectedDriveFileIds={[]}
         toggleDriveFileSelection={vi.fn()}
         isDriveLoading={false}
@@ -112,12 +161,12 @@ describe('OsagoCalculationTab', () => {
       />,
     );
 
-    fireEvent.click(screen.getByLabelText('sts.jpg'));
-    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeDisabled();
+    fireEvent.click(screen.getByLabelText('Выбрать файл: sts.jpg'));
+    expect(screen.getByRole('button', { name: 'Далее: распознать' })).toBeDisabled();
 
     const textSource = screen.getByLabelText('Текстовый источник');
     fireEvent.change(textSource, { target: { value: 'данные клиента' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Далее: распознать' }));
 
     await waitFor(() => expect(recognizeDealCalculation).toHaveBeenCalled());
     expect(screen.getByText('Проверка результата')).toBeInTheDocument();
@@ -125,8 +174,8 @@ describe('OsagoCalculationTab', () => {
     expect(screen.getByText('Проверьте VIN')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Назад к источникам' }));
-    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
+    expect(screen.getByRole('button', { name: 'Далее: распознать' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Далее: распознать' }));
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Сохранить данные' })).toBeInTheDocument(),
     );
@@ -141,6 +190,10 @@ describe('OsagoCalculationTab', () => {
       <OsagoCalculationTab
         selectedDeal={deal}
         sortedDriveFiles={[]}
+        expandedFolderIds={new Set()}
+        toggleFolderExpanded={vi.fn()}
+        isFolderLoading={vi.fn().mockReturnValue(false)}
+        getDriveFileDepth={vi.fn().mockReturnValue(0)}
         selectedDriveFileIds={[]}
         toggleDriveFileSelection={vi.fn()}
         isDriveLoading={false}
@@ -152,9 +205,9 @@ describe('OsagoCalculationTab', () => {
     fireEvent.change(screen.getByLabelText('Текстовый источник'), {
       target: { value: 'данные' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'Распознать данные' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Далее: распознать' }));
 
     await waitFor(() => expect(screen.getByText('Ошибка сервиса')).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: 'Распознать данные' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Далее: распознать' })).toBeInTheDocument();
   });
 });

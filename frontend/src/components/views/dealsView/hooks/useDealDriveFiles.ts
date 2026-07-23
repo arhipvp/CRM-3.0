@@ -304,20 +304,6 @@ export const useDealDriveFiles = ({
     [childrenByParentId, expandedFolderIds, loadFolderContents, loadingFolderIds],
   );
 
-  useEffect(() => {
-    if (!selectedDriveFileIds.length) {
-      return;
-    }
-    const fileMap = new Map(sortedDriveFiles.map((file) => [file.id, file]));
-    setSelectedDriveFileIds((prev) => {
-      const filtered = prev.filter((id) => {
-        const file = fileMap.get(id);
-        return Boolean(file);
-      });
-      return filtered.length === prev.length ? prev : filtered;
-    });
-  }, [selectedDriveFileIds.length, sortedDriveFiles]);
-
   const toggleDriveFileSelection = useCallback(
     (fileId: string) => {
       const target = sortedDriveFiles.find((file) => file.id === fileId);

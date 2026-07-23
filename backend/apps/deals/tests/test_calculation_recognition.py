@@ -2,6 +2,7 @@ from unittest.mock import patch
 
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
+from apps.deals.document_recognition import DocumentRecognitionError
 from apps.deals.models import Deal
 from django.contrib.auth.models import User
 from rest_framework import status
@@ -113,6 +114,51 @@ class DealCalculationRecognitionTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(response.data["sources"]["files"][0]["id"], "sts-file")
         self.assertTrue(response.data["sources"]["textIncluded"])
+
+    def test_file_error_does_not_block_next_file(self):
+        self.authenticate(self.seller)
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+        parsed_payload = type(
+            "Payload",
+            (),
+            {
+                "normalized_type": "sts",
+                "confidence": 0.9,
+                "warnings": [],
+                "data": {"vehicle_brand": "Lada"},
+            },
+        )()
+        with (
+            patch(
+                "apps.deals.calculation_recognition.build_drive_file_tree_map",
+                return_value={
+                    "slow-file": {
+                        "id": "slow-file",
+                        "name": "slow.jpg",
+                        "is_folder": False,
+                    },
+                    "ok-file": {"id": "ok-file", "name": "ok.jpg", "is_folder": False},
+                },
+            ),
+            patch(
+                "apps.deals.calculation_recognition.download_drive_file",
+                return_value=b"image",
+            ),
+            patch(
+                "apps.deals.calculation_recognition.recognize_document_from_file",
+                side_effect=[DocumentRecognitionError("timeout"), parsed_payload],
+            ),
+        ):
+            response = self.api_client.post(
+                f"/api/v1/deals/{self.deal.id}/recognize-calculation/",
+                {"calculation_type": "osago", "file_ids": ["slow-file", "ok-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["fileResults"][0]["status"], "error")
+        self.assertEqual(response.data["fileResults"][1]["status"], "parsed")
+        self.assertEqual(response.data["data"]["vehicle"]["brand"], "Lada")
 
     def test_recognize_rejects_empty_sources(self):
         self.authenticate(self.seller)

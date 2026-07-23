@@ -119,6 +119,7 @@ FROM policies_policy;
 - `backend/Dockerfile` создаёт образ на Python 3.12, копирует зависимости и код.
 - В `docker-compose.yml` сервис монтирует `backend/.env`, `backend_static`, bind-монт локального `Media` и `runtime-secrets` для shared secret files вроде OAuth refresh token file.
 - `entrypoint.sh` запускается в контейнере, применяя миграции и стартуя gunicorn с настройками `WORKERS` и `TIMEOUT`.
+- Для синхронного распознавания документов production timeout Gunicorn задаётся переменной `GUNICORN_TIMEOUT` (по умолчанию 300 секунд). Общий бюджет распознавания сделки задаётся `CALCULATION_RECOGNITION_BUDGET_SECONDS` (по умолчанию 240 секунд).
 
 ## Полезные команды
 | Команда | Назначение |

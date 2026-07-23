@@ -959,9 +959,18 @@ def _create_with_retries(
     timeout_seconds: int,
     max_retries: int,
     retry_base_delay: float,
+    deadline: float | None = None,
 ):
     last_exc: Exception | None = None
     for attempt in range(max_retries + 1):
+        request_timeout = timeout_seconds
+        if deadline is not None:
+            remaining = int(deadline - time.monotonic())
+            if remaining <= 0:
+                raise DocumentRecognitionError(
+                    "Превышен общий лимит времени распознавания документа."
+                )
+            request_timeout = min(request_timeout, remaining)
         try:
             return client.chat.completions.create(
                 model=model,
@@ -972,7 +981,7 @@ def _create_with_retries(
                     "type": "function",
                     "function": {"name": "extract_document_data"},
                 },
-                timeout=timeout_seconds,
+                timeout=request_timeout,
             )
         except Exception as exc:
             last_exc = exc
@@ -996,6 +1005,7 @@ def _recognize_from_images(
     timeout_seconds: int,
     max_retries: int,
     retry_base_delay: float,
+    deadline: float | None = None,
 ) -> RecognitionPayload:
     if not images:
         raise DocumentRecognitionError("Не переданы изображения для распознавания")
@@ -1023,6 +1033,7 @@ def _recognize_from_images(
         timeout_seconds=timeout_seconds,
         max_retries=max_retries,
         retry_base_delay=retry_base_delay,
+        deadline=deadline,
     )
     message = response.choices[0].message
     parsed_payload, transcript = _extract_response_json(message)
@@ -1052,7 +1063,9 @@ def _needs_rotation_fallback(
     return confidence < min_confidence
 
 
-def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPayload:
+def recognize_document_from_file(
+    content: bytes, filename: str, *, deadline: float | None = None
+) -> RecognitionPayload:
     api_key, base_url, model = _resolve_openrouter_config()
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
     timeout_seconds = int(
@@ -1097,6 +1110,7 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
             retry_base_delay=retry_base_delay,
+            deadline=deadline,
         )
 
     primary_image, rotated_images = _render_image_with_rotations(content)
@@ -1111,6 +1125,7 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
         timeout_seconds=timeout_seconds,
         max_retries=max_retries,
         retry_base_delay=retry_base_delay,
+        deadline=deadline,
     )
     if not _needs_rotation_fallback(best, min_confidence):
         return best
@@ -1123,6 +1138,7 @@ def recognize_document_from_file(content: bytes, filename: str) -> RecognitionPa
             timeout_seconds=timeout_seconds,
             max_retries=max_retries,
             retry_base_delay=retry_base_delay,
+            deadline=deadline,
         )
         if _recognition_quality_score(candidate) > _recognition_quality_score(best):
             best = candidate

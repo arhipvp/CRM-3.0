@@ -113,4 +113,5 @@ if [ "$#" -gt 0 ]; then
 fi
 
 echo "Starting Gunicorn..."
-exec gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout 120 config.wsgi:application
+GUNICORN_TIMEOUT="${GUNICORN_TIMEOUT:-300}"
+exec gunicorn --bind 0.0.0.0:8000 --workers 2 --timeout "$GUNICORN_TIMEOUT" config.wsgi:application

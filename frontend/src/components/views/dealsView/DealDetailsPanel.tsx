@@ -953,6 +953,10 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                   calculationTabProps={{
                     selectedDeal,
                     sortedDriveFiles,
+                    expandedFolderIds,
+                    toggleFolderExpanded,
+                    isFolderLoading,
+                    getDriveFileDepth,
                     selectedDriveFileIds,
                     toggleDriveFileSelection,
                     isDriveLoading,
