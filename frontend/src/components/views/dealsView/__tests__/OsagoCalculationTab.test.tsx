@@ -54,6 +54,23 @@ const deal = {
 } as Deal;
 
 describe('OsagoCalculationTab', () => {
+  it('renders when saved calculation data has incomplete nested objects', () => {
+    expect(() =>
+      render(
+        <OsagoCalculationTab
+          selectedDeal={{ ...deal, calculationData: { drivers: [undefined] } as never }}
+          sortedDriveFiles={[]}
+          selectedDriveFileIds={[]}
+          toggleDriveFileSelection={vi.fn()}
+          isDriveLoading={false}
+          driveError={null}
+          loadDriveFiles={vi.fn().mockResolvedValue(undefined)}
+        />,
+      ),
+    ).not.toThrow();
+    expect(screen.getAllByLabelText('ФИО')).not.toHaveLength(0);
+  });
+
   it('recognizes selected file, renders editable result and saves it', async () => {
     vi.mocked(recognizeDealCalculation).mockResolvedValueOnce(recognitionPayload);
     vi.mocked(saveDealCalculation).mockResolvedValueOnce(deal);

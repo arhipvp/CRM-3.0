@@ -35,6 +35,38 @@ const emptyData = (): OsagoCalculationData => ({
   },
 });
 
+const emptyDriver = (): OsagoCalculationData['drivers'][number] => ({
+  full_name: '',
+  birth_date: '',
+  license_series: '',
+  license_number: '',
+  license_issue_date: '',
+});
+
+const normalizeData = (value: unknown): OsagoCalculationData => {
+  const source = value && typeof value === 'object' ? (value as Partial<OsagoCalculationData>) : {};
+  const defaults = emptyData();
+  const policyholder =
+    source.policyholder && typeof source.policyholder === 'object'
+      ? { ...defaults.policyholder, ...source.policyholder }
+      : defaults.policyholder;
+  const vehicle =
+    source.vehicle && typeof source.vehicle === 'object'
+      ? { ...defaults.vehicle, ...source.vehicle }
+      : defaults.vehicle;
+  const insurance =
+    source.insurance && typeof source.insurance === 'object'
+      ? { ...defaults.insurance, ...source.insurance }
+      : defaults.insurance;
+  const drivers = Array.isArray(source.drivers)
+    ? source.drivers.map((driver) =>
+        driver && typeof driver === 'object' ? { ...emptyDriver(), ...driver } : emptyDriver(),
+      )
+    : [];
+
+  return { policyholder, drivers, vehicle, insurance };
+};
+
 interface OsagoCalculationTabProps {
   selectedDeal: Deal | null;
   sortedDriveFiles: DriveFile[];
@@ -67,7 +99,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
 
   useEffect(() => {
     setSourceText(selectedDeal?.calculationSourceText ?? '');
-    setData(selectedDeal?.calculationData ?? emptyData());
+    setData(normalizeData(selectedDeal?.calculationData));
     setRecognition(null);
     setMessage(null);
   }, [selectedDeal?.calculationData, selectedDeal?.calculationSourceText, selectedDeal?.id]);
@@ -100,16 +132,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
   const addDriver = () => {
     setData((current) => ({
       ...current,
-      drivers: [
-        ...current.drivers,
-        {
-          full_name: '',
-          birth_date: '',
-          license_series: '',
-          license_number: '',
-          license_issue_date: '',
-        },
-      ],
+      drivers: [...current.drivers, emptyDriver()],
     }));
   };
 
@@ -125,7 +148,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
         sourceText,
       });
       setRecognition(result);
-      setData(result.data);
+      setData(normalizeData(result.data));
     } catch (error) {
       setMessage(formatErrorMessage(error, 'Не удалось распознать данные для расчёта.'));
     } finally {
