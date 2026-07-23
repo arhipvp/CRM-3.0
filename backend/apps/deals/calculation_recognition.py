@@ -215,7 +215,6 @@ def _add_text_candidates(
     payload: dict[str, Any],
     confidence: float,
 ) -> None:
-    policy = payload.get("policy") if isinstance(payload.get("policy"), dict) else {}
     mapping = {
         "client_name": "policyholder.full_name",
         "policy.start_date": "insurance.start_date",
