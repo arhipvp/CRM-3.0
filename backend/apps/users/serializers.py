@@ -64,6 +64,9 @@ class RoleSerializer(serializers.ModelSerializer):
 
     def get_user_count(self, obj):
         """Количество пользователей с этой ролью"""
+        annotated_count = getattr(obj, "user_count", None)
+        if annotated_count is not None:
+            return annotated_count
         return obj.users.count()
 
 

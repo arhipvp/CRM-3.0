@@ -79,14 +79,30 @@ export async function fetchPolicy(id: string): Promise<Policy> {
 
 export async function fetchPoliciesWithPagination(
   filters?: FilterParams,
-): Promise<PaginatedResponse<Policy>> {
-  const qs = buildQueryString(filters);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/policies/${qs}`);
+  options?: { includeKpi?: boolean },
+): Promise<PaginatedResponse<Policy> & { kpi?: PoliciesKPI }> {
+  const requestFilters = options?.includeKpi ? { ...(filters ?? {}), include_kpi: true } : filters;
+  const qs = buildQueryString(requestFilters);
+  const payload = await request<
+    PaginatedResponse<Record<string, unknown>> & { kpi?: Record<string, unknown> }
+  >(`/policies/${qs}`);
+  const kpi = payload.kpi
+    ? {
+        total: Number(payload.kpi.total ?? 0),
+        problemCount: Number(payload.kpi.problem_count ?? payload.kpi.problemCount ?? 0),
+        dueCount: Number(payload.kpi.due_count ?? payload.kpi.dueCount ?? 0),
+        expiringSoonCount: Number(
+          payload.kpi.expiring_soon_count ?? payload.kpi.expiringSoonCount ?? 0,
+        ),
+        expiringDays: Number(payload.kpi.expiring_days ?? payload.kpi.expiringDays ?? 30),
+      }
+    : undefined;
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
     results: unwrapList<Record<string, unknown>>(payload).map(mapPolicy),
+    ...(kpi ? { kpi } : {}),
   };
 }
 

@@ -13,6 +13,7 @@ import type {
   DealTimelineEvent,
   FinancialRecord,
   Payment,
+  PoliciesKPI,
   Policy,
   Quote,
   SalesChannel,
@@ -107,7 +108,7 @@ export interface AppRouteDealsActions {
   onUpdateTask: (taskId: string, data: Partial<AddTaskFormValues>) => Promise<void>;
   onRefreshPolicies?: (options?: { force?: boolean }) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
-  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
+  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<PoliciesKPI | undefined>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
   onMergeDeals: (

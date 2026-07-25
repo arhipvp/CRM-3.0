@@ -325,17 +325,21 @@ export const useAppData = () => {
         delete resolvedFilters.ordering;
       }
       try {
-        const payload = await fetchPoliciesWithPagination({
-          ...resolvedFilters,
-          page: 1,
-          page_size: POLICIES_PAGE_SIZE,
-        });
+        const payload = await fetchPoliciesWithPagination(
+          {
+            ...resolvedFilters,
+            page: 1,
+            page_size: POLICIES_PAGE_SIZE,
+          },
+          { includeKpi: true },
+        );
         if (policiesListRequestRef.current !== requestId) {
           return;
         }
         setPoliciesList(payload.results);
         setPoliciesListNextPage(payload.next ? 2 : null);
         setPoliciesFilters(resolvedFilters);
+        return payload.kpi;
       } catch (err) {
         const message = formatErrorMessage(
           err,
@@ -390,8 +394,17 @@ export const useAppData = () => {
       fetchPaymentsWithPagination({ page: 1, page_size: pageSize }),
       fetchFinancialRecordsWithPagination({ page: 1, page_size: pageSize }),
     ]);
+    const recordsByPayment = new Map<string, FinancialRecord[]>();
+    recordsPayload.results.forEach((record) => {
+      const records = recordsByPayment.get(record.paymentId) ?? [];
+      records.push(record);
+      recordsByPayment.set(record.paymentId, records);
+    });
     return {
-      payments: paymentsPayload.results,
+      payments: paymentsPayload.results.map((payment) => ({
+        ...payment,
+        financialRecords: recordsByPayment.get(payment.id) ?? [],
+      })),
       financialRecords: recordsPayload.results,
     };
   }, []);

@@ -56,6 +56,7 @@ from .permissions import get_deal_from_payment, is_admin_user, user_has_deal_acc
 from .record_filters import apply_financial_record_filters
 from .serializers import (
     FinancialRecordSerializer,
+    PaymentListSerializer,
     PaymentSerializer,
     StatementFinancialRecordSerializer,
     StatementSerializer,
@@ -1164,11 +1165,15 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ]
     ordering = ["-created_at"]
 
+    def get_serializer_class(self):
+        if self.action == "list":
+            return PaymentListSerializer
+        return PaymentSerializer
+
     def get_queryset(self):
         user = self.request.user
         queryset = (
             Payment.objects.select_related("policy", "policy__deal", "deal")
-            .prefetch_related("financial_records")
             .all()
             .order_by("-scheduled_date")
         )

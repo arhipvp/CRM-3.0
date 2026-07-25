@@ -1,4 +1,5 @@
 from datetime import timedelta
+from typing import List
 
 from apps.common.drive import (
     DriveError,
@@ -84,6 +85,57 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ]
     ordering = ["-created_at"]
 
+    @staticmethod
+    def _build_kpi_payload(queryset, request):
+        today = timezone.localdate()
+        expiring_days = request.query_params.get("expiring_days")
+        try:
+            expiring_days_int = int(expiring_days) if expiring_days is not None else 30
+        except (TypeError, ValueError):
+            expiring_days_int = 30
+        if expiring_days_int < 0:
+            expiring_days_int = 30
+        expiring_to = today + timedelta(days=expiring_days_int)
+        counts = queryset.aggregate(
+            total=Count("id"),
+            problem_count=Count("id", filter=Q(has_unpaid_record=True)),
+            due_count=Count(
+                "id",
+                filter=Q(has_unpaid_record=False, has_unpaid_payment=True),
+            ),
+            expiring_soon_count=Count(
+                "id",
+                filter=Q(
+                    has_unpaid_record=False,
+                    has_unpaid_payment=False,
+                    is_renewed=False,
+                    end_date__isnull=False,
+                    end_date__gte=today,
+                    end_date__lte=expiring_to,
+                ),
+            ),
+        )
+        return {
+            **counts,
+            "expiring_days": expiring_days_int,
+            "status_values": {
+                "problem": STATUS_VALUES.PROBLEM,
+                "due": STATUS_VALUES.DUE,
+                "expired": STATUS_VALUES.EXPIRED,
+                "active": STATUS_VALUES.ACTIVE,
+            },
+        }
+
+    def list(self, request, *args, **kwargs):
+        response = super().list(request, *args, **kwargs)
+        if request.query_params.get("include_kpi") == "true" and isinstance(
+            response.data, dict
+        ):
+            response.data["kpi"] = self._build_kpi_payload(
+                self.filter_queryset(self.get_queryset()), request
+            )
+        return response
+
     def get_queryset(self):
         user = self.request.user
         queryset = (
@@ -140,45 +192,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="kpi")
     def kpi(self, request):
         queryset = self.filter_queryset(self.get_queryset())
-        today = timezone.localdate()
-        expiring_days = request.query_params.get("expiring_days")
-        try:
-            expiring_days_int = int(expiring_days) if expiring_days is not None else 30
-        except (TypeError, ValueError):
-            expiring_days_int = 30
-        if expiring_days_int < 0:
-            expiring_days_int = 30
-        expiring_to = today + timedelta(days=expiring_days_int)
-        counts = queryset.aggregate(
-            total=Count("id"),
-            problem_count=Count("id", filter=Q(has_unpaid_record=True)),
-            due_count=Count(
-                "id",
-                filter=Q(has_unpaid_record=False, has_unpaid_payment=True),
-            ),
-            expiring_soon_count=Count(
-                "id",
-                filter=Q(
-                    has_unpaid_record=False,
-                    has_unpaid_payment=False,
-                    is_renewed=False,
-                    end_date__isnull=False,
-                    end_date__gte=today,
-                    end_date__lte=expiring_to,
-                ),
-            ),
-        )
-        payload = {
-            **counts,
-            "expiring_days": expiring_days_int,
-            "status_values": {
-                "problem": STATUS_VALUES.PROBLEM,
-                "due": STATUS_VALUES.DUE,
-                "expired": STATUS_VALUES.EXPIRED,
-                "active": STATUS_VALUES.ACTIVE,
-            },
-        }
-        return Response(payload)
+        return Response(self._build_kpi_payload(queryset, request))
 
     @action(
         detail=True,
@@ -209,7 +223,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
-    def _draft_response(self, policy: Policy, payments: list[Payment], request):
+    def _draft_response(self, policy: Policy, payments: List[Payment], request):
         return Response(
             {
                 "policy": PolicySerializer(policy, context={"request": request}).data,

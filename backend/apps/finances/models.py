@@ -71,8 +71,7 @@ class Payment(SoftDeleteModel):
             raise ValidationError(
                 "Нельзя удалить платёж, пока у него есть оплаченные финансовые записи."
             )
-        for record in self.financial_records.all():
-            record.delete()
+        self.financial_records.all().delete()
         super().delete(using=using, keep_parents=keep_parents)
 
 

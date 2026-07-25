@@ -31,18 +31,38 @@ export function useClientDuplicateHints(clients: Client[]) {
       chunks.push(clientIds.slice(index, index + CLIENT_HINTS_CHUNK_SIZE));
     }
 
-    void Promise.all(chunks.map((chunk) => fetchClientDuplicateHints(chunk)))
-      .then((payloads) => {
-        if (requestRef.current !== requestId) {
+    const controller = new AbortController();
+    let nextChunkIndex = 0;
+    const results: Array<Record<string, ClientDuplicateHint>> = [];
+    const worker = async () => {
+      while (!controller.signal.aborted) {
+        const chunkIndex = nextChunkIndex++;
+        if (chunkIndex >= chunks.length) {
           return;
         }
-        setHints(Object.assign({}, ...payloads));
+        results[chunkIndex] = await fetchClientDuplicateHints(chunks[chunkIndex], {
+          signal: controller.signal,
+        });
+      }
+    };
+    const workerCount = Math.min(3, chunks.length);
+
+    void Promise.all(Array.from({ length: workerCount }, () => worker()))
+      .then(() => {
+        if (controller.signal.aborted || requestRef.current !== requestId) {
+          return;
+        }
+        setHints(Object.assign({}, ...results));
       })
       .catch(() => {
-        if (requestRef.current === requestId) {
+        if (!controller.signal.aborted && requestRef.current === requestId) {
           setHints({});
         }
       });
+
+    return () => {
+      controller.abort();
+    };
   }, [clientIds, clientIdsKey]);
 
   return hints;

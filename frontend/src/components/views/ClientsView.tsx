@@ -97,6 +97,16 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     return filteredClients.slice(startIndex, startIndex + PAGE_SIZE);
   }, [filteredClients, currentPage]);
 
+  const dealCountByClient = useMemo(() => {
+    const counts = new Map<string, number>();
+    deals.forEach((deal) => {
+      if (deal.clientId) {
+        counts.set(deal.clientId, (counts.get(deal.clientId) ?? 0) + 1);
+      }
+    });
+    return counts;
+  }, [deals]);
+
   useEffect(() => {
     if (filteredClients.length > 0 && paginatedClients.length === 0) {
       const lastPage = Math.ceil(filteredClients.length / PAGE_SIZE);
@@ -187,7 +197,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </thead>
           <tbody className="bg-white">
             {paginatedClients.map((client) => {
-              const clientDeals = deals.filter((deal) => deal.clientId === client.id);
+              const clientDealsCount = dealCountByClient.get(client.id) ?? 0;
               const whatsAppLink = buildWhatsAppLink(client.phone);
               return (
                 <tr key={client.id} className={`${TABLE_ROW_CLASS} hover:bg-blue-50/60`}>
@@ -223,7 +233,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {formatDateRu(client.createdAt)}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}>
-                    {clientDeals.length}
+                    {clientDealsCount}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     <button

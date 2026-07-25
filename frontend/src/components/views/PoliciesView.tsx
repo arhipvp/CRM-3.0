@@ -1,7 +1,7 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
-import { Client, ClientDuplicateHint, Deal, Payment, Policy } from '../../types';
-import { useRef } from 'react';
+import { Client, ClientDuplicateHint, Deal, Payment, PoliciesKPI, Policy } from '../../types';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
+import { useRef } from 'react';
 import { confirmTexts } from '../../constants/confirmTexts';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { FilterBar } from '../FilterBar';
@@ -80,7 +80,7 @@ interface PoliciesViewProps {
   isLoadingMorePolicies?: boolean;
   isPoliciesLoading?: boolean;
   policiesError?: string | null;
-  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<void>;
+  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<PoliciesKPI | undefined>;
   onAddFinancialRecord?: (values: AddFinancialRecordFormValues) => Promise<void>;
   onUpdateFinancialRecord?: (
     recordId: string,
@@ -137,7 +137,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [localPoliciesError, setLocalPoliciesError] = useState<string | null>(null);
   const [kpiError, setKpiError] = useState<string | null>(null);
   const kpiRequestRef = useRef(0);
-  const kpiAbortControllerRef = useRef<AbortController | null>(null);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
   const clientsById = useMemo(() => {
     const map = new Map<string, Client>();
@@ -203,18 +202,38 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
       return;
     }
     setLocalPoliciesError(null);
-    void onRefreshPoliciesList(serverFilters).catch((err) => {
-      setLocalPoliciesError(err instanceof Error ? err.message : 'Не удалось загрузить полисы');
-    });
+    void onRefreshPoliciesList(serverFilters)
+      .then((payload) => {
+        if (payload) {
+          setKpi(payload);
+          setKpiError(null);
+          return;
+        }
+        const requestId = ++kpiRequestRef.current;
+        return fetchPoliciesKPI(serverFilters).then((fallbackPayload) => {
+          if (requestId === kpiRequestRef.current) {
+            setKpi(fallbackPayload);
+            setKpiError(null);
+          }
+        });
+      })
+      .then((payload) => {
+        if (payload) {
+          setKpi(payload);
+          setKpiError(null);
+        }
+      })
+      .catch((err) => {
+        setLocalPoliciesError(err instanceof Error ? err.message : 'Не удалось загрузить полисы');
+      });
   }, [onRefreshPoliciesList, serverFilters]);
 
   useEffect(() => {
-    kpiRequestRef.current += 1;
-    const requestId = kpiRequestRef.current;
-    kpiAbortControllerRef.current?.abort();
+    if (onRefreshPoliciesList) {
+      return;
+    }
+    const requestId = ++kpiRequestRef.current;
     const controller = new AbortController();
-    kpiAbortControllerRef.current = controller;
-
     fetchPoliciesKPI(serverFilters, { signal: controller.signal })
       .then((payload) => {
         if (requestId === kpiRequestRef.current) {
@@ -223,18 +242,13 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         }
       })
       .catch(() => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        if (requestId === kpiRequestRef.current) {
+        if (!controller.signal.aborted && requestId === kpiRequestRef.current) {
           setKpi((prev) => ({ ...prev, total: policies.length }));
           setKpiError('Не удалось обновить показатели полисов.');
         }
       });
-    return () => {
-      controller.abort();
-    };
-  }, [policies.length, serverFilters]);
+    return () => controller.abort();
+  }, [onRefreshPoliciesList, policies.length, serverFilters]);
 
   useEffect(() => {
     try {

@@ -346,6 +346,15 @@ class PaymentSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class PaymentListSerializer(PaymentSerializer):
+    """Лёгкое представление платежа без вложенных финансовых записей."""
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields.pop("financial_records", None)
+        return fields
+
+
 class StatementFinancialRecordSerializer(FinancialRecordSerializer):
     """Лёгкое представление записи в составе ведомости.
 

@@ -181,11 +181,13 @@ function mapDuplicateHint(raw: Record<string, unknown>): ClientDuplicateHint {
 
 export async function fetchClientDuplicateHints(
   clientIds: string[],
+  options?: RequestInit,
 ): Promise<Record<string, ClientDuplicateHint>> {
   if (!clientIds.length) {
     return {};
   }
   const payload = await request<Record<string, unknown>>('/clients/duplicate-hints/', {
+    ...options,
     method: 'POST',
     body: JSON.stringify({
       client_ids: clientIds,

@@ -51,6 +51,18 @@ interface PaymentsViewProps {
 export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid }) => {
   const [filters, setFilters] = useState<FilterParams>({});
 
+  const paymentSortValues = useMemo(() => {
+    const values = new Map<string, Record<PaymentSortKey, number>>();
+    payments.forEach((payment) => {
+      values.set(payment.id, {
+        amount: Number(payment.amount) || 0,
+        actualDate: payment.actualDate ? Date.parse(payment.actualDate) : 0,
+        scheduledDate: payment.scheduledDate ? Date.parse(payment.scheduledDate) : 0,
+      });
+    });
+    return values;
+  }, [payments]);
+
   const filteredPayments = useMemo(() => {
     let result = [...payments];
 
@@ -82,10 +94,13 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
     const field = (ordering.replace(/^-/, '') as PaymentSortKey) || 'scheduledDate';
 
     result.sort(
-      (a, b) => (getPaymentSortValue(a, field) - getPaymentSortValue(b, field)) * direction,
+      (a, b) =>
+        ((paymentSortValues.get(a.id)?.[field] ?? getPaymentSortValue(a, field)) -
+          (paymentSortValues.get(b.id)?.[field] ?? getPaymentSortValue(b, field))) *
+        direction,
     );
     return result;
-  }, [filters, payments]);
+  }, [filters, paymentSortValues, payments]);
 
   return (
     <div className="space-y-4">

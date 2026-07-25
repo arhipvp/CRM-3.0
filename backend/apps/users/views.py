@@ -1,5 +1,6 @@
 from apps.common.pagination import StandardPageNumberPagination
 from django.contrib.auth.models import User
+from django.db.models import Count
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -37,6 +38,14 @@ class RoleViewSet(ModelViewSet):
     queryset = Role.objects.all()
     serializer_class = RoleSerializer
     permission_classes = [permissions.IsAuthenticated, permissions.IsAdminUser]
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .annotate(user_count=Count("users", distinct=True))
+            .prefetch_related("permissions__permission")
+        )
 
     def get_serializer_class(self):
         if self.action == "retrieve":
