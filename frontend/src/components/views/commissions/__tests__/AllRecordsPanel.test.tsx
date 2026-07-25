@@ -84,7 +84,7 @@ describe('AllRecordsPanel', () => {
       salesChannels: [
         {
           id: 'channel-1',
-          name: 'Марьинских',
+          name: 'Перебоева',
           description: '',
           createdAt: '2026-01-01T00:00:00Z',
           updatedAt: '2026-01-01T00:00:00Z',

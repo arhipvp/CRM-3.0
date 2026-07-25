@@ -135,7 +135,7 @@ describe('PoliciesTab', () => {
       sortedPolicies: [
         buildPolicy({
           note: 'Тестовое примечание',
-          salesChannel: 'Марьинских',
+          salesChannel: 'Перебоева',
           dealTitle: 'Сделка #1',
         }),
       ],
@@ -176,7 +176,7 @@ describe('PoliciesTab', () => {
     );
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
-    expect(screen.getByTitle('Alpha, OSAGO, Марьинских')).toBeInTheDocument();
+    expect(screen.getByTitle('Alpha, OSAGO, Перебоева')).toBeInTheDocument();
     const companyMeta = screen.getByText('Alpha').closest('p');
     expect(companyMeta?.querySelector('span.rounded-full')).not.toBeNull();
 
