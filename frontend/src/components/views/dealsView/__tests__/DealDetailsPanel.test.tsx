@@ -770,7 +770,9 @@ describe('DealDetailsPanel', () => {
     const delayButton = await screen.findByRole('button', {
       name: 'за 90 дней до ближайшего события',
     });
-    expect(delayButton).not.toBeDisabled();
+    await waitFor(() => {
+      expect(delayButton).not.toBeDisabled();
+    });
 
     fireEvent.click(delayButton);
 
