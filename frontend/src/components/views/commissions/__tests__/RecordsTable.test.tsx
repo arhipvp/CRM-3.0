@@ -152,7 +152,8 @@ describe('RecordsTable', () => {
     fireEvent.focus(input);
     fireEvent.paste(input, { clipboardData: { getData: () => '1\u00a0234,56' } });
 
-    expect(input.closest('tr')).toHaveClass('focus-within:bg-sky-100/70');
+    expect(input.closest('tr')).toHaveClass('focus-within:bg-sky-200/90');
+    expect(input.closest('tr')).toHaveClass('focus-within:[&>td]:!bg-sky-100');
     expect(onRecordAmountChange).toHaveBeenCalledWith('record-1', '1234.56');
   });
 

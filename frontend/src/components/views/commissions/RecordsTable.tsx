@@ -220,7 +220,9 @@ const RecordsTableRow = memo(function RecordsTableRow({
     : null;
 
   return (
-    <tr className={`${TABLE_ROW_CLASS} focus-within:border-sky-500 focus-within:bg-sky-100/70`}>
+    <tr
+      className={`${TABLE_ROW_CLASS} focus-within:border-sky-600 focus-within:bg-sky-200/90 focus-within:[&>td]:!border-y-sky-300 focus-within:[&>td]:!bg-sky-100`}
+    >
       <td className="border border-slate-200 px-3 py-2 text-center">
         <input
           type="checkbox"
