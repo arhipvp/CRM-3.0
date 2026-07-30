@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseNumericAmount } from '../../utils/parseNumericAmount';
+import { normalizeNumericAmount, parseNumericAmount } from '../../utils/parseNumericAmount';
 
 describe('parseNumericAmount', () => {
   it('returns NaN for empty or undefined input', () => {
@@ -16,6 +16,12 @@ describe('parseNumericAmount', () => {
   it('supports comma decimals and spaces inside', () => {
     expect(parseNumericAmount('1 234,56')).toBe(1234.56);
     expect(parseNumericAmount('7,89')).toBe(7.89);
+  });
+
+  it('normalizes localized and mixed thousands separators', () => {
+    expect(normalizeNumericAmount('1\u00a0234,56')).toBe('1234.56');
+    expect(normalizeNumericAmount('1.234,56')).toBe('1234.56');
+    expect(normalizeNumericAmount('1,234.56')).toBe('1234.56');
   });
 
   it('returns NaN for invalid strings', () => {

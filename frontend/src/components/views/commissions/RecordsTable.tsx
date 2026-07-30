@@ -3,6 +3,7 @@ import type { RefObject } from 'react';
 
 import type { Payment, Policy, Statement } from '../../../types';
 import { formatCurrencyRu, formatDateRu } from '../../../utils/formatting';
+import { normalizeNumericAmount, parseNumericAmount } from '../../../utils/parseNumericAmount';
 import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
 import { DataTableShell } from '../../common/table/DataTableShell';
 import { EmptyTableState } from '../../common/table/EmptyTableState';
@@ -204,9 +205,10 @@ const RecordsTableRow = memo(function RecordsTableRow({
   const saldoBase = getAbsoluteSaldoBase(row);
   const isPercentModeAvailable = saldoBase > 0;
   const amountSuffix = amountMode === 'rub' ? '₽' : '%';
+  const parsedAmountValue = parseNumericAmount(amountValue);
   const percentPreviewAmount =
-    amountMode === 'percent' && Number.isFinite(Number(amountValue)) && saldoBase > 0
-      ? (saldoBase * Number(amountValue)) / 100
+    amountMode === 'percent' && Number.isFinite(parsedAmountValue) && saldoBase > 0
+      ? (saldoBase * parsedAmountValue) / 100
       : null;
   const isRecordLocked = Boolean(recordStatement?.paidAt);
   const statementNote = recordStatement
@@ -218,7 +220,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
     : null;
 
   return (
-    <tr className={TABLE_ROW_CLASS}>
+    <tr className={`${TABLE_ROW_CLASS} focus-within:border-sky-500 focus-within:bg-sky-100/70`}>
       <td className="border border-slate-200 px-3 py-2 text-center">
         <input
           type="checkbox"
@@ -340,6 +342,13 @@ const RecordsTableRow = memo(function RecordsTableRow({
                 step={amountMode === 'rub' ? '0.01' : '0.1'}
                 value={amountValue}
                 onChange={(event) => onRecordAmountChange(row.recordId, event.target.value)}
+                onPaste={(event) => {
+                  const normalized = normalizeNumericAmount(event.clipboardData.getData('text'));
+                  if (normalized !== null) {
+                    event.preventDefault();
+                    onRecordAmountChange(row.recordId, normalized);
+                  }
+                }}
                 onBlur={() => void onRecordAmountBlur(row)}
                 disabled={isRecordLocked}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
@@ -655,6 +664,15 @@ export const RecordsTable = ({
                                 step={statementAmountDraft.mode === 'rub' ? '0.01' : '0.1'}
                                 value={statementAmountDraft.value}
                                 onChange={(event) => onStatementAmountChange(event.target.value)}
+                                onPaste={(event) => {
+                                  const normalized = normalizeNumericAmount(
+                                    event.clipboardData.getData('text'),
+                                  );
+                                  if (normalized !== null) {
+                                    event.preventDefault();
+                                    onStatementAmountChange(normalized);
+                                  }
+                                }}
                                 disabled={
                                   isStatementAmountControlDisabled || isApplyingStatementAmount
                                 }

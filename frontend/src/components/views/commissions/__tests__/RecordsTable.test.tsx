@@ -29,18 +29,40 @@ const renderTable = ({
   row = buildRow(),
   onToggleAllRecordsSort = vi.fn(),
   onRequestEditPolicy,
+  isRecordAmountEditable = false,
+  onRecordAmountChange = vi.fn(),
+  viewMode = 'all',
+  statementAmountDraft = { mode: 'rub' as const, value: '' },
+  onStatementAmountChange = vi.fn(),
 }: {
   row?: IncomeExpenseRow;
   onToggleAllRecordsSort?: (
     key: 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount',
   ) => void;
   onRequestEditPolicy?: (row: IncomeExpenseRow) => void;
+  isRecordAmountEditable?: boolean;
+  onRecordAmountChange?: (recordId: string, value: string) => void;
+  viewMode?: 'all' | 'statements';
+  statementAmountDraft?: { mode: 'rub' | 'percent'; value: string };
+  onStatementAmountChange?: (value: string) => void;
 } = {}) => {
   render(
     <RecordsTable
       isAttachStatementPaid={false}
       isSelectedStatementPaid={false}
-      viewMode="all"
+      selectedStatement={
+        viewMode === 'statements'
+          ? {
+              id: 'statement-1',
+              name: 'Ведомость',
+              statementType: 'income',
+              status: 'draft',
+              createdAt: '2026-03-01T00:00:00Z',
+              updatedAt: '2026-03-01T00:00:00Z',
+            }
+          : undefined
+      }
+      viewMode={viewMode}
       selectedRecordIds={[]}
       selectableRecordIds={[]}
       allSelectableSelected={false}
@@ -49,11 +71,11 @@ const renderTable = ({
       policiesById={new Map()}
       statementsById={new Map()}
       amountDrafts={{}}
-      statementAmountDraft={{ mode: 'rub', value: '' }}
+      statementAmountDraft={statementAmountDraft}
       isApplyingStatementAmount={false}
       isAllRecordsLoading={false}
       isStatementRecordsLoading={false}
-      isRecordAmountEditable={false}
+      isRecordAmountEditable={isRecordAmountEditable}
       canAttachSelectedAction={false}
       canRemoveSelectedAction={false}
       normalizeText={(value) => value ?? ''}
@@ -73,10 +95,10 @@ const renderTable = ({
       getAmountSortIndicator={() => '↕'}
       getPercentFromSaldo={() => '0'}
       getAbsoluteSaldoBase={() => 0}
-      onRecordAmountChange={vi.fn()}
+      onRecordAmountChange={onRecordAmountChange}
       onRecordAmountBlur={vi.fn()}
       onToggleRecordAmountMode={vi.fn()}
-      onStatementAmountChange={vi.fn()}
+      onStatementAmountChange={onStatementAmountChange}
       onToggleStatementAmountMode={vi.fn()}
       onApplyStatementAmount={vi.fn()}
     />,
@@ -119,5 +141,34 @@ describe('RecordsTable', () => {
     expect(
       screen.queryByRole('button', { name: 'Редактировать полис WITHOUT-ID' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('highlights a row and normalizes a pasted amount', () => {
+    const onRecordAmountChange = vi.fn();
+
+    renderTable({ isRecordAmountEditable: true, onRecordAmountChange });
+
+    const input = screen.getByDisplayValue('1500');
+    fireEvent.focus(input);
+    fireEvent.paste(input, { clipboardData: { getData: () => '1\u00a0234,56' } });
+
+    expect(input.closest('tr')).toHaveClass('focus-within:bg-sky-100/70');
+    expect(onRecordAmountChange).toHaveBeenCalledWith('record-1', '1234.56');
+  });
+
+  it('normalizes a pasted amount for all statement records', () => {
+    const onStatementAmountChange = vi.fn();
+
+    renderTable({
+      viewMode: 'statements',
+      isRecordAmountEditable: true,
+      onStatementAmountChange,
+    });
+
+    fireEvent.paste(screen.getByLabelText('Общая сумма для всей ведомости'), {
+      clipboardData: { getData: () => '1,234.56' },
+    });
+
+    expect(onStatementAmountChange).toHaveBeenCalledWith('1234.56');
   });
 });

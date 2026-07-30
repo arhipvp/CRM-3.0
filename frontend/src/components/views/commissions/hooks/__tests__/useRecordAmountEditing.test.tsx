@@ -84,7 +84,7 @@ describe('useRecordAmountEditing', () => {
     );
 
     act(() => {
-      result.current.handleStatementAmountChange('150');
+      result.current.handleStatementAmountChange('1 234,56');
     });
 
     await act(async () => {
@@ -94,7 +94,7 @@ describe('useRecordAmountEditing', () => {
     expect(onApplyStatementAmount).toHaveBeenCalledTimes(1);
     expect(onApplyStatementAmount).toHaveBeenCalledWith('statement-1', {
       mode: 'rub',
-      value: '150',
+      value: '1234.56',
     });
     expect(result.current.statementAmountDraft.value).toBe('');
   });

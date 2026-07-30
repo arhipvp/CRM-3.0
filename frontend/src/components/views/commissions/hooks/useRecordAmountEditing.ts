@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import type { AddFinancialRecordFormValues } from '../../../forms/AddFinancialRecordForm';
 import type { IncomeExpenseRow } from '../RecordsTable';
 import type { StatementAmountApplyMode, StatementAmountApplyResult } from '../../../../types';
+import { normalizeNumericAmount, parseNumericAmount } from '../../../../utils/parseNumericAmount';
 
 type AmountDraft = { mode: 'rub' | 'percent'; value: string };
 
@@ -54,7 +55,7 @@ export const useRecordAmountEditing = ({
 
   const getAbsoluteAmountFromDraft = useCallback(
     (row: IncomeExpenseRow, draft: AmountDraft) => {
-      const parsed = Number(draft.value);
+      const parsed = parseNumericAmount(draft.value);
       if (!Number.isFinite(parsed)) {
         return null;
       }
@@ -104,7 +105,7 @@ export const useRecordAmountEditing = ({
 
         const base = getAbsoluteSaldoBase(row);
         const currentValue = current?.value;
-        const currentNumber = currentValue !== undefined ? Number(currentValue) : NaN;
+        const currentNumber = currentValue !== undefined ? parseNumericAmount(currentValue) : NaN;
 
         if (nextMode === 'percent') {
           if (base <= 0) {
@@ -197,7 +198,8 @@ export const useRecordAmountEditing = ({
       if (!candidates.length) {
         return;
       }
-      if (!statementAmountDraft.value.trim()) {
+      const normalizedValue = normalizeNumericAmount(statementAmountDraft.value);
+      if (!normalizedValue) {
         return;
       }
 
@@ -205,7 +207,7 @@ export const useRecordAmountEditing = ({
       try {
         await onApplyStatementAmount(statementId, {
           mode: statementAmountDraft.mode,
-          value: statementAmountDraft.value,
+          value: normalizedValue,
         });
         setAmountDrafts((prev) => {
           const next = { ...prev };
