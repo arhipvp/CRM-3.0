@@ -333,6 +333,7 @@ export const useDealDetailsData = ({
         while (true) {
           const payload = await fetchPaymentsWithPagination({
             deal: dealId,
+            include_financial_records: true,
             page,
             page_size: pageSize,
           });

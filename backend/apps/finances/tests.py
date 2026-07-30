@@ -204,6 +204,51 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         results = self._extract_results(response)
         self.assertEqual([item["id"] for item in results], [str(self.payment.id)])
 
+    def test_payment_list_is_compact_without_financial_records_parameter(self):
+        self.authenticate(self.visible_user)
+
+        response = self.api_client.get("/api/v1/payments/", {"deal": str(self.deal.id)})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = self._extract_results(response)[0]
+        self.assertNotIn("financial_records", result)
+
+    def test_payment_list_includes_active_financial_records_on_request(self):
+        unpaid_expense = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("-50.00"),
+            description="Unpaid expense",
+        )
+        deleted_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("25.00"),
+            description="Deleted record",
+        )
+        deleted_record.delete()
+        self.authenticate(self.visible_user)
+
+        response = self.api_client.get(
+            "/api/v1/payments/",
+            {
+                "deal": str(self.deal.id),
+                "include_financial_records": "true",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result = self._extract_results(response)[0]
+        record_ids = {record["id"] for record in result["financial_records"]}
+        self.assertIn(str(self.fin_record.id), record_ids)
+        self.assertIn(str(unpaid_expense.id), record_ids)
+        self.assertNotIn(str(deleted_record.id), record_ids)
+        unpaid_payload = next(
+            record
+            for record in result["financial_records"]
+            if record["id"] == str(unpaid_expense.id)
+        )
+        self.assertIsNone(unpaid_payload["date"])
+        self.assertEqual(unpaid_payload["record_type"], "Расход")
+
     def test_task_assignee_can_list_payments_for_related_deal(self):
         self.authenticate(self.task_assignee)
 

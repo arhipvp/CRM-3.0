@@ -1166,17 +1166,62 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     ordering = ["-created_at"]
 
     def get_serializer_class(self):
-        if self.action == "list":
+        if self.action == "list" and not self._include_financial_records():
             return PaymentListSerializer
         return PaymentSerializer
+
+    def _include_financial_records(self):
+        """Возвращать вложенные записи только для детального контекста платежей."""
+        return self.request.query_params.get(
+            "include_financial_records", ""
+        ).lower() in {
+            "true",
+            "1",
+        }
 
     def get_queryset(self):
         user = self.request.user
         queryset = (
-            Payment.objects.select_related("policy", "policy__deal", "deal")
+            Payment.objects.select_related(
+                "policy",
+                "policy__deal",
+                "policy__deal__client",
+                "policy__insurance_type",
+                "deal",
+                "deal__client",
+            )
             .all()
             .order_by("-scheduled_date")
         )
+        if self._include_financial_records():
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "financial_records",
+                    queryset=FinancialRecord.objects.filter(deleted_at__isnull=True)
+                    .select_related(
+                        "payment",
+                        "payment__policy",
+                        "payment__policy__insurance_type",
+                        "payment__policy__client",
+                        "payment__policy__insured_client",
+                        "payment__policy__sales_channel",
+                        "payment__deal",
+                        "payment__deal__client",
+                    )
+                    .prefetch_related(
+                        Prefetch(
+                            "payment__financial_records",
+                            queryset=FinancialRecord.objects.filter(
+                                date__isnull=False,
+                                deleted_at__isnull=True,
+                            )
+                            .only("id", "amount", "date", "payment_id")
+                            .order_by("-date", "-amount", "id"),
+                            to_attr="paid_records",
+                        )
+                    ),
+                )
+            )
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
         if not user.is_authenticated:

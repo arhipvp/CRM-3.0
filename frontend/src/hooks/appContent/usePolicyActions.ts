@@ -188,7 +188,10 @@ export const usePolicyActions = ({
       closePolicyModal();
       setIsSyncing(true);
       try {
-        const hydratedPayments = await fetchPayments({ policy: policy.id });
+        const hydratedPayments = await fetchPayments({
+          policy: policy.id,
+          include_financial_records: true,
+        });
         const hydratedRecords = hydratedPayments.flatMap(
           (payment) => payment.financialRecords ?? [],
         );

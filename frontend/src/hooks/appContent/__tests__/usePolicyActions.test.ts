@@ -239,7 +239,10 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
       await result.current.handleRequestEditPolicy(policy);
     });
 
-    expect(fetchPaymentsMock).toHaveBeenCalledWith({ policy: policy.id });
+    expect(fetchPaymentsMock).toHaveBeenCalledWith({
+      policy: policy.id,
+      include_financial_records: true,
+    });
     expect(appState.payments).toEqual([hydratedPayment]);
     expect(appState.financialRecords).toEqual([record]);
     expect(result.current.editingPolicy).toEqual(policy);

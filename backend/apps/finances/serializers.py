@@ -309,6 +309,13 @@ class PaymentSerializer(serializers.ModelSerializer):
 
     def get_can_delete(self, obj):
         """Проверка возможности удаления платежа"""
+        prefetched_records = getattr(obj, "_prefetched_objects_cache", {}).get(
+            "financial_records"
+        )
+        if prefetched_records is not None:
+            return not obj.is_paid and not any(
+                record.date is not None for record in prefetched_records
+            )
         return obj.can_delete()
 
     def get_deal_title(self, obj):

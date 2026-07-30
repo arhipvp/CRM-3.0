@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchFinancialRecords, fetchFinanceStatements } from '../finance';
+import {
+  fetchFinancialRecords,
+  fetchFinanceStatements,
+  fetchPaymentsWithPagination,
+} from '../finance';
 import { request } from '../request';
 
 vi.mock('../request', () => ({
@@ -113,5 +117,46 @@ describe('finance pagination', () => {
       options,
     );
     expect(result.map((statement) => statement.id)).toEqual(['statement-1', 'statement-2']);
+  });
+
+  it('fetchPaymentsWithPagination preserves the financial records inclusion parameter', async () => {
+    vi.mocked(request).mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'payment-1',
+          amount: '100.00',
+          financial_records: [
+            {
+              id: 'record-1',
+              payment: 'payment-1',
+              amount: '25.00',
+              record_type: 'Расход',
+              date: null,
+              created_at: '2026-03-08T00:00:00Z',
+              updated_at: '2026-03-08T00:00:00Z',
+            },
+          ],
+          created_at: '2026-03-08T00:00:00Z',
+          updated_at: '2026-03-08T00:00:00Z',
+        },
+      ],
+    });
+
+    const result = await fetchPaymentsWithPagination({
+      deal: 'deal-1',
+      include_financial_records: true,
+    });
+
+    expect(request).toHaveBeenCalledWith('/payments/?deal=deal-1&include_financial_records=true');
+    expect(result.results[0].financialRecords).toHaveLength(1);
+    expect(result.results[0].financialRecords?.[0]).toMatchObject({
+      id: 'record-1',
+      paymentId: 'payment-1',
+      recordType: 'Расход',
+      date: null,
+    });
   });
 });
