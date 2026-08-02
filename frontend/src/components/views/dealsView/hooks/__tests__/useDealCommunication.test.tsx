@@ -6,7 +6,7 @@ import { useDealCommunication } from '../useDealCommunication';
 const createArgs = (dealEventsRefreshToken = 0) => ({
   selectedDealId: 'deal-1',
   selectedDealDeletedAt: null,
-  activeTab: 'events' as const,
+  activeTab: 'overview' as const,
   onFetchChatMessages: vi.fn().mockResolvedValue([]),
   onSendChatMessage: vi.fn(),
   onDeleteChatMessage: vi.fn(),
@@ -76,5 +76,37 @@ describe('useDealCommunication', () => {
       false,
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
+  });
+
+  it('loads events on overview and ignores an outdated response after deal changes', async () => {
+    let resolveFirstRequest!: (events: never[]) => void;
+    const firstRequest = new Promise<never[]>((resolve) => {
+      resolveFirstRequest = resolve;
+    });
+    const onFetchDealEvents = vi.fn().mockReturnValueOnce(firstRequest).mockResolvedValueOnce([]);
+    const args = createArgs();
+    const { result, rerender } = renderHook(
+      ({ dealId }: { dealId: string }) =>
+        useDealCommunication({
+          ...args,
+          selectedDealId: dealId,
+          onFetchDealEvents,
+        }),
+      { initialProps: { dealId: 'deal-1' } },
+    );
+
+    await waitFor(() => expect(onFetchDealEvents).toHaveBeenCalledTimes(1));
+    const firstSignal = onFetchDealEvents.mock.calls[0]?.[2]?.signal;
+
+    rerender({ dealId: 'deal-2' });
+
+    await waitFor(() => expect(onFetchDealEvents).toHaveBeenCalledTimes(2));
+    expect(firstSignal?.aborted).toBe(true);
+
+    await act(async () => {
+      resolveFirstRequest([{ id: 'stale-event' } as never]);
+      await Promise.resolve();
+    });
+    expect(result.current.dealTimelineEvents).toEqual([]);
   });
 });

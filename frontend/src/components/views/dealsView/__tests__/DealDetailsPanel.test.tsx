@@ -676,8 +676,10 @@ describe('DealDetailsPanel', () => {
     expect(within(dialog).queryByLabelText('Тип')).not.toBeInTheDocument();
     expect(within(dialog).getByLabelText('Причина')).toHaveClass('field', 'field-input', 'w-full');
 
-    fireEvent.change(within(dialog).getByLabelText('Дата'), {
-      target: { value: '2027-06-16' },
+    fireEvent.paste(within(dialog).getByLabelText('Дата'), {
+      clipboardData: {
+        getData: () => '16062027',
+      },
     });
     fireEvent.change(within(dialog).getByLabelText('Причина'), {
       target: { value: 'Ручной срок по просьбе клиента' },

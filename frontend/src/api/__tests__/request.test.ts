@@ -3,14 +3,27 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   APIError,
   buildLoginRedirectPath,
+  clearTokens,
   consumePostLoginRedirect,
+  getAccessToken,
   getPostLoginRedirect,
   request,
+  setAccessToken,
+  setRefreshToken,
 } from '../request';
+
+const createJwt = (exp: number) => {
+  const payload = btoa(JSON.stringify({ exp }))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+  return `header.${payload}.signature`;
+};
 
 describe('request post-login redirect helpers', () => {
   beforeEach(() => {
     window.sessionStorage.clear();
+    clearTokens();
     window.history.replaceState({}, '', '/deals');
     vi.restoreAllMocks();
   });
@@ -45,6 +58,89 @@ describe('request post-login redirect helpers', () => {
     expect(window.sessionStorage.getItem('crm_post_login_redirect')).toBe(
       '/deals?dealId=deal-keep',
     );
+  });
+});
+
+describe('request token refresh', () => {
+  beforeEach(() => {
+    clearTokens();
+    vi.restoreAllMocks();
+  });
+
+  it('shares proactive refresh between concurrent requests with an expiring access token', async () => {
+    const now = new Date('2027-06-16T12:00:00Z').getTime();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const renewedAccessToken = createJwt((now + 15 * 60 * 1000) / 1000);
+    setAccessToken(createJwt((now + 10 * 1000) / 1000));
+    setRefreshToken('refresh-token');
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/refresh/')) {
+        return new Response(JSON.stringify({ access: renewedAccessToken }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ url }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await Promise.all([request('/deals/one/'), request('/deals/two/')]);
+
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/auth/refresh/')),
+    ).toHaveLength(1);
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).includes('/deals/')),
+    ).toHaveLength(2);
+    expect(getAccessToken()).toBe(renewedAccessToken);
+  });
+
+  it('shares one refresh when concurrent requests receive a 401 response', async () => {
+    const now = new Date('2027-06-16T12:00:00Z').getTime();
+    vi.spyOn(Date, 'now').mockReturnValue(now);
+    const renewedAccessToken = createJwt((now + 15 * 60 * 1000) / 1000);
+    setAccessToken(createJwt((now + 15 * 60 * 1000) / 1000));
+    setRefreshToken('refresh-token');
+
+    let protectedRequests = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith('/auth/refresh/')) {
+        return new Response(JSON.stringify({ access: renewedAccessToken }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      protectedRequests += 1;
+      if (protectedRequests <= 2) {
+        return new Response(
+          JSON.stringify({ detail: 'Given token not valid for any token type' }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        );
+      }
+      return new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    await expect(Promise.all([request('/deals/one/'), request('/deals/two/')])).resolves.toEqual([
+      { ok: true },
+      { ok: true },
+    ]);
+
+    expect(
+      fetchMock.mock.calls.filter(([input]) => String(input).endsWith('/auth/refresh/')),
+    ).toHaveLength(1);
   });
 });
 

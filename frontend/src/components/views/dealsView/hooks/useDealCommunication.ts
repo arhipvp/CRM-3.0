@@ -168,12 +168,12 @@ export const useDealCommunication = ({
   }, [onFetchDealEvents, selectedDealDeletedAt, selectedDealId]);
 
   useEffect(() => {
-    if (activeTab !== 'events' || !selectedDealId) {
+    if (!selectedDealId) {
       return;
     }
     void loadDealEvents();
     return () => eventsAbortControllerRef.current?.abort();
-  }, [activeTab, loadDealEvents, selectedDealId]);
+  }, [loadDealEvents, selectedDealId]);
 
   useEffect(() => {
     const previous = previousDealEventsRefresh.current;

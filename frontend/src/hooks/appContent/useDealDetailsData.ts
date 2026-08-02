@@ -776,9 +776,14 @@ export const useDealDetailsData = ({
 
   useEffect(() => {
     rehydrateDealDetailsRef.current = async (dealId: string) => {
-      await Promise.all([loadDealTasks(dealId), loadDealQuotes(dealId), loadDealPayments(dealId)]);
+      await Promise.all([
+        loadDealTasks(dealId),
+        loadDealQuotes(dealId),
+        loadDealPolicies(dealId),
+        loadDealPayments(dealId),
+      ]);
     };
-  }, [loadDealPayments, loadDealQuotes, loadDealTasks]);
+  }, [loadDealPayments, loadDealPolicies, loadDealQuotes, loadDealTasks]);
 
   useEffect(() => {
     if (!effectiveSelectedDealId || !isAuthenticated) {
@@ -786,8 +791,16 @@ export const useDealDetailsData = ({
     }
     void loadDealTasks(effectiveSelectedDealId);
     void loadDealQuotes(effectiveSelectedDealId);
+    void loadDealPolicies(effectiveSelectedDealId);
     void loadDealPayments(effectiveSelectedDealId);
-  }, [effectiveSelectedDealId, isAuthenticated, loadDealPayments, loadDealQuotes, loadDealTasks]);
+  }, [
+    effectiveSelectedDealId,
+    isAuthenticated,
+    loadDealPayments,
+    loadDealPolicies,
+    loadDealQuotes,
+    loadDealTasks,
+  ]);
 
   useEffect(() => {
     if (!previewDealId || !isAuthenticated || previewDealId === effectiveSelectedDealId) {

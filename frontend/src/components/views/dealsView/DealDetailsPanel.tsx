@@ -21,6 +21,7 @@ import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../../forms/AddTaskForm';
 import type { DealFormValues } from '../../forms/DealForm';
 import { BTN_PRIMARY } from '../../common/buttonStyles';
+import { DateInput } from '../../common/forms/DateInput';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
 import { InlineAlert } from '../../common/InlineAlert';
@@ -668,6 +669,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     setIsManualEventModalOpen(false);
   }, [resetManualEventForm]);
 
+  const refreshAfterDealEventChange = useCallback(async () => {
+    if (!selectedDeal?.id) {
+      return;
+    }
+
+    await Promise.all([loadDealEvents(), onRefreshDeal?.(selectedDeal.id)]);
+    if (activeTab === 'history') {
+      await loadActivityLogs();
+    }
+  }, [activeTab, loadActivityLogs, loadDealEvents, onRefreshDeal, selectedDeal?.id]);
+
   const handleCreateManualDealEvent = useCallback(
     async (data: { eventDate: string; reason: string }) => {
       if (!selectedDeal?.id) {
@@ -677,10 +689,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         eventType: 'manual_expected_close',
         ...data,
       });
-      await loadDealEvents();
-      await handleRefreshDealWithContext();
+      await refreshAfterDealEventChange();
     },
-    [handleRefreshDealWithContext, loadDealEvents, onCreateDealEvent, selectedDeal?.id],
+    [onCreateDealEvent, refreshAfterDealEventChange, selectedDeal?.id],
   );
 
   const handleManualEventSubmit = useCallback(
@@ -717,10 +728,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         throw new Error('Сделка не выбрана');
       }
       await onUpdateDealEvent(selectedDeal.id, eventId, data);
-      await loadDealEvents();
-      await handleRefreshDealWithContext();
+      await refreshAfterDealEventChange();
     },
-    [handleRefreshDealWithContext, loadDealEvents, onUpdateDealEvent, selectedDeal?.id],
+    [onUpdateDealEvent, refreshAfterDealEventChange, selectedDeal?.id],
   );
 
   const handleDeleteManualDealEvent = useCallback(
@@ -729,10 +739,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         throw new Error('Сделка не выбрана');
       }
       await onDeleteDealEvent(selectedDeal.id, eventId);
-      await loadDealEvents();
-      await handleRefreshDealWithContext();
+      await refreshAfterDealEventChange();
     },
-    [handleRefreshDealWithContext, loadDealEvents, onDeleteDealEvent, selectedDeal?.id],
+    [onDeleteDealEvent, refreshAfterDealEventChange, selectedDeal?.id],
   );
 
   return (
@@ -1103,9 +1112,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
         <form className="space-y-4" onSubmit={handleManualEventSubmit}>
           {manualEventError && <InlineAlert>{manualEventError}</InlineAlert>}
           <FormField label="Дата" htmlFor="deal-manual-event-date">
-            <input
+            <DateInput
               id="deal-manual-event-date"
-              type="date"
               className="field field-input w-full"
               value={manualEventDate}
               onChange={(event) => setManualEventDate(event.target.value)}

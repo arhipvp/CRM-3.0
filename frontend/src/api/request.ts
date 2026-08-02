@@ -7,6 +7,9 @@ const REFRESH_TOKEN_KEY = 'jwt_refresh_token';
 const REFRESH_ENDPOINT = '/auth/refresh/';
 const LOGIN_PATH = '/login';
 const POST_LOGIN_REDIRECT_KEY = 'crm_post_login_redirect';
+const JWT_REFRESH_SKEW_MS = 30_000;
+
+let refreshPromise: Promise<boolean> | null = null;
 
 const debugLog = (...args: unknown[]) => {
   if (API_DEBUG) {
@@ -170,7 +173,34 @@ interface RefreshResponse {
   refresh?: string;
 }
 
-async function refreshAccessToken(): Promise<boolean> {
+const getJwtExpiryMs = (token: string): number | null => {
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) {
+      return null;
+    }
+
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const paddedBase64 = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const parsed = JSON.parse(atob(paddedBase64)) as { exp?: unknown };
+    const exp = Number(parsed.exp);
+    return Number.isFinite(exp) && exp > 0 ? exp * 1000 : null;
+  } catch {
+    return null;
+  }
+};
+
+const shouldRefreshAccessTokenBeforeRequest = (): boolean => {
+  const accessToken = getAccessToken();
+  if (!accessToken || !getRefreshToken()) {
+    return false;
+  }
+
+  const expiresAt = getJwtExpiryMs(accessToken);
+  return expiresAt !== null && expiresAt <= Date.now() + JWT_REFRESH_SKEW_MS;
+};
+
+async function performRefreshAccessToken(): Promise<boolean> {
   const refreshToken = getRefreshToken();
   if (!refreshToken) {
     return false;
@@ -207,6 +237,15 @@ async function refreshAccessToken(): Promise<boolean> {
     debugError('Refreshing access token failed', error);
     return false;
   }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (!refreshPromise) {
+    refreshPromise = performRefreshAccessToken().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
 }
 
 const normalizePostLoginRedirect = (value: string | null | undefined): string | null => {
@@ -348,6 +387,12 @@ export async function request<T = unknown>(
   options: RequestInit = {},
   refreshAttempted = false,
 ): Promise<T> {
+  if (!refreshAttempted && shouldRefreshAccessTokenBeforeRequest()) {
+    if (await refreshAccessToken()) {
+      return request(path, options, true);
+    }
+  }
+
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
   const isFormData = requestOptions.body instanceof FormData;
@@ -401,6 +446,12 @@ export async function requestBlob(
   options: RequestInit = {},
   refreshAttempted = false,
 ): Promise<Blob> {
+  if (!refreshAttempted && shouldRefreshAccessTokenBeforeRequest()) {
+    if (await refreshAccessToken()) {
+      return requestBlob(path, options, true);
+    }
+  }
+
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
 
@@ -445,6 +496,12 @@ export async function requestBlobWithHeaders(
   options: RequestInit = {},
   refreshAttempted = false,
 ): Promise<{ blob: Blob; headers: Headers }> {
+  if (!refreshAttempted && shouldRefreshAccessTokenBeforeRequest()) {
+    if (await refreshAccessToken()) {
+      return requestBlobWithHeaders(path, options, true);
+    }
+  }
+
   const { headers: customHeaders, ...requestOptions } = options;
   const headers = new Headers(customHeaders as HeadersInit);
 
