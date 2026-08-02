@@ -7,6 +7,7 @@ import type { Payment, Policy } from '../../../types';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
 import { PoliciesView } from '../PoliciesView';
 import { fetchPoliciesKPI } from '../../../api';
+import { fetchPolicyDriveFiles } from '../../../api/drive';
 
 vi.mock('../../../api', async () => {
   const actual = await vi.importActual<typeof import('../../../api')>('../../../api');
@@ -21,6 +22,10 @@ vi.mock('../../../api', async () => {
     })),
   };
 });
+
+vi.mock('../../../api/drive', () => ({
+  fetchPolicyDriveFiles: vi.fn(),
+}));
 
 const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   id: overrides.id ?? 'policy-1',
@@ -47,7 +52,7 @@ const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
   clientId: overrides.clientId ?? 'client-1',
   clientName: overrides.clientName ?? 'Client',
   salesChannel: overrides.salesChannel ?? '',
-  driveFolderId: overrides.driveFolderId ?? null,
+  driveFolderId: overrides.driveFolderId ?? 'drive-folder-1',
   note: overrides.note ?? '',
   isRenewed: overrides.isRenewed ?? false,
 });
@@ -65,6 +70,15 @@ const buildPayment = (overrides: Partial<Payment> = {}): Payment => ({
   updatedAt: overrides.updatedAt ?? new Date().toISOString(),
 });
 
+const buildDriveFile = (overrides: Partial<import('../../../types').DriveFile> = {}) => ({
+  id: overrides.id ?? 'file-1',
+  name: overrides.name ?? 'Полис.pdf',
+  mimeType: overrides.mimeType ?? 'application/pdf',
+  isFolder: overrides.isFolder ?? false,
+  webViewLink: overrides.webViewLink ?? 'https://drive.google.com/file-1',
+  ...overrides,
+});
+
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
   const promise = new Promise<T>((res) => {
@@ -76,6 +90,147 @@ const deferred = <T,>() => {
 describe('PoliciesView', () => {
   beforeEach(() => {
     vi.mocked(fetchPoliciesKPI).mockClear();
+    vi.mocked(fetchPolicyDriveFiles).mockReset();
+    vi.mocked(fetchPolicyDriveFiles).mockResolvedValue({ files: [], folderId: null });
+  });
+
+  it('renders direct policy files and folders as safe Drive links below the policy number', async () => {
+    vi.mocked(fetchPolicyDriveFiles).mockResolvedValue({
+      files: [
+        buildDriveFile({ name: 'Договор страхования.pdf' }),
+        buildDriveFile({
+          id: 'folder-1',
+          name: 'Дополнительные документы',
+          mimeType: 'application/vnd.google-apps.folder',
+          isFolder: true,
+          webViewLink: 'https://drive.google.com/folder-1',
+        }),
+      ],
+      folderId: 'policy-folder-1',
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[buildPolicy({ driveFolderId: 'policy-folder-1' })]}
+            payments={[]}
+            onRequestEditPolicy={vi.fn()}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchPolicyDriveFiles).toHaveBeenCalledWith('policy-1');
+    });
+
+    const fileLink = await screen.findByRole('link', { name: 'Договор страхования.pdf' });
+    expect(fileLink).toHaveAttribute('href', 'https://drive.google.com/file-1');
+    expect(fileLink).toHaveAttribute('target', '_blank');
+    expect(fileLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(fileLink.closest('td')).toHaveTextContent('POL-1');
+
+    const folderLink = screen.getByRole('link', { name: 'Дополнительные документы' });
+    expect(folderLink).toHaveAttribute('href', 'https://drive.google.com/folder-1');
+    expect(folderLink).toHaveAttribute('target', '_blank');
+    expect(folderLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('shows an empty or failed document state only for the affected policy', async () => {
+    vi.mocked(fetchPolicyDriveFiles)
+      .mockResolvedValueOnce({ files: [], folderId: 'policy-folder-1' })
+      .mockRejectedValueOnce(new Error('Drive временно недоступен'));
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[
+              buildPolicy({ driveFolderId: 'policy-folder-1' }),
+              buildPolicy({
+                id: 'policy-2',
+                number: 'POL-2',
+                driveFolderId: 'policy-folder-2',
+              }),
+            ]}
+            payments={[]}
+            onRequestEditPolicy={vi.fn()}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('Нет документов')).toBeInTheDocument();
+    expect(screen.getByText('Не удалось загрузить документы')).toBeInTheDocument();
+    expect(screen.getByText('POL-1').closest('td')).toHaveTextContent('Нет документов');
+    expect(screen.getByText('POL-2').closest('td')).toHaveTextContent(
+      'Не удалось загрузить документы',
+    );
+  });
+
+  it('caches loaded policy documents and limits initial concurrent loading to four policies', async () => {
+    const pending = new Map<string, () => void>();
+    let activeRequests = 0;
+    let maxActiveRequests = 0;
+    vi.mocked(fetchPolicyDriveFiles).mockImplementation(
+      (policyId) =>
+        new Promise((resolve) => {
+          activeRequests += 1;
+          maxActiveRequests = Math.max(maxActiveRequests, activeRequests);
+          pending.set(policyId, () => {
+            activeRequests -= 1;
+            resolve({ files: [], folderId: null });
+          });
+        }),
+    );
+    const policies = Array.from({ length: 5 }, (_, index) =>
+      buildPolicy({
+        id: `policy-${index + 1}`,
+        number: `POL-${index + 1}`,
+        driveFolderId: `policy-folder-${index + 1}`,
+      }),
+    );
+
+    const { rerender } = render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView policies={policies} payments={[]} onRequestEditPolicy={vi.fn()} />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(4);
+    });
+    expect(maxActiveRequests).toBeLessThanOrEqual(4);
+
+    await act(async () => {
+      pending.get('policy-1')?.();
+    });
+    await waitFor(() => {
+      expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(5);
+    });
+
+    await act(async () => {
+      [...pending.values()].forEach((resolve) => resolve());
+    });
+    await waitFor(() => {
+      expect(screen.getAllByText('Нет документов')).toHaveLength(5);
+    });
+
+    rerender(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView policies={policies} payments={[]} onRequestEditPolicy={vi.fn()} />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByText('Нет документов')).toHaveLength(5);
+    });
+    expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(5);
   });
 
   it('renders compact policy meta, scheduled payment date and deal preview link', async () => {

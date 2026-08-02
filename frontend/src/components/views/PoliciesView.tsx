@@ -34,6 +34,7 @@ import { BTN_SM_QUIET } from '../common/buttonStyles';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
+import { getPolicyDocumentsState, usePolicyDocuments } from './policies/usePolicyDocuments';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -196,6 +197,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     });
     return map;
   }, [payments]);
+  const documentsByPolicyId = usePolicyDocuments(policies);
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -572,6 +574,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
                 const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
                 const policyClient = policy.clientId ? clientsById.get(policy.clientId) : null;
+                const policyDocuments = getPolicyDocumentsState(policy, documentsByPolicyId);
 
                 return (
                   <React.Fragment key={policy.id}>
@@ -581,6 +584,48 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           value={model.number}
                           className="text-xl font-bold leading-tight text-slate-900"
                         />
+                        <div className="mt-2 min-w-0 text-xs leading-5">
+                          <div className="font-medium text-slate-500">Документы</div>
+                          {policyDocuments.status === 'loading' ? (
+                            <div className="text-slate-400">Загрузка документов…</div>
+                          ) : null}
+                          {policyDocuments.status === 'error' ? (
+                            <div className="text-amber-600">Не удалось загрузить документы</div>
+                          ) : null}
+                          {policyDocuments.status === 'ready' &&
+                          policyDocuments.files.length === 0 ? (
+                            <div className="text-slate-400">Нет документов</div>
+                          ) : null}
+                          {policyDocuments.status === 'ready' &&
+                          policyDocuments.files.length > 0 ? (
+                            <div className="space-y-0.5">
+                              {policyDocuments.files.map((file) =>
+                                file.webViewLink ? (
+                                  <a
+                                    key={file.id}
+                                    href={file.webViewLink}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={file.name}
+                                    className="flex min-w-0 items-center gap-1 text-blue-700 hover:underline"
+                                  >
+                                    {file.isFolder ? <span aria-hidden="true">📁</span> : null}
+                                    <span className="truncate">{file.name}</span>
+                                  </a>
+                                ) : (
+                                  <div
+                                    key={file.id}
+                                    title={file.name}
+                                    className="truncate text-slate-500"
+                                  >
+                                    {file.isFolder ? <span aria-hidden="true">📁 </span> : null}
+                                    {file.name}
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
                       </td>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         <div className="space-y-1.5">

@@ -89,6 +89,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "created_at",
             "updated_at",
             "deleted_at",
+            "drive_folder_id",
             "source_file_id",
             "source_file_ids",
             "is_renewed",
@@ -106,6 +107,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "payments_total",
             "deal_title",
             "computed_status",
+            "drive_folder_id",
         )
         extra_kwargs = {
             "insured_client": {
