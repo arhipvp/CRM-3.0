@@ -1,9 +1,16 @@
 ﻿import type React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Client, Deal, Payment, Policy } from '../../../../types';
+import { fetchPolicyDriveFiles } from '../../../../api/drive';
 import { PoliciesTab } from '../tabs/PoliciesTab';
+
+vi.mock('../../../../api/drive', () => ({
+  fetchPolicyDriveFiles: vi.fn(),
+}));
+
+const mockedFetchPolicyDriveFiles = vi.mocked(fetchPolicyDriveFiles);
 
 const buildDeal = (): Deal => ({
   id: 'deal-1',
@@ -89,6 +96,81 @@ const setup = (overrides: Partial<React.ComponentProps<typeof PoliciesTab>> = {}
 };
 
 describe('PoliciesTab', () => {
+  beforeEach(() => {
+    mockedFetchPolicyDriveFiles.mockReset();
+  });
+
+  it('renders policy files and folders as safe Drive links', async () => {
+    mockedFetchPolicyDriveFiles.mockResolvedValue({
+      files: [
+        {
+          id: 'file-1',
+          name: 'policy.pdf',
+          mimeType: 'application/pdf',
+          isFolder: false,
+          webViewLink: 'https://drive.google.com/file/d/file-1/view',
+        },
+        {
+          id: 'folder-1',
+          name: 'Приложения',
+          mimeType: 'application/vnd.google-apps.folder',
+          isFolder: true,
+          webViewLink: 'https://drive.google.com/drive/folders/folder-1',
+        },
+      ],
+    });
+
+    setup({
+      sortedPolicies: [buildPolicy({ driveFolderId: 'drive-folder-1' })],
+    });
+
+    const fileLink = await screen.findByRole('link', { name: 'policy.pdf' });
+    expect(fileLink).toHaveAttribute('href', 'https://drive.google.com/file/d/file-1/view');
+    expect(fileLink).toHaveAttribute('target', '_blank');
+    expect(fileLink).toHaveAttribute('rel', 'noopener noreferrer');
+
+    const folderLink = screen.getByRole('link', { name: /Приложения/ });
+    expect(folderLink).toHaveAttribute('href', 'https://drive.google.com/drive/folders/folder-1');
+    expect(folderLink).toHaveAttribute('target', '_blank');
+    expect(folderLink).toHaveAttribute('rel', 'noopener noreferrer');
+  });
+
+  it('shows empty and error document states for a policy', async () => {
+    mockedFetchPolicyDriveFiles.mockResolvedValueOnce({ files: [] });
+    const { rerender } = setup({
+      sortedPolicies: [buildPolicy({ id: 'policy-empty', driveFolderId: 'drive-folder-empty' })],
+    });
+
+    expect(await screen.findByText('Нет документов')).toBeInTheDocument();
+
+    mockedFetchPolicyDriveFiles.mockRejectedValueOnce(new Error('Google Drive недоступен'));
+    rerender(
+      <PoliciesTab
+        selectedDeal={buildDeal()}
+        sortedPolicies={[buildPolicy({ id: 'policy-error', driveFolderId: 'drive-folder-error' })]}
+        relatedPayments={[buildPayment()]}
+        clients={[] as Client[]}
+        onOpenClient={vi.fn()}
+        policySortKey="startDate"
+        policySortOrder="asc"
+        setPolicySortKey={vi.fn()}
+        setPolicySortOrder={vi.fn()}
+        setEditingPaymentId={vi.fn()}
+        setCreatingPaymentPolicyId={vi.fn()}
+        setCreatingFinancialRecordContext={vi.fn()}
+        setEditingFinancialRecordId={vi.fn()}
+        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
+        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
+        onRequestAddPolicy={vi.fn()}
+        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
+        onUpdatePolicyRenewed={vi.fn().mockResolvedValue(undefined)}
+        onRequestEditPolicy={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText('Не удалось загрузить документы')).toBeInTheDocument();
+  });
+
   it('renders hierarchical ledger layout and readable problem status', () => {
     const onDealSelect = vi.fn();
     setup({

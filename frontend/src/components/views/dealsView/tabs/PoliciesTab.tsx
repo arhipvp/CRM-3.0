@@ -28,6 +28,8 @@ import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { PolicyMoveDialog } from '../../../policies/PolicyMoveDialog';
+import { getPolicyDocumentsState, usePolicyDocuments } from '../../policies/usePolicyDocuments';
+import { PolicyDocumentsList } from '../../policies/PolicyDocumentsList';
 
 const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   number: 'Номер',
@@ -160,6 +162,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     showUnpaidRecordsOnly,
     sortedPolicies,
   ]);
+  const documentsByPolicyId = usePolicyDocuments(visiblePolicies);
 
   if (!selectedDeal) {
     return null;
@@ -459,6 +462,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 const hasMeta = Boolean(metaTitle);
                 const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
                 const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
+                const policyDocuments = getPolicyDocumentsState(policy, documentsByPolicyId);
 
                 return (
                   <Fragment key={policy.id}>
@@ -467,6 +471,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         <p className="text-xl font-bold text-slate-900 leading-tight">
                           {model.number}
                         </p>
+                        <PolicyDocumentsList state={policyDocuments} />
                       </td>
                       <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
                         <div className="space-y-1.5">
