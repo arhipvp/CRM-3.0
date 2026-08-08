@@ -189,7 +189,15 @@ export interface AppRouteLoadingState {
     showDeleted?: boolean;
     activeOnly?: boolean;
     ordering?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: string;
+    priority?: string;
+    assignee?: string;
   }) => Promise<void>;
+  tasksPage?: number;
+  tasksTotalCount?: number;
   onRefreshCommissionsSnapshot?: () => Promise<void>;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;

@@ -121,6 +121,14 @@ FROM policies_policy;
 - `entrypoint.sh` запускается в контейнере, применяя миграции и стартуя gunicorn с настройками `WORKERS` и `TIMEOUT`.
 - Для синхронного распознавания документов production timeout Gunicorn задаётся переменной `GUNICORN_TIMEOUT` (по умолчанию 300 секунд). Общий бюджет распознавания сделки задаётся `CALCULATION_RECOGNITION_BUDGET_SECONDS` (по умолчанию 240 секунд).
 
+### Фоновые обращения к внешним сервисам
+
+- `POST /api/v1/knowledge/ask/` создаёт DB-backed задание и отвечает `202`; прежний синхронный контракт доступен через `?sync=1`.
+- `GET /api/v1/deals/{id}/drive-files/?async=1` ставит чтение списка Drive в очередь. Без `async=1` сохранён прежний синхронный ответ.
+- Результат опрашивается через `GET /api/v1/external-jobs/{job_id}/`. Обычный пользователь видит только свои задания, Admin — все.
+- Worker запускается командой `python manage.py run_external_job_worker` (или сервисом `external_job_worker` в compose). Для диагностического одиночного запуска используйте `--once`.
+- `EXTERNAL_JOB_MAX_ATTEMPTS`, `EXTERNAL_JOB_STALE_SECONDS` и `EXTERNAL_JOB_POLL_SECONDS` управляют повторными попытками, возвратом зависшего задания в очередь и интервалом опроса БД.
+
 ## Полезные команды
 | Команда | Назначение |
 | --- | --- |
@@ -129,6 +137,7 @@ FROM policies_policy;
 | `python manage.py loaddata fixtures/<file>.json` | Импорт фикстур |
 | `python manage.py drf_create_token` | Создание токена DRF, если команда доступна |
 | `python manage.py check_external_services` | Smoke-проверка AI / Drive / Telegram / Open Notebook / mailcow |
+| `python manage.py run_external_job_worker` | Worker долгих OpenNotebook/Drive заданий |
 | `python ../scripts/restore_local_backup.py` | Полный reset локальной Postgres и restore из свежего backup через локальный staging в `tmp/` |
 | `python manage.py seed_demo_data --replace --count 30` | Пересоздать локальный demo-набор данных |
 

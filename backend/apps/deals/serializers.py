@@ -199,6 +199,14 @@ class DealSerializer(serializers.ModelSerializer):
             return
         for field_name in self._embed_sensitive_fields - set(embed_fields):
             self.fields.pop(field_name, None)
+        metric_fields = self.context.get("deal_metrics")
+        if metric_fields is not None:
+            for field_name in {
+                "client_active_deals_count",
+                "payments_total",
+                "payments_paid",
+            } - set(metric_fields):
+                self.fields.pop(field_name, None)
 
     def get_seller_name(self, obj: Deal) -> str | None:
         return self._get_user_display(obj.seller)

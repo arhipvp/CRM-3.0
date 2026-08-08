@@ -6,6 +6,7 @@ from apps.clients.models import Client
 from apps.common.drive import DRIVE_TEMPORARY_ERROR_CODE, DriveOperationError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
+from apps.documents.models import ExternalJob
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework import status
@@ -135,6 +136,22 @@ class DealDriveFilesListTests(AuthenticatedAPITestCase):
             "Указанная папка не принадлежит дереву папок сделки.",
         )
         list_contents_mock.assert_called_once_with("deal-folder")
+
+    def test_get_async_enqueues_drive_list_without_calling_drive(self):
+        Deal.objects.filter(pk=self.deal.pk).update(drive_folder_id="deal-folder")
+
+        with patch(
+            "apps.deals.view_mixins.drive.list_drive_folder_contents"
+        ) as list_contents_mock:
+            response = self.api_client.get(
+                f"/api/v1/deals/{self.deal.id}/drive-files/?async=1"
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        job = ExternalJob.objects.get(pk=response.data["id"])
+        self.assertEqual(job.kind, ExternalJob.Kind.DEAL_DRIVE_LIST)
+        self.assertEqual(job.payload["deal_id"], str(self.deal.id))
+        list_contents_mock.assert_not_called()
 
     def test_post_temporary_drive_error_returns_error_code(self):
         error = DriveOperationError(

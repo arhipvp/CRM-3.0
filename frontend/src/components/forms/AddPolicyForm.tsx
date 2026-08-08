@@ -7,6 +7,7 @@ import {
   fetchVehicleModels,
 } from '../../api';
 import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../types';
+import { useClientLookup } from '../../hooks/useClientLookup';
 import type { FinancialRecordDraft } from './addPolicy/types';
 import {
   createEmptyRecord,
@@ -125,13 +126,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
   const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(0);
   const [clientQuery, setClientQuery] = useState('');
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const clientCandidates = useClientLookup(clientQuery, clients);
   const filteredClients = useMemo(() => {
     const normalizedQuery = clientQuery.trim().toLowerCase();
     const candidates = normalizedQuery
-      ? clients.filter((client) => client.name.toLowerCase().includes(normalizedQuery))
-      : clients;
+      ? clientCandidates.filter((client) => client.name.toLowerCase().includes(normalizedQuery))
+      : clientCandidates;
     return candidates.slice(0, MAX_CLIENT_SUGGESTIONS);
-  }, [clients, clientQuery]);
+  }, [clientCandidates, clientQuery]);
 
   useEffect(() => {
     setPayments((prev) =>
@@ -149,7 +151,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
     if (!query) {
       return null;
     }
-    return clients.find((client) => client.name.toLowerCase() === query) ?? null;
+    return clientCandidates.find((client) => client.name.toLowerCase() === query) ?? null;
   };
 
   const handleClientSelect = (client: Client) => {

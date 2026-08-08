@@ -188,6 +188,8 @@ docker compose up --build
 - Пользовательские подписи и сообщения в админке держим на русском языке, без смешения RU/EN.
 - Read-only модели (например, журнал аудита и сервисные Telegram-сущности) должны явно запрещать add/change/delete.
 - Оперативные метрики и быстрые ссылки на главной `/admin/` добавляются через `config.admin.configure_admin_site()` и шаблон `apps/common/templates/admin/index.html`.
+- Для измерения API latency на локальном или staging-окружении можно временно включить `PERFORMANCE_TIMING_ENABLED=True`. Ответы получат `Server-Timing`, `X-Response-Time-Ms` и, для нестриминговых ответов, `X-Response-Bytes`. В production настройка по умолчанию выключена.
+- Фронтенд публикует TTFB/FCP/LCP/CLS/INP как событие `crm:performance-metric`. `VITE_PERFORMANCE_DEBUG=true` выводит метрики в dev-консоль, а `VITE_PERFORMANCE_ENDPOINT` включает отправку JSON через `sendBeacon` в систему наблюдаемости.
 
 ## Безопасность секретов
 - Реальные секреты храните только в локальных `.env`/секретах CI. В репозитории оставляйте только шаблоны (`backend/.env.example`, `frontend/.env.example`, `.env.production.example`).

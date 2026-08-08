@@ -9,7 +9,8 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import Document
+from .external_jobs import create_external_job, serialize_external_job
+from .models import Document, ExternalJob
 from .open_notebook import OpenNotebookError, OpenNotebookSyncService
 from .serializers import DocumentSerializer
 
@@ -69,6 +70,20 @@ class KnowledgeAskView(APIView):
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
             )
 
+        if request.query_params.get("sync") not in {"1", "true"}:
+            job = create_external_job(
+                kind=ExternalJob.Kind.OPEN_NOTEBOOK_ASK,
+                payload={
+                    "notebook_id": str(notebook_id),
+                    "question": str(question),
+                    "session_id": str(session_id) if session_id else None,
+                },
+                user=request.user,
+            )
+            return Response(
+                serialize_external_job(job), status=status.HTTP_202_ACCEPTED
+            )
+
         try:
             result = service.ask_notebook(
                 str(notebook_id),
@@ -82,6 +97,26 @@ class KnowledgeAskView(APIView):
             )
 
         return Response({"question": question, **result})
+
+
+class ExternalJobDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+        queryset = ExternalJob.objects.all()
+        is_admin = (
+            request.user.is_superuser
+            or UserRole.objects.filter(user=request.user, role__name="Admin").exists()
+        )
+        if not is_admin:
+            queryset = queryset.filter(created_by=request.user)
+        job = queryset.filter(pk=job_id).first()
+        if job is None:
+            return Response(
+                {"detail": "Задание не найдено."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+        return Response(serialize_external_job(job))
 
 
 class KnowledgeNotebooksView(APIView):

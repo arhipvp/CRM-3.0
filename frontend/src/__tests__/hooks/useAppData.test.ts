@@ -6,35 +6,36 @@ import { buildDealsCacheKey } from '../../hooks/useAppData';
 import { useAppData } from '../../hooks/useAppData';
 import type { FilterParams } from '../../api';
 import {
-  fetchClients,
+  fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
   fetchFinanceStatements,
   fetchPaymentsWithPagination,
   fetchSalesChannels,
-  fetchTasks,
+  fetchTasksWithPagination,
   fetchUsers,
 } from '../../api';
 
 vi.mock('../../api', () => ({
   DEFAULT_TASKS_API_ORDERING: '-priority,created_at',
-  fetchClients: vi.fn(),
+  APIError: class APIError extends Error {},
+  fetchClientsWithPagination: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecordsWithPagination: vi.fn(),
   fetchFinanceStatements: vi.fn(),
   fetchPaymentsWithPagination: vi.fn(),
   fetchSalesChannels: vi.fn(),
-  fetchTasks: vi.fn(),
+  fetchTasksWithPagination: vi.fn(),
   fetchUsers: vi.fn(),
 }));
 
-const mockedFetchClients = vi.mocked(fetchClients);
+const mockedFetchClients = vi.mocked(fetchClientsWithPagination);
 const mockedFetchDealsWithPagination = vi.mocked(fetchDealsWithPagination);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
 const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatements);
 const mockedFetchPaymentsWithPagination = vi.mocked(fetchPaymentsWithPagination);
 const mockedFetchSalesChannels = vi.mocked(fetchSalesChannels);
-const mockedFetchTasks = vi.mocked(fetchTasks);
+const mockedFetchTasks = vi.mocked(fetchTasksWithPagination);
 
 const deferred = <T>() => {
   let resolve!: (value: T) => void;
@@ -49,7 +50,7 @@ const mockedFetchUsers = vi.mocked(fetchUsers);
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mockedFetchClients.mockResolvedValue([]);
+  mockedFetchClients.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
   mockedFetchUsers.mockResolvedValue([]);
   mockedFetchSalesChannels.mockResolvedValue([]);
   mockedFetchDealsWithPagination.mockResolvedValue({
@@ -81,7 +82,7 @@ beforeEach(() => {
     results: [],
   });
   mockedFetchFinanceStatements.mockResolvedValue([]);
-  mockedFetchTasks.mockResolvedValue([]);
+  mockedFetchTasks.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
 });
 
 describe('buildDealsCacheKey', () => {
@@ -173,7 +174,7 @@ describe('useAppData loading strategy', () => {
         page: 1,
         page_size: 40,
       },
-      { embed: 'none' },
+      expect.objectContaining({ embed: 'none', signal: expect.any(AbortSignal) }),
     );
     expect(result.current.dataState.deals).toHaveLength(40);
 
@@ -320,7 +321,7 @@ describe('useAppData loading strategy', () => {
         page: 1,
         page_size: 40,
       },
-      { embed: 'none' },
+      expect.objectContaining({ embed: 'none', signal: expect.any(AbortSignal) }),
     );
     expect(result.current.dataState.deals).toHaveLength(42);
     expect(new Set(result.current.dataState.deals.map((deal) => deal.id)).size).toBe(42);
@@ -351,7 +352,12 @@ describe('useAppData loading strategy', () => {
   });
 
   it('loads reference data once when concurrent consumers request it', async () => {
-    const clientsDeferred = deferred<never[]>();
+    const clientsDeferred = deferred<{
+      count: number;
+      next: null;
+      previous: null;
+      results: never[];
+    }>();
     mockedFetchClients.mockReturnValueOnce(clientsDeferred.promise);
     const { result } = renderHook(() => useAppData());
 
@@ -367,7 +373,7 @@ describe('useAppData loading strategy', () => {
     expect(mockedFetchSalesChannels).toHaveBeenCalledTimes(1);
 
     await act(async () => {
-      clientsDeferred.resolve([]);
+      clientsDeferred.resolve({ count: 0, next: null, previous: null, results: [] });
       await Promise.all([firstPromise, secondPromise]);
     });
 
@@ -396,19 +402,21 @@ describe('useAppData loading strategy', () => {
       expect(mockedFetchFinanceStatements).toHaveBeenCalledTimes(1);
       expect(mockedFetchTasks).toHaveBeenCalledTimes(1);
     });
-    expect(mockedFetchTasks).toHaveBeenCalledWith(
-      {
-        ordering: DEFAULT_TASKS_API_ORDERING,
-        show_deleted: false,
-        active_only: true,
-      },
-      expect.objectContaining({ pageSize: 500, onPage: expect.any(Function) }),
-    );
+    expect(mockedFetchTasks).toHaveBeenCalledWith({
+      ordering: DEFAULT_TASKS_API_ORDERING,
+      show_deleted: false,
+      active_only: true,
+      page: 1,
+      page_size: 50,
+      search: undefined,
+      status: undefined,
+      priority: undefined,
+      assignee: undefined,
+    });
   });
 
-  it('publishes the first task page before background pagination finishes', async () => {
-    const secondPage = deferred<never[]>();
-    mockedFetchTasks.mockImplementationOnce(async (_filters, options) => {
+  it('publishes one server task page and its total count', async () => {
+    mockedFetchTasks.mockImplementationOnce(async () => {
       const firstTask = {
         id: 'task-first',
         title: 'Первая страница',
@@ -417,26 +425,22 @@ describe('useAppData loading strategy', () => {
         checklist: [],
         createdAt: '2026-01-01T00:00:00Z',
       } as never;
-      options?.onPage?.([firstTask], 1);
-      await secondPage.promise;
-      return [firstTask];
+      return {
+        count: 123,
+        next: '/tasks/?page=2',
+        previous: null,
+        results: [firstTask],
+      };
     });
 
     const { result } = renderHook(() => useAppData());
-    let loadPromise: Promise<void> | undefined;
-
     await act(async () => {
-      loadPromise = result.current.ensureTasksLoaded();
-      await Promise.resolve();
+      await result.current.ensureTasksLoaded();
     });
 
     expect(result.current.dataState.tasks.map((task) => task.id)).toEqual(['task-first']);
-    expect(result.current.isTasksLoading).toBe(true);
-
-    await act(async () => {
-      secondPage.resolve([]);
-      await loadPromise;
-    });
+    expect(result.current.tasksTotalCount).toBe(123);
+    expect(result.current.isTasksLoading).toBe(false);
   });
 
   it('loads commissions snapshot using only statements data', async () => {
@@ -654,7 +658,12 @@ describe('useAppData loading strategy', () => {
         documents: [];
       }>;
     }>();
-    const clientsDeferred = deferred<never[]>();
+    const clientsDeferred = deferred<{
+      count: number;
+      next: null;
+      previous: null;
+      results: never[];
+    }>();
     const usersDeferred = deferred<never[]>();
     const channelsDeferred = deferred<never[]>();
 
@@ -745,7 +754,7 @@ describe('useAppData loading strategy', () => {
           },
         ],
       });
-      clientsDeferred.resolve([]);
+      clientsDeferred.resolve({ count: 0, next: null, previous: null, results: [] });
       usersDeferred.resolve([]);
       channelsDeferred.resolve([]);
       await loadPromise;

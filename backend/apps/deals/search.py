@@ -2,6 +2,7 @@ import re
 import uuid
 from urllib.parse import unquote
 
+from django.db import connection
 from django.db.models import Q
 
 
@@ -20,10 +21,6 @@ def build_uuid_search_query(term: str) -> Q | None:
         return None
 
 
-def needs_unicode_regex_search(term: str) -> bool:
-    return any(ord(ch) > 127 for ch in term)
-
-
 def build_search_query(search_term: str, search_fields: list[str]) -> Q | None:
     terms = []
     for raw_term in search_term.strip().split():
@@ -36,10 +33,11 @@ def build_search_query(search_term: str, search_fields: list[str]) -> Q | None:
     combined_query: Q | None = None
     for term in terms:
         term_query = Q()
-        use_unicode_regex = needs_unicode_regex_search(term)
         for field in search_fields:
             term_query |= Q(**{f"{field}__icontains": term})
-            if use_unicode_regex:
+            if connection.vendor != "postgresql" and any(
+                ord(character) > 127 for character in term
+            ):
                 term_query |= Q(**{f"{field}__iregex": re.escape(term)})
         uuid_query = build_uuid_search_query(term)
         if uuid_query is not None:

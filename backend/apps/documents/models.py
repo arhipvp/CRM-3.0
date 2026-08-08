@@ -96,3 +96,43 @@ class OpenNotebookSession(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.notebook_id
+
+
+class ExternalJob(SoftDeleteModel):
+    """DB-backed задание для долгих обращений к внешним сервисам."""
+
+    class Kind(models.TextChoices):
+        OPEN_NOTEBOOK_ASK = "open_notebook_ask", "Вопрос Open Notebook"
+        DEAL_DRIVE_LIST = "deal_drive_list", "Список файлов сделки в Drive"
+
+    class Status(models.TextChoices):
+        QUEUED = "queued", "В очереди"
+        RUNNING = "running", "Выполняется"
+        SUCCEEDED = "succeeded", "Завершено"
+        FAILED = "failed", "Ошибка"
+
+    kind = models.CharField(max_length=64, choices=Kind.choices)
+    status = models.CharField(
+        max_length=16,
+        choices=Status.choices,
+        default=Status.QUEUED,
+        db_index=True,
+    )
+    payload = models.JSONField(default=dict)
+    result = models.JSONField(null=True, blank=True)
+    error = models.TextField(blank=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="external_jobs",
+    )
+    started_at = models.DateTimeField(null=True, blank=True)
+    finished_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["status", "created_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.kind}:{self.id} ({self.status})"

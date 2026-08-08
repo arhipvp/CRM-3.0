@@ -1,5 +1,7 @@
 from django.contrib.auth.models import User
+from django.db import connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from rest_framework import status
 from rest_framework.test import APIClient, APITestCase
 
@@ -221,6 +223,20 @@ class UserAPITest(APITestCase):
         self.assertEqual(response.data["count"], 2)
         self.assertEqual(len(response.data["results"]), 2)
         self.assertIsNone(response.data["next"])
+
+    def test_list_users_has_bounded_query_count_with_nested_roles(self):
+        permission = Permission.objects.create(resource="deal", action="view")
+        RolePermission.objects.create(role=self.manager_role, permission=permission)
+        for index in range(10):
+            user = User.objects.create_user(username=f"manager-{index}")
+            UserRole.objects.create(user=user, role=self.manager_role)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get("/api/v1/users/", {"page_size": 50})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["count"], 12)
+        self.assertLessEqual(len(queries), 8)
 
     def test_create_user(self):
         """Тест создания пользователя"""

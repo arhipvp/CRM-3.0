@@ -20,7 +20,7 @@ from apps.common.drive import (
 from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import User
-from django.db import transaction
+from django.db import connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -794,6 +794,41 @@ class ClientSimilarityService:
 
         return keys
 
+    def _duplicate_hint_candidate_query(self, clients: Sequence[Client]) -> Q:
+        candidate_query = Q(pk__in=[client.pk for client in clients])
+        for client in clients:
+            phone = _normalize_phone(client.phone)
+            if phone:
+                phone_characters = [re.escape(character) for character in phone]
+                if len(phone) == 11 and phone.startswith("7"):
+                    phone_characters[0] = "[78]"
+                phone_pattern = r"[^0-9]*".join(phone_characters)
+                candidate_query |= Q(phone__iregex=phone_pattern)
+
+            email = self._normalize_email(client.email)
+            if email:
+                candidate_query |= Q(email__iexact=email)
+
+            if client.birth_date:
+                candidate_query |= Q(birth_date=client.birth_date)
+
+            name_tokens = self._name_tokens(client.name)
+            use_name_regex = connection.vendor != "postgresql"
+            name_lookup = "iregex" if use_name_regex else "icontains"
+
+            def name_value(token: str) -> str:
+                return re.escape(token) if use_name_regex else token
+
+            if len(name_tokens) >= 2:
+                candidate_query |= Q(
+                    **{f"name__{name_lookup}": name_value(name_tokens[0])}
+                ) & Q(**{f"name__{name_lookup}": name_value(name_tokens[1])})
+            elif name_tokens:
+                candidate_query |= Q(
+                    **{f"name__{name_lookup}": name_value(name_tokens[0])}
+                )
+        return candidate_query
+
     @staticmethod
     def _pair_key(first_client_id, second_client_id) -> tuple[str, str]:
         return ClientSimilarityExclusion.ordered_pair(first_client_id, second_client_id)
@@ -995,7 +1030,7 @@ class ClientSimilarityService:
         limit_per_client: int = 50,
     ) -> dict[str, dict]:
         candidate_pool = list(
-            queryset.only(
+            queryset.filter(self._duplicate_hint_candidate_query(clients)).only(
                 "id",
                 "name",
                 "phone",

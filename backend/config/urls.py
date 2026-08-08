@@ -15,7 +15,11 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 
-from apps.documents.views import DocumentRecognitionView
+from apps.documents.views import (
+    DocumentRecognitionView,
+    ExternalJobDetailView,
+    KnowledgeAskView,
+)
 from apps.finances.views import FinanceSummaryView
 from apps.notifications.views import (
     DriveCallbackView,
@@ -88,6 +92,12 @@ urlpatterns = [
         "api/v1/documents/recognize/",
         DocumentRecognitionView.as_view(),
         name="document-recognize",
+    ),
+    path("api/v1/knowledge/ask/", KnowledgeAskView.as_view(), name="knowledge-ask"),
+    path(
+        "api/v1/external-jobs/<uuid:job_id>/",
+        ExternalJobDetailView.as_view(),
+        name="external-job-detail",
     ),
     path("api/v1/", include(api_urlpatterns)),
 ]

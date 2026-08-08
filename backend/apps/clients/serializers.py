@@ -22,6 +22,13 @@ class ClientSerializer(serializers.ModelSerializer):
         )
 
 
+class ClientLookupSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Client
+        fields = ("id", "name", "phone", "email")
+        read_only_fields = fields
+
+
 class ClientMergeSerializer(serializers.Serializer):
     class FieldOverridesSerializer(serializers.Serializer):
         name = serializers.CharField(required=False, allow_blank=True, max_length=255)

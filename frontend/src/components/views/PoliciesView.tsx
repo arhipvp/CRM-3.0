@@ -198,7 +198,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     });
     return map;
   }, [payments]);
-  const documentsByPolicyId = usePolicyDocuments(policies);
+  const { documentsByPolicyId, loadPolicyDocuments } = usePolicyDocuments();
 
   useEffect(() => {
     if (!onRefreshPoliciesList) {
@@ -585,7 +585,10 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           value={model.number}
                           className="text-xl font-bold leading-tight text-slate-900"
                         />
-                        <PolicyDocumentsList state={policyDocuments} />
+                        <PolicyDocumentsList
+                          state={policyDocuments}
+                          onLoad={() => void loadPolicyDocuments(policy)}
+                        />
                       </td>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         <div className="space-y-1.5">

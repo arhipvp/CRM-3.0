@@ -11,6 +11,7 @@ import {
   updateDealEvent,
 } from './api';
 import { AppRoutes } from './components/app/AppRoutes';
+import { preloadAppRoute } from './components/app/routeLoaders';
 import { AppShell } from './components/app/AppShell';
 import { AppShortcutsController } from './components/app/AppShortcutsController';
 import type {
@@ -92,12 +93,13 @@ const AppContent: React.FC = () => {
     isPoliciesListLoading,
     isLoadingMorePolicies,
     isLoadingMoreDeals,
-    isLoading,
     isCommissionsDataLoading,
     hasCommissionsSnapshotLoaded,
     isFinanceDataLoading,
     hasFinanceSnapshotLoaded,
     isTasksLoading,
+    tasksPage,
+    tasksTotalCount,
     isSyncing,
     setIsSyncing,
     error,
@@ -111,6 +113,8 @@ const AppContent: React.FC = () => {
     setCurrentUser,
     setIsAuthenticated,
   } = useAuthBootstrap(loadData);
+  const navigate = useNavigate();
+  const location = useLocation();
   const {
     clients,
     deals,
@@ -122,7 +126,17 @@ const AppContent: React.FC = () => {
     tasks,
     users,
   } = dataState;
-  const clientDuplicateHints = useClientDuplicateHints(clients);
+  const duplicateHintClients = useMemo(() => {
+    if (location.pathname.startsWith('/clients')) {
+      return clients;
+    }
+    const visibleClientIds = new Set([
+      ...deals.map((deal) => deal.clientId),
+      ...policiesList.flatMap((policy) => [policy.clientId, policy.insuredClientId]),
+    ]);
+    return clients.filter((client) => visibleClientIds.has(client.id));
+  }, [clients, deals, location.pathname, policiesList]);
+  const clientDuplicateHints = useClientDuplicateHints(duplicateHintClients);
 
   const {
     isClientModalOverlayOpen,
@@ -177,9 +191,13 @@ const AppContent: React.FC = () => {
     addNotification,
   });
 
-  const navigate = useNavigate();
-  const location = useLocation();
   const dealPreview = useDealPreviewController();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      void preloadAppRoute(location.pathname);
+    }
+  }, [isAuthenticated, location.pathname]);
 
   const {
     deepLinkedDealId,
@@ -787,6 +805,8 @@ const AppContent: React.FC = () => {
   const routeLoading = useMemo<AppRouteLoadingState>(
     () => ({
       onRefreshTasks: ensureTasksLoaded,
+      tasksPage,
+      tasksTotalCount,
       onRefreshCommissionsSnapshot: async () => {
         await ensureCommissionsDataLoaded({ force: true });
       },
@@ -825,6 +845,8 @@ const AppContent: React.FC = () => {
       isSelectedDealQuotesLoading,
       isSelectedDealTasksLoading,
       isTasksLoading,
+      tasksPage,
+      tasksTotalCount,
       loadMoreDeals,
       loadMorePolicies,
       policiesHasMore,
@@ -947,10 +969,10 @@ const AppContent: React.FC = () => {
     },
   };
 
-  if (authLoading || isLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <div className="text-slate-500">{authLoading ? 'Загрузка...' : 'Загрузка данных...'}</div>
+        <div className="text-slate-500">Загрузка...</div>
       </div>
     );
   }

@@ -131,6 +131,11 @@ class DealViewSet(
     pagination_class = DealPageNumberPagination
     decimal_field = DecimalField(max_digits=12, decimal_places=2)
     _allowed_embed_fields = {"quotes", "documents", "policies"}
+    _allowed_metric_fields = {
+        "client_active_deals_count",
+        "payments_total",
+        "payments_paid",
+    }
 
     def _payment_totals_subquery(self):
         return (
@@ -143,32 +148,39 @@ class DealViewSet(
             )
         )
 
-    def _annotate_queryset(self, queryset, user=None):
-        payment_totals = self._payment_totals_subquery()
-        queryset = queryset.annotate(
-            id_text=Cast("id", output_field=CharField()),
-            client_active_deals_count=Coalesce(
-                Subquery(self._active_deals_count_subquery(user)),
-                Value(0),
-                output_field=IntegerField(),
-            ),
-        )
-        queryset = queryset.annotate(
-            payments_total=Coalesce(
-                Subquery(
-                    payment_totals.values("total")[:1], output_field=self.decimal_field
-                ),
-                Value(0),
-                output_field=self.decimal_field,
-            ),
-            payments_paid=Coalesce(
-                Subquery(
-                    payment_totals.values("paid")[:1], output_field=self.decimal_field
-                ),
-                Value(0),
-                output_field=self.decimal_field,
-            ),
-        )
+    def _annotate_queryset(self, queryset, user=None, metrics=None):
+        requested_metrics = metrics or set()
+        if "client_active_deals_count" in requested_metrics:
+            queryset = queryset.annotate(
+                client_active_deals_count=Coalesce(
+                    Subquery(self._active_deals_count_subquery(user)),
+                    Value(0),
+                    output_field=IntegerField(),
+                )
+            )
+        payment_metrics = requested_metrics & {"payments_total", "payments_paid"}
+        if payment_metrics:
+            payment_totals = self._payment_totals_subquery()
+            annotations = {}
+            if "payments_total" in payment_metrics:
+                annotations["payments_total"] = Coalesce(
+                    Subquery(
+                        payment_totals.values("total")[:1],
+                        output_field=self.decimal_field,
+                    ),
+                    Value(0),
+                    output_field=self.decimal_field,
+                )
+            if "payments_paid" in payment_metrics:
+                annotations["payments_paid"] = Coalesce(
+                    Subquery(
+                        payment_totals.values("paid")[:1],
+                        output_field=self.decimal_field,
+                    ),
+                    Value(0),
+                    output_field=self.decimal_field,
+                )
+            queryset = queryset.annotate(**annotations)
         if user and user.is_authenticated:
             pin_exists = DealPin.objects.filter(user=user, deal=OuterRef("pk"))
             return queryset.annotate(is_pinned=Exists(pin_exists))
@@ -203,7 +215,27 @@ class DealViewSet(
             return set()
         return tokens & self._allowed_embed_fields
 
-    def _base_queryset(self, include_deleted=False, user=None, embeds=None):
+    def _requested_deal_metrics(self):
+        if self.action != "list":
+            return set(self._allowed_metric_fields)
+
+        raw_include = str(self.request.query_params.get("include") or "")
+        include_tokens = {
+            item.strip().lower() for item in raw_include.split(",") if item.strip()
+        }
+        if "metrics" in include_tokens:
+            return set(self._allowed_metric_fields)
+
+        requested = include_tokens & self._allowed_metric_fields
+        raw_fields = str(self.request.query_params.get("fields") or "")
+        requested |= {
+            item.strip() for item in raw_fields.split(",") if item.strip()
+        } & self._allowed_metric_fields
+        return requested
+
+    def _base_queryset(
+        self, include_deleted=False, user=None, embeds=None, metrics=None
+    ):
         manager = Deal.objects.with_deleted() if include_deleted else Deal.objects
         queryset = manager.select_related(
             "client", "seller", "executor", "mailbox"
@@ -259,7 +291,7 @@ class DealViewSet(
             F("next_review_date").desc(nulls_last=True),
             "-created_at",
         )
-        return self._annotate_queryset(queryset, user=user)
+        return self._annotate_queryset(queryset, user=user, metrics=metrics)
 
     def _include_deleted_flag(self):
         raw_value = self.request.query_params.get("show_deleted")
@@ -278,10 +310,12 @@ class DealViewSet(
         """
         user = self.request.user
         embeds = self._requested_deal_embeds()
+        metrics = self._requested_deal_metrics()
         queryset = self._base_queryset(
             include_deleted=self._include_deleted_flag(),
             user=user,
             embeds=embeds,
+            metrics=metrics,
         )
 
         if self.action in {"close", "reopen"}:
@@ -293,6 +327,7 @@ class DealViewSet(
 
         search_term = self.request.query_params.get("search")
         if search_term and search_term.strip():
+            queryset = queryset.annotate(id_text=Cast("id", output_field=CharField()))
             search_q = build_search_query(search_term, self.search_fields)
             if search_q is not None:
                 queryset = queryset.filter(search_q)
@@ -416,6 +451,7 @@ class DealViewSet(
             include_deleted=True,
             user=user,
             embeds=embeds,
+            metrics=self._requested_deal_metrics(),
         ).filter(id__in=pinned_ids)
         ordering_param = self.request.query_params.get("ordering")
         if ordering_param:
@@ -527,6 +563,7 @@ class DealViewSet(
         embeds = self._requested_deal_embeds()
         context["deal_embed"] = embeds
         context["include_policies"] = "policies" in embeds
+        context["deal_metrics"] = self._requested_deal_metrics()
         return context
 
     def _reject_viewer_update(self, request, instance):

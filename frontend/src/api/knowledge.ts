@@ -21,12 +21,40 @@ export interface KnowledgeAskResponse {
   citations?: KnowledgeCitation[];
 }
 
+interface ExternalKnowledgeJob {
+  id: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  result?: Omit<KnowledgeAskResponse, 'question'> | null;
+  error?: string | null;
+}
+
+const KNOWLEDGE_JOB_POLL_INTERVAL_MS = 1000;
+const KNOWLEDGE_JOB_TIMEOUT_MS = 120_000;
+
+const waitForKnowledgeJob = async (
+  jobId: string,
+  question: string,
+): Promise<KnowledgeAskResponse> => {
+  const deadline = Date.now() + KNOWLEDGE_JOB_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    const job = await request<ExternalKnowledgeJob>(`/external-jobs/${jobId}/`);
+    if (job.status === 'succeeded' && job.result) {
+      return { question, ...job.result };
+    }
+    if (job.status === 'failed') {
+      throw new Error(job.error || 'Не удалось получить ответ базы знаний');
+    }
+    await new Promise((resolve) => setTimeout(resolve, KNOWLEDGE_JOB_POLL_INTERVAL_MS));
+  }
+  throw new Error('Превышено время ожидания ответа базы знаний');
+};
+
 export async function askKnowledgeBase(
   notebookId: string,
   question: string,
   sessionId?: string,
 ): Promise<KnowledgeAskResponse> {
-  return request<KnowledgeAskResponse>('/knowledge/ask/', {
+  const job = await request<ExternalKnowledgeJob>('/knowledge/ask/', {
     method: 'POST',
     body: JSON.stringify({
       notebook_id: notebookId,
@@ -34,6 +62,7 @@ export async function askKnowledgeBase(
       session_id: sessionId,
     }),
   });
+  return waitForKnowledgeJob(job.id, question);
 }
 
 export async function fetchNotebooks(): Promise<KnowledgeNotebook[]> {

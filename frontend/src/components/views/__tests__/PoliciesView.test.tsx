@@ -121,6 +121,7 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Показать документы' }));
     await waitFor(() => {
       expect(fetchPolicyDriveFiles).toHaveBeenCalledWith('policy-1');
     });
@@ -161,6 +162,9 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
+    screen
+      .getAllByRole('button', { name: 'Показать документы' })
+      .forEach((button) => fireEvent.click(button));
     expect(await screen.findByText('Нет документов')).toBeInTheDocument();
     expect(screen.getByText('Не удалось загрузить документы')).toBeInTheDocument();
     expect(screen.getByText('POL-1').closest('td')).toHaveTextContent('Нет документов');
@@ -169,7 +173,7 @@ describe('PoliciesView', () => {
     );
   });
 
-  it('caches loaded policy documents and limits initial concurrent loading to four policies', async () => {
+  it('does not load policy documents before an explicit request', async () => {
     const pending = new Map<string, () => void>();
     let activeRequests = 0;
     let maxActiveRequests = 0;
@@ -200,25 +204,14 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => {
-      expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(4);
-    });
-    expect(maxActiveRequests).toBeLessThanOrEqual(4);
+    expect(fetchPolicyDriveFiles).not.toHaveBeenCalled();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Показать документы' })[0]);
+    expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(1);
+    expect(maxActiveRequests).toBe(1);
 
     await act(async () => {
       pending.get('policy-1')?.();
     });
-    await waitFor(() => {
-      expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(5);
-    });
-
-    await act(async () => {
-      [...pending.values()].forEach((resolve) => resolve());
-    });
-    await waitFor(() => {
-      expect(screen.getAllByText('Нет документов')).toHaveLength(5);
-    });
-
     rerender(
       <MemoryRouter>
         <NotificationProvider>
@@ -227,10 +220,8 @@ describe('PoliciesView', () => {
       </MemoryRouter>,
     );
 
-    await waitFor(() => {
-      expect(screen.getAllByText('Нет документов')).toHaveLength(5);
-    });
-    expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(5);
+    expect(screen.getByText('Нет документов')).toBeInTheDocument();
+    expect(fetchPolicyDriveFiles).toHaveBeenCalledTimes(1);
   });
 
   it('renders compact policy meta, scheduled payment date and deal preview link', async () => {

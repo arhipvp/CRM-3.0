@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Client, User } from '../../types';
+import { useClientLookup } from '../../hooks/useClientLookup';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
 import { DateInput } from '../common/forms/DateInput';
@@ -245,13 +246,14 @@ export const DealForm: React.FC<DealFormProps> = ({
     preselectedClientId,
   ]);
 
+  const clientCandidates = useClientLookup(clientQuery, clients);
   const filteredClients = useMemo(() => {
     const normalized = clientQuery.trim().toLowerCase();
     if (!normalized) {
-      return clients;
+      return clientCandidates;
     }
-    return clients.filter((client) => client.name.toLowerCase().includes(normalized));
-  }, [clients, clientQuery]);
+    return clientCandidates.filter((client) => client.name.toLowerCase().includes(normalized));
+  }, [clientCandidates, clientQuery]);
 
   const selectedViewerUsers = useMemo(
     () => users.filter((user) => visibleUserIds.includes(user.id)),
@@ -267,7 +269,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     if (!trimmed) {
       return null;
     }
-    const exactMatch = clients.find(
+    const exactMatch = clientCandidates.find(
       (client) => client.name.toLowerCase() === trimmed.toLowerCase(),
     );
     if (exactMatch) {

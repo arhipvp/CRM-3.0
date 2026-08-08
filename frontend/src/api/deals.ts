@@ -21,6 +21,7 @@ export type DealEmbedField = 'quotes' | 'documents' | 'policies';
 
 type DealsQueryOptions = {
   embed?: DealEmbedField[] | 'none';
+  signal?: AbortSignal;
 };
 
 export interface DealMailboxCreateResult {
@@ -60,7 +61,9 @@ export async function fetchDeals(
     ...(filters ?? {}),
     embed: resolveEmbedQueryValue(options?.embed),
   });
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`, {
+    signal: options?.signal,
+  });
   return unwrapList<Record<string, unknown>>(payload).map(mapDeal);
 }
 
@@ -72,7 +75,9 @@ export async function fetchDealsWithPagination(
     ...(filters ?? {}),
     embed: resolveEmbedQueryValue(options?.embed),
   });
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(`/deals/${qs}`, {
+    signal: options?.signal,
+  });
   return {
     count: payload.count || 0,
     next: payload.next || null,

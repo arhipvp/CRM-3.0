@@ -99,6 +99,12 @@ describe('TasksView', () => {
         ordering: '-priority,created_at',
         showDeleted: true,
         activeOnly: false,
+        page: 1,
+        pageSize: 50,
+        search: undefined,
+        status: undefined,
+        priority: undefined,
+        assignee: undefined,
       });
     });
 
@@ -110,6 +116,12 @@ describe('TasksView', () => {
         ordering: '-priority,created_at',
         showDeleted: false,
         activeOnly: true,
+        page: 1,
+        pageSize: 50,
+        search: undefined,
+        status: undefined,
+        priority: undefined,
+        assignee: undefined,
       });
     });
   });
@@ -126,6 +138,12 @@ describe('TasksView', () => {
         ordering: '-priority,created_at',
         showDeleted: false,
         activeOnly: false,
+        page: 1,
+        pageSize: 50,
+        search: undefined,
+        status: undefined,
+        priority: undefined,
+        assignee: undefined,
       });
     });
 
@@ -138,6 +156,12 @@ describe('TasksView', () => {
         ordering: '-priority,created_at',
         showDeleted: false,
         activeOnly: false,
+        page: 1,
+        pageSize: 50,
+        search: undefined,
+        status: 'canceled',
+        priority: undefined,
+        assignee: undefined,
       });
     });
   });

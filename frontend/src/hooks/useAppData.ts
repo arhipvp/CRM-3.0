@@ -2,14 +2,14 @@ import { useCallback, useReducer, useRef, useState } from 'react';
 
 import {
   DEFAULT_TASKS_API_ORDERING,
-  fetchClients,
+  fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
   fetchFinanceStatements,
   fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
-  fetchTasks,
+  fetchTasksWithPagination,
   fetchUsers,
 } from '../api';
 import type { FilterParams } from '../api';
@@ -40,7 +40,7 @@ interface AppDataState {
 
 const DEALS_PAGE_SIZE = 20;
 const POLICIES_PAGE_SIZE = 50;
-const TASKS_PAGE_SIZE = 500;
+const TASKS_PAGE_SIZE = 50;
 
 const INITIAL_APP_DATA_STATE: AppDataState = {
   clients: [],
@@ -91,6 +91,8 @@ export const useAppData = () => {
   const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
   const [hasFinanceSnapshotLoaded, setHasFinanceSnapshotLoaded] = useState(false);
   const [isTasksLoading, setIsTasksLoading] = useState(false);
+  const [tasksPage, setTasksPage] = useState(1);
+  const [tasksTotalCount, setTasksTotalCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [policiesLoaded, setPoliciesLoaded] = useState(false);
   const [isPoliciesLoading, setIsPoliciesLoading] = useState(false);
@@ -106,6 +108,7 @@ export const useAppData = () => {
   const [isLoadingMoreDeals, setIsLoadingMoreDeals] = useState(false);
   const [dealsTotalCount, setDealsTotalCount] = useState(0);
   const dealsRequestRef = useRef(0);
+  const dealsAbortControllerRef = useRef<AbortController | null>(null);
   const commissionsRequestRef = useRef(0);
   const financeRequestRef = useRef(0);
   const tasksRequestRef = useRef(0);
@@ -164,6 +167,9 @@ export const useAppData = () => {
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams, options?: RefreshDealsOptions) => {
+      dealsAbortControllerRef.current?.abort();
+      const controller = new AbortController();
+      dealsAbortControllerRef.current = controller;
       dealsRequestRef.current += 1;
       const requestId = dealsRequestRef.current;
       const resolvedFilters = { ordering: 'next_contact_date', ...(filters ?? {}) };
@@ -188,14 +194,22 @@ export const useAppData = () => {
           return cached.results;
         }
       }
-      const payload = await fetchDealsWithPagination(
-        {
-          ...resolvedFilters,
-          page: 1,
-          page_size: pageSize,
-        },
-        { embed: 'none' },
-      );
+      let payload;
+      try {
+        payload = await fetchDealsWithPagination(
+          {
+            ...resolvedFilters,
+            page: 1,
+            page_size: pageSize,
+          },
+          { embed: 'none', signal: controller.signal },
+        );
+      } catch (error) {
+        if (controller.signal.aborted) {
+          return dataStateRef.current.deals;
+        }
+        throw error;
+      }
       if (dealsRequestRef.current !== requestId) {
         return payload.results;
       }
@@ -420,12 +434,12 @@ export const useAppData = () => {
       }
       const loadPromise = (async () => {
         try {
-          const [clients, users, salesChannels] = await Promise.all([
-            fetchClients(),
+          const [clientsPayload, users, salesChannels] = await Promise.all([
+            fetchClientsWithPagination({ page: 1, page_size: 100 }),
             fetchUsers(),
             fetchSalesChannels(),
           ]);
-          setAppData({ clients, users, salesChannels });
+          setAppData({ clients: clientsPayload.results, users, salesChannels });
           referenceDataLoadedRef.current = true;
         } finally {
           referenceDataLoadPromiseRef.current = null;
@@ -576,12 +590,34 @@ export const useAppData = () => {
       showDeleted?: boolean;
       activeOnly?: boolean;
       ordering?: string;
+      page?: number;
+      pageSize?: number;
+      search?: string;
+      status?: string;
+      priority?: string;
+      assignee?: string;
     }) => {
       const force = options?.force ?? false;
       const showDeleted = options?.showDeleted ?? false;
       const activeOnly = options?.activeOnly ?? true;
       const ordering = options?.ordering ?? DEFAULT_TASKS_API_ORDERING;
-      const loadKey = JSON.stringify({ showDeleted, activeOnly, ordering });
+      const page = options?.page ?? 1;
+      const pageSize = options?.pageSize ?? TASKS_PAGE_SIZE;
+      const search = options?.search?.trim() || undefined;
+      const status = options?.status || undefined;
+      const priority = options?.priority || undefined;
+      const assignee = options?.assignee || undefined;
+      const loadKey = JSON.stringify({
+        showDeleted,
+        activeOnly,
+        ordering,
+        page,
+        pageSize,
+        search,
+        status,
+        priority,
+        assignee,
+      });
       if (tasksLoadedRef.current && tasksLoadKeyRef.current === loadKey && !force) {
         return;
       }
@@ -589,25 +625,23 @@ export const useAppData = () => {
       const requestId = tasksRequestRef.current;
       setIsTasksLoading(true);
       try {
-        const tasksData = await fetchTasks(
-          {
-            ordering,
-            show_deleted: showDeleted,
-            active_only: activeOnly,
-          },
-          {
-            pageSize: TASKS_PAGE_SIZE,
-            onPage: (loadedTasks) => {
-              if (tasksRequestRef.current === requestId) {
-                setAppData({ tasks: loadedTasks });
-              }
-            },
-          },
-        );
+        const payload = await fetchTasksWithPagination({
+          ordering,
+          show_deleted: showDeleted,
+          active_only: activeOnly,
+          page,
+          page_size: pageSize,
+          search,
+          status,
+          priority,
+          assignee,
+        });
         if (tasksRequestRef.current !== requestId) {
           return;
         }
-        setAppData({ tasks: tasksData });
+        setAppData({ tasks: payload.results });
+        setTasksPage(page);
+        setTasksTotalCount(payload.count);
         tasksLoadedRef.current = true;
         tasksLoadKeyRef.current = loadKey;
       } catch (err) {
@@ -666,6 +700,8 @@ export const useAppData = () => {
     isFinanceDataLoading,
     hasFinanceSnapshotLoaded,
     isTasksLoading,
+    tasksPage,
+    tasksTotalCount,
     isSyncing,
     setIsSyncing,
     error,

@@ -3,39 +3,48 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import { RouteSkeleton } from './RouteSkeleton';
 import type { AppRoutesProps } from './appRoutes.types';
+import {
+  loadClientsView,
+  loadCommissionsView,
+  loadDealsView,
+  loadPoliciesView,
+  loadSellerDashboardView,
+  loadSettingsView,
+  loadTasksView,
+} from './routeLoaders';
 
 const ClientsView = lazy(async () => {
-  const module = await import('../views/ClientsView');
+  const module = await loadClientsView();
   return { default: module.ClientsView };
 });
 
 const DealsView = lazy(async () => {
-  const module = await import('../views/DealsView');
+  const module = await loadDealsView();
   return { default: module.DealsView };
 });
 
 const SellerDashboardView = lazy(async () => {
-  const module = await import('../views/SellerDashboardView');
+  const module = await loadSellerDashboardView();
   return { default: module.SellerDashboardView };
 });
 
 const PoliciesView = lazy(async () => {
-  const module = await import('../views/PoliciesView');
+  const module = await loadPoliciesView();
   return { default: module.PoliciesView };
 });
 
 const CommissionsView = lazy(async () => {
-  const module = await import('../views/CommissionsView');
+  const module = await loadCommissionsView();
   return { default: module.CommissionsView };
 });
 
 const TasksView = lazy(async () => {
-  const module = await import('../views/TasksView');
+  const module = await loadTasksView();
   return { default: module.TasksView };
 });
 
 const SettingsView = lazy(async () => {
-  const module = await import('../views/SettingsView');
+  const module = await loadSettingsView();
   return { default: module.SettingsView };
 });
 
@@ -241,6 +250,8 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               currentUser={data.currentUser}
               isLoading={loading.isTasksLoading}
               onRefreshTasks={loading.onRefreshTasks}
+              page={loading.tasksPage}
+              totalCount={loading.tasksTotalCount}
               onDealSelect={dealsActions.onSelectDeal}
             />
           </Suspense>

@@ -1,6 +1,6 @@
 from apps.common.pagination import StandardPageNumberPagination
 from django.contrib.auth.models import User
-from django.db.models import Count
+from django.db.models import Count, Prefetch
 from rest_framework import permissions, status
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -144,6 +144,19 @@ class UserViewSet(ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardPageNumberPagination
+
+    def get_queryset(self):
+        role_permissions = RolePermission.objects.select_related("permission")
+        user_roles = UserRole.objects.select_related("role").prefetch_related(
+            Prefetch("role__permissions", queryset=role_permissions),
+            "role__users",
+        )
+        return (
+            super()
+            .get_queryset()
+            .order_by("id")
+            .prefetch_related(Prefetch("user_roles", queryset=user_roles))
+        )
 
     def get_serializer_class(self):
         if (

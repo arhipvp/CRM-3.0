@@ -143,6 +143,48 @@ services:
       retries: 3
       start_period: 30s
 
+  external_job_worker:
+    image: crm30-backend:${IMAGE_TAG:-latest}
+    container_name: crm3-external-job-worker
+    entrypoint: ["python", "manage.py", "run_external_job_worker"]
+    environment:
+      DEBUG: ${DEBUG:-False}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 5432
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-crm3}
+      DJANGO_DB_USER: ${DJANGO_DB_USER:-crm3}
+      DJANGO_DB_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
+      OPEN_NOTEBOOK_API_URL: ${OPEN_NOTEBOOK_API_URL}
+      OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD}
+      OPEN_NOTEBOOK_TIMEOUT_SECONDS: ${OPEN_NOTEBOOK_TIMEOUT_SECONDS:-300}
+      OPEN_NOTEBOOK_CONTEXT_LEVEL: ${OPEN_NOTEBOOK_CONTEXT_LEVEL:-full content}
+      OPEN_NOTEBOOK_MEDIA_ROOT: ${OPEN_NOTEBOOK_MEDIA_ROOT:-/app/media}
+      GOOGLE_DRIVE_ROOT_FOLDER_ID: ${GOOGLE_DRIVE_ROOT_FOLDER_ID}
+      GOOGLE_DRIVE_OAUTH_CLIENT_ID: ${GOOGLE_DRIVE_OAUTH_CLIENT_ID}
+      GOOGLE_DRIVE_OAUTH_CLIENT_SECRET: ${GOOGLE_DRIVE_OAUTH_CLIENT_SECRET}
+      GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN: ${GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN}
+      GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE: ${GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE:-/run/crm3-secrets/google_drive_oauth_refresh_token}
+      GOOGLE_DRIVE_OAUTH_TOKEN_URI: ${GOOGLE_DRIVE_OAUTH_TOKEN_URI:-https://oauth2.googleapis.com/token}
+      EXTERNAL_JOB_MAX_ATTEMPTS: ${EXTERNAL_JOB_MAX_ATTEMPTS:-2}
+      EXTERNAL_JOB_STALE_SECONDS: ${EXTERNAL_JOB_STALE_SECONDS:-900}
+      EXTERNAL_JOB_POLL_SECONDS: ${EXTERNAL_JOB_POLL_SECONDS:-1}
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_media:/app/media
+      - ./runtime-secrets:/run/crm3-secrets
+    networks:
+      - crm_network
+    restart: unless-stopped
+    healthcheck:
+      disable: true
+
   frontend:
     build:
       context: ./frontend
@@ -150,6 +192,7 @@ services:
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000/api/v1}
         VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME:-${TELEGRAM_BOT_USERNAME:-}}
+        VITE_PERFORMANCE_ENDPOINT: ${VITE_PERFORMANCE_ENDPOINT:-}
     image: crm30-frontend:${IMAGE_TAG:-latest}
     container_name: crm3-frontend
     expose:

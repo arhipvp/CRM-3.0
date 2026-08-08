@@ -42,7 +42,15 @@ class Client(SoftDeleteModel):
             PostgresTrigramIndex(
                 "name",
                 name="client_name_trgm_idx",
-            )
+            ),
+            PostgresTrigramIndex(
+                "phone",
+                name="client_phone_trgm_idx",
+            ),
+            PostgresTrigramIndex(
+                "email",
+                name="client_email_trgm_idx",
+            ),
         ]
 
     def __str__(self) -> str:

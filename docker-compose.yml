@@ -108,6 +108,36 @@ services:
       retries: 3
       start_period: 30s
 
+  external_job_worker:
+    image: crm30-backend:local
+    container_name: crm3-external-job-worker
+    restart: unless-stopped
+    entrypoint: ["python", "manage.py", "run_external_job_worker"]
+    env_file:
+      - backend/.env
+    environment:
+      DEBUG: "True"
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: "5432"
+      OPEN_NOTEBOOK_MEDIA_ROOT: /app/media
+    depends_on:
+      db:
+        condition: service_healthy
+      backend:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - type: bind
+        source: ${LOCAL_BACKUP_MEDIA_PATH:-./tmp/local-media}
+        target: /app/media
+        read_only: true
+      - ./runtime-secrets:/run/crm3-secrets
+    networks:
+      - crm_network
+    healthcheck:
+      disable: true
+
   frontend:
     build:
       context: ./frontend
@@ -115,6 +145,7 @@ services:
       args:
         VITE_API_URL: ${LOCAL_VITE_API_URL:-/api/v1}
         VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME:-}
+        VITE_PERFORMANCE_ENDPOINT: ${VITE_PERFORMANCE_ENDPOINT:-}
     image: crm30-frontend:local
     container_name: crm3-frontend
     restart: unless-stopped

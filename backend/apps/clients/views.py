@@ -10,9 +10,11 @@ from apps.common.services import manage_drive_files
 from apps.deals.models import Deal
 from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
+from django.db.models import Q
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
+from rest_framework.pagination import PageNumberPagination
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -20,6 +22,7 @@ from .filters import ClientFilterSet
 from .models import Client, ClientMergeSession, ClientSimilarityExclusion
 from .serializers import (
     ClientDuplicateHintsSerializer,
+    ClientLookupSerializer,
     ClientMergePreviewSerializer,
     ClientMergeSerializer,
     ClientSerializer,
@@ -30,6 +33,12 @@ from .serializers import (
 CLIENT_MERGE_PERMISSION_MESSAGE = (
     "Только авторизованный пользователь может объединять клиентов."
 )
+
+
+class ClientLookupPagination(PageNumberPagination):
+    page_size = 20
+    page_size_query_param = "page_size"
+    max_page_size = 100
 
 
 class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -59,6 +68,22 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         queryset = Client.objects.alive().order_by("-created_at")
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="lookup")
+    def lookup(self, request):
+        search = str(request.query_params.get("search") or "").strip()
+        queryset = self.get_queryset().only("id", "name", "phone", "email")
+        if search:
+            queryset = queryset.filter(
+                Q(name__icontains=search)
+                | Q(phone__icontains=search)
+                | Q(email__icontains=search)
+            )
+
+        paginator = ClientLookupPagination()
+        page = paginator.paginate_queryset(queryset, request, view=self)
+        serializer = ClientLookupSerializer(page, many=True)
+        return paginator.get_paginated_response(serializer.data)
 
     def partial_update(self, request, *args, **kwargs):
         client = self.get_object()

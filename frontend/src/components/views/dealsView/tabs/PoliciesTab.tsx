@@ -162,7 +162,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
     showUnpaidRecordsOnly,
     sortedPolicies,
   ]);
-  const documentsByPolicyId = usePolicyDocuments(visiblePolicies);
+  const { documentsByPolicyId, loadPolicyDocuments } = usePolicyDocuments();
 
   if (!selectedDeal) {
     return null;
@@ -471,7 +471,10 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         <p className="text-xl font-bold text-slate-900 leading-tight">
                           {model.number}
                         </p>
-                        <PolicyDocumentsList state={policyDocuments} />
+                        <PolicyDocumentsList
+                          state={policyDocuments}
+                          onLoad={() => void loadPolicyDocuments(policy)}
+                        />
                       </td>
                       <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
                         <div className="space-y-1.5">

@@ -19,6 +19,23 @@ export async function fetchClientsWithPagination(
   return fetchClientsPage(`/clients/${qs}`);
 }
 
+export async function fetchClientLookup(
+  search: string,
+  options?: { pageSize?: number; signal?: AbortSignal },
+): Promise<PaginatedResponse<Client>> {
+  const qs = buildQueryString({ search: search.trim(), page_size: options?.pageSize ?? 20 });
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+    `/clients/lookup/${qs}`,
+    { signal: options?.signal },
+  );
+  return {
+    count: payload.count || 0,
+    next: payload.next || null,
+    previous: payload.previous || null,
+    results: unwrapList<Record<string, unknown>>(payload).map(mapClient),
+  };
+}
+
 const API_BASE_PATH = (() => {
   try {
     const parsed = new URL(API_BASE, 'http://localhost');

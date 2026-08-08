@@ -14,6 +14,8 @@ from apps.common.drive import (
     serialize_drive_error,
 )
 from apps.common.services import manage_drive_files
+from apps.documents.external_jobs import create_external_job, serialize_external_job
+from apps.documents.models import ExternalJob
 from apps.users.models import AuditLog
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -147,6 +149,15 @@ class DealDriveMixin:
 
         if request.method == "GET":
             parent_id = (request.query_params.get("parent_id") or "").strip()
+            if request.query_params.get("async") in {"1", "true"}:
+                job = create_external_job(
+                    kind=ExternalJob.Kind.DEAL_DRIVE_LIST,
+                    payload={"deal_id": str(deal.id), "parent_id": parent_id},
+                    user=request.user,
+                )
+                return Response(
+                    serialize_external_job(job), status=status.HTTP_202_ACCEPTED
+                )
             try:
                 folder_id = ensure_deal_folder(deal) or deal.drive_folder_id
                 if not folder_id:

@@ -81,6 +81,46 @@ class DealEmbedTests(AuthenticatedAPITestCase):
         self.assertNotIn("documents", row)
         self.assertNotIn("policies", row)
 
+    def test_default_list_omits_expensive_metrics(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"show_closed": "1", "embed": "none"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        row = self._first_result(response)
+        self.assertNotIn("client_active_deals_count", row)
+        self.assertNotIn("payments_total", row)
+        self.assertNotIn("payments_paid", row)
+        self.assertIn("is_pinned", row)
+
+    def test_list_metrics_are_opt_in(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"show_closed": "1", "embed": "none", "include": "metrics"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        row = self._first_result(response)
+        self.assertEqual(row["client_active_deals_count"], 1)
+        self.assertEqual(row["payments_total"], "0.00")
+        self.assertEqual(row["payments_paid"], "0.00")
+
+    def test_list_fields_can_request_one_metric(self):
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"show_closed": "1", "fields": "payments_total"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        row = self._first_result(response)
+        self.assertIn("payments_total", row)
+        self.assertNotIn("payments_paid", row)
+        self.assertNotIn("client_active_deals_count", row)
+
     def test_retrieve_excludes_policies_by_default(self):
         response = self.api_client.get(
             f"/api/v1/deals/{self.deal.id}/",

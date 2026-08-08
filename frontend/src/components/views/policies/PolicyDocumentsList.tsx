@@ -2,11 +2,17 @@ import type { PolicyDocumentsState } from './usePolicyDocuments';
 
 interface PolicyDocumentsListProps {
   state: PolicyDocumentsState;
+  onLoad?: () => void;
 }
 
-export const PolicyDocumentsList: React.FC<PolicyDocumentsListProps> = ({ state }) => (
+export const PolicyDocumentsList: React.FC<PolicyDocumentsListProps> = ({ state, onLoad }) => (
   <div className="mt-2 min-w-0 text-xs leading-5">
     <div className="font-medium text-slate-500">Документы</div>
+    {state.status === 'idle' ? (
+      <button type="button" className="font-medium text-blue-700 hover:underline" onClick={onLoad}>
+        Показать документы
+      </button>
+    ) : null}
     {state.status === 'loading' ? <div className="text-slate-400">Загрузка документов…</div> : null}
     {state.status === 'error' ? (
       <div className="text-amber-600">Не удалось загрузить документы</div>

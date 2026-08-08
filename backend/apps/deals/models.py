@@ -181,7 +181,11 @@ class Deal(SoftDeleteModel):
             PostgresTrigramIndex(
                 "title",
                 name="deal_title_trgm_idx",
-            )
+            ),
+            PostgresTrigramIndex(
+                "description",
+                name="deal_descr_trgm_idx",
+            ),
         ]
 
     def __str__(self) -> str:

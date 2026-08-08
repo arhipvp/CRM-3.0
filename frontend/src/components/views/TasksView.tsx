@@ -4,6 +4,7 @@ import { FilterParams } from '../../api';
 import { DEFAULT_TASKS_API_ORDERING } from '../../api/tasks';
 import type { Task, TaskPriority, User } from '../../types';
 import { FilterBar } from '../FilterBar';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { PRIORITY_LABELS, STATUS_LABELS } from '../tasks/constants';
 import { TaskTable } from '../tasks/TaskTable';
@@ -12,6 +13,7 @@ type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenCreatedAt';
 
 const DEFAULT_TASKS_SORTING = 'priorityThenCreatedAt';
 const DEFAULT_TASKS_FILTERS: FilterParams = { ordering: DEFAULT_TASKS_SORTING };
+const TASKS_PAGE_SIZE = 50;
 
 const TASK_SORT_OPTIONS = [
   { value: DEFAULT_TASKS_SORTING, label: 'Сначала срочные, затем старые' },
@@ -77,7 +79,15 @@ interface TasksViewProps {
     showDeleted?: boolean;
     activeOnly?: boolean;
     ordering?: string;
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    status?: string;
+    priority?: string;
+    assignee?: string;
   }) => Promise<void>;
+  page?: number;
+  totalCount?: number;
   onDealSelect?: (dealId: string) => void;
 }
 
@@ -87,10 +97,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
   isLoading = false,
   onRefreshTasks,
   onDealSelect,
+  page = 1,
+  totalCount = 0,
 }) => {
   const navigate = useNavigate();
   const [filters, setFilters] = useState<FilterParams>(DEFAULT_TASKS_FILTERS);
-  const lastArchiveLoadKeyRef = useRef('false:true');
+  const lastLoadKeyRef = useRef('');
+  const debouncedSearch = useDebouncedValue(String(filters.search ?? '').trim(), 300);
 
   const handleDealClick = useCallback(
     (dealId?: string) => {
@@ -103,25 +116,58 @@ export const TasksView: React.FC<TasksViewProps> = ({
     [navigate, onDealSelect],
   );
 
+  const requestTaskPage = useCallback(
+    (requestedPage: number) => {
+      const showDeleted = String(filters.show_deleted) === 'true';
+      const showCompleted = String(filters.show_completed) === 'true';
+      const selectedStatus = String(filters.taskStatus ?? '');
+      const activeOnly =
+        !showDeleted &&
+        !showCompleted &&
+        selectedStatus !== 'done' &&
+        selectedStatus !== 'canceled';
+      const rawOrdering = String(filters.ordering || DEFAULT_TASKS_SORTING);
+      const ordering =
+        rawOrdering === DEFAULT_TASKS_SORTING
+          ? DEFAULT_TASKS_API_ORDERING
+          : rawOrdering.replace('dueAt', 'due_at').replace('createdAt', 'created_at');
+      const status = String(filters.taskStatus ?? '') || undefined;
+      const priority = String(filters.priority ?? '') || undefined;
+      const assignee = String(filters.only_my_tasks) === 'true' ? currentUser?.id : undefined;
+      const loadKey = JSON.stringify({
+        showDeleted,
+        activeOnly,
+        ordering,
+        debouncedSearch,
+        status,
+        priority,
+        assignee,
+        page: requestedPage,
+      });
+      if (loadKey === lastLoadKeyRef.current) {
+        return;
+      }
+      lastLoadKeyRef.current = loadKey;
+      const refreshPromise = onRefreshTasks?.({
+        force: true,
+        ordering,
+        showDeleted,
+        activeOnly,
+        page: requestedPage,
+        pageSize: TASKS_PAGE_SIZE,
+        search: debouncedSearch || undefined,
+        status,
+        priority,
+        assignee,
+      });
+      refreshPromise?.catch(() => undefined);
+    },
+    [currentUser?.id, debouncedSearch, filters, onRefreshTasks],
+  );
+
   useEffect(() => {
-    const showDeleted = String(filters.show_deleted) === 'true';
-    const showCompleted = String(filters.show_completed) === 'true';
-    const selectedStatus = String(filters.taskStatus ?? '');
-    const activeOnly =
-      !showDeleted && !showCompleted && selectedStatus !== 'done' && selectedStatus !== 'canceled';
-    const archiveLoadKey = `${showDeleted}:${activeOnly}`;
-    if (archiveLoadKey === lastArchiveLoadKeyRef.current) {
-      return;
-    }
-    lastArchiveLoadKeyRef.current = archiveLoadKey;
-    const refreshPromise = onRefreshTasks?.({
-      force: true,
-      ordering: DEFAULT_TASKS_API_ORDERING,
-      showDeleted,
-      activeOnly,
-    });
-    refreshPromise?.catch(() => undefined);
-  }, [filters.show_completed, filters.show_deleted, filters.taskStatus, onRefreshTasks]);
+    requestTaskPage(page);
+  }, [page, requestTaskPage]);
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -254,7 +300,40 @@ export const TasksView: React.FC<TasksViewProps> = ({
           Загружаем задачи...
         </div>
       ) : filteredTasks.length ? (
-        <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
+        <>
+          <TaskTable tasks={filteredTasks} onDealClick={handleDealClick} />
+          {totalCount > TASKS_PAGE_SIZE ? (
+            <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
+              <span>
+                Страница {page} из {Math.ceil(totalCount / TASKS_PAGE_SIZE)} · всего {totalCount}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className={BTN_SM_SECONDARY}
+                  disabled={page <= 1 || isLoading}
+                  onClick={() => {
+                    lastLoadKeyRef.current = '';
+                    requestTaskPage(page - 1);
+                  }}
+                >
+                  Назад
+                </button>
+                <button
+                  type="button"
+                  className={BTN_SM_SECONDARY}
+                  disabled={page >= Math.ceil(totalCount / TASKS_PAGE_SIZE) || isLoading}
+                  onClick={() => {
+                    lastLoadKeyRef.current = '';
+                    requestTaskPage(page + 1);
+                  }}
+                >
+                  Далее
+                </button>
+              </div>
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className="space-y-4">
           <div

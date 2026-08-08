@@ -38,6 +38,9 @@ if SECRET_KEY == "unsafe-dev-key":  # pragma: allowlist secret
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default="False").lower() in ("true", "1", "yes")
+PERFORMANCE_TIMING_ENABLED = config(
+    "PERFORMANCE_TIMING_ENABLED", default="False"
+).lower() in ("true", "1", "yes")
 
 raw_allowed_hosts = config("ALLOWED_HOSTS", default="")
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(",") if host.strip()]
@@ -97,6 +100,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "apps.common.middleware.PerformanceTimingMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -241,6 +245,9 @@ OPEN_NOTEBOOK_MEDIA_ROOT = config("OPEN_NOTEBOOK_MEDIA_ROOT", default=str(MEDIA_
 OPEN_NOTEBOOK_CONTEXT_LEVEL = config(
     "OPEN_NOTEBOOK_CONTEXT_LEVEL", default="full content"
 )
+EXTERNAL_JOB_MAX_ATTEMPTS = config("EXTERNAL_JOB_MAX_ATTEMPTS", default=2, cast=int)
+EXTERNAL_JOB_STALE_SECONDS = config("EXTERNAL_JOB_STALE_SECONDS", default=900, cast=int)
+EXTERNAL_JOB_POLL_SECONDS = config("EXTERNAL_JOB_POLL_SECONDS", default=1.0, cast=float)
 
 TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 TELEGRAM_BOT_USERNAME = config("TELEGRAM_BOT_USERNAME", default="")

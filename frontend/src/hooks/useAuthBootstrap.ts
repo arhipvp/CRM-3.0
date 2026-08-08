@@ -27,7 +27,7 @@ export const useAuthBootstrap = (loadData: () => Promise<void>) => {
         const user = mapApiUser(userData);
         setCurrentUser(user);
         setIsAuthenticated(true);
-        await loadData();
+        void loadData().catch(() => undefined);
       } catch {
         setIsAuthenticated(false);
         setCurrentUser(null);
@@ -44,7 +44,7 @@ export const useAuthBootstrap = (loadData: () => Promise<void>) => {
     const user = mapApiUser(userData);
     setCurrentUser(user);
     setIsAuthenticated(true);
-    await loadData();
+    void loadData().catch(() => undefined);
   }, [loadData]);
 
   return {

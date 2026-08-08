@@ -124,7 +124,7 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_roles(self, obj):
         """Список названий ролей пользователя"""
-        return obj.user_roles.values_list("role__name", flat=True)
+        return [user_role.role.name for user_role in obj.user_roles.all()]
 
 
 class UserDetailSerializer(UserSerializer):

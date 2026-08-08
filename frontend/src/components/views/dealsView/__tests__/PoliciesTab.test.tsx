@@ -124,6 +124,7 @@ describe('PoliciesTab', () => {
       sortedPolicies: [buildPolicy({ driveFolderId: 'drive-folder-1' })],
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Показать документы' }));
     const fileLink = await screen.findByRole('link', { name: 'policy.pdf' });
     expect(fileLink).toHaveAttribute('href', 'https://drive.google.com/file/d/file-1/view');
     expect(fileLink).toHaveAttribute('target', '_blank');
@@ -141,6 +142,7 @@ describe('PoliciesTab', () => {
       sortedPolicies: [buildPolicy({ id: 'policy-empty', driveFolderId: 'drive-folder-empty' })],
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Показать документы' }));
     expect(await screen.findByText('Нет документов')).toBeInTheDocument();
 
     mockedFetchPolicyDriveFiles.mockRejectedValueOnce(new Error('Google Drive недоступен'));
@@ -167,6 +169,8 @@ describe('PoliciesTab', () => {
         onRequestEditPolicy={vi.fn()}
       />,
     );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Показать документы' }));
 
     expect(await screen.findByText('Не удалось загрузить документы')).toBeInTheDocument();
   });

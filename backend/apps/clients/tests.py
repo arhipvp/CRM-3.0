@@ -18,6 +18,7 @@ from django.contrib.auth.models import User
 from django.db import ProgrammingError
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
 
 
@@ -1331,6 +1332,27 @@ class ClientSimilarityAPITests(AuthenticatedAPITestCase):
         self.assertGreaterEqual(target_hint["candidate_count"], 1)
         self.assertGreaterEqual(target_hint["max_score"], 70)
         self.assertIn("same_phone", target_hint["reasons"])
+
+    def test_lookup_returns_compact_paginated_clients(self):
+        self.authenticate(self.owner)
+        response = self.api_client.get(
+            "/api/v1/clients/lookup/",
+            {"search": "Иванов", "page_size": 20},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertGreaterEqual(response.data["count"], 1)
+        self.assertIsNone(response.data["next"])
+        row = next(
+            item
+            for item in response.data["results"]
+            if item["id"] == str(self.target.id)
+        )
+        self.assertEqual(
+            set(row),
+            {"id", "name", "phone", "email"},
+        )
+        self.assertEqual(row["id"], str(self.target.id))
 
     def test_similarity_exclusion_endpoint_is_idempotent(self):
         self.authenticate(self.owner)
