@@ -618,7 +618,10 @@ class AuthenticationTest(APITestCase):
         UserRole.objects.create(user=self.user, role=second_role)
         login_response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "testuser", "password": "testpass123"},
+            {
+                "username": "testuser",
+                "password": "testpass123",  # pragma: allowlist secret
+            },
             format="json",
         )
         self.client.credentials(

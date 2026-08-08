@@ -569,7 +569,7 @@ class DriveReconnectApiTests(TestCase):
         GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID=0,
         GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME="Vova",
         GOOGLE_DRIVE_OAUTH_CLIENT_ID="test-client-id",
-        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="test-client-secret",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="test-client-secret",  # pragma: allowlist secret
         GOOGLE_DRIVE_OAUTH_REDIRECT_URI="https://crm.example.test/drive-callback/",
     )
     def test_drive_reconnect_returns_google_auth_url_for_configured_user(self):
