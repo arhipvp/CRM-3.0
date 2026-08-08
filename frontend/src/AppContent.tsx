@@ -73,6 +73,7 @@ const AppContent: React.FC = () => {
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureReferenceData,
+    ensureClientLoaded,
     ensureTasksLoaded,
     refreshDeals,
     invalidateDealsCache,
@@ -314,6 +315,35 @@ const AppContent: React.FC = () => {
     ? (dealsById.get(effectiveSelectedDealId) ?? null)
     : null;
 
+  useEffect(() => {
+    const missingClientIds = new Set<string>();
+    for (const deal of [selectedDeal, previewDeal]) {
+      if (deal?.clientId && !clientsById.has(deal.clientId)) {
+        missingClientIds.add(deal.clientId);
+      }
+    }
+    missingClientIds.forEach((clientId) => {
+      void ensureClientLoaded(clientId).catch(() => undefined);
+    });
+  }, [clientsById, ensureClientLoaded, previewDeal, selectedDeal]);
+
+  const handleClientOpenById = useCallback(
+    async (clientId: string) => {
+      try {
+        const client = await ensureClientLoaded(clientId);
+        if (!client) throw new Error('Клиент не найден');
+        handleClientEditRequest(client);
+      } catch (err) {
+        addNotification(
+          err instanceof Error ? err.message : 'Не удалось загрузить клиента',
+          'error',
+        );
+        throw err;
+      }
+    },
+    [addNotification, ensureClientLoaded, handleClientEditRequest],
+  );
+
   const openDealCreateModal = useCallback(() => {
     setModal('deal');
   }, []);
@@ -553,31 +583,38 @@ const AppContent: React.FC = () => {
     openDealPreview: handleOpenDealPreview,
   });
 
-  const { paletteMode, openCommandsPalette, closePalette, commandItems, taskDealItems } =
-    useAppInteractionShell({
-      clients,
-      clientsById,
-      deals,
-      isClientsRoute,
-      isDealsRoute,
-      isPoliciesRoute,
-      isTasksRoute,
-      navigate: (path) => navigate(path),
-      policiesList,
-      setQuickTaskDealId,
-      tasks,
-      handleClientDeleteRequest,
-      handleClientEditRequest,
-      handleRequestEditPolicy,
-      handleUpdateTask,
-      cycleSelectedDeal,
-      dealPreview,
-      deleteSelectedDeal,
-      openClientCreateModal,
-      openDealCreateModal,
-      openSelectedDealPreview,
-      restoreSelectedDeal,
-    });
+  const {
+    paletteMode,
+    openCommandsPalette,
+    closePalette,
+    commandItems,
+    taskDealItems,
+    taskDealLoading,
+    setTaskDealQuery,
+  } = useAppInteractionShell({
+    clients,
+    clientsById,
+    deals,
+    isClientsRoute,
+    isDealsRoute,
+    isPoliciesRoute,
+    isTasksRoute,
+    navigate: (path) => navigate(path),
+    policiesList,
+    setQuickTaskDealId,
+    tasks,
+    handleClientDeleteRequest,
+    handleClientEditRequest,
+    handleRequestEditPolicy,
+    handleUpdateTask,
+    cycleSelectedDeal,
+    dealPreview,
+    deleteSelectedDeal,
+    openClientCreateModal,
+    openDealCreateModal,
+    openSelectedDealPreview,
+    restoreSelectedDeal,
+  });
 
   const handleLogout = useCallback(() => {
     clearTokens();
@@ -632,6 +669,7 @@ const AppContent: React.FC = () => {
   const routeDealsActions = useMemo<AppRouteDealsActions>(
     () => ({
       onClientEdit: handleClientEditRequest,
+      onClientOpenById: handleClientOpenById,
       onClientDelete: handleClientDeleteRequest,
       onClientMerge: handleClientMergeRequest,
       onClientFindSimilar: handleClientFindSimilarRequest,
@@ -696,6 +734,7 @@ const AppContent: React.FC = () => {
       handleCheckDealMailbox,
       handleClientDeleteRequest,
       handleClientEditRequest,
+      handleClientOpenById,
       handleClientFindSimilarRequest,
       handleClientMergeRequest,
       handleNormalizeClientName,
@@ -908,10 +947,15 @@ const AppContent: React.FC = () => {
     previewSellerUser,
     previewExecutorUser,
     onClose: dealPreview.handleCloseDealPreview,
+    onOpenFull: (dealId: string) => {
+      dealPreview.handleCloseDealPreview();
+      navigate(`/deals?dealId=${encodeURIComponent(dealId)}`);
+    },
     panelProps: {
       deals,
       clients,
       onClientEdit: handleClientEditRequest,
+      onClientOpenById: handleClientOpenById,
       policies,
       payments,
       financialRecords,
@@ -1020,6 +1064,8 @@ const AppContent: React.FC = () => {
         paletteMode={paletteMode}
         commandItems={commandItems}
         taskDealItems={taskDealItems}
+        taskDealLoading={taskDealLoading}
+        onTaskDealQueryChange={setTaskDealQuery}
         onClose={closePalette}
       />
       <AppOverlayShell

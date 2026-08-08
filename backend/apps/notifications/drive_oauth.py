@@ -22,22 +22,11 @@ from django.core import signing
 from django.http import HttpRequest
 from django.utils import timezone
 
+from .access import is_drive_reconnect_user
+
 
 class DriveReconnectError(Exception):
     """Raised when the reconnect flow cannot be completed."""
-
-
-def is_drive_reconnect_user(user) -> bool:
-    if not getattr(user, "is_authenticated", False):
-        return False
-
-    allowed_id = int(getattr(settings, "GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID", 4))
-    allowed_username = str(
-        getattr(settings, "GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME", "Vova") or ""
-    ).strip()
-    if allowed_username and user.username == allowed_username:
-        return True
-    return bool(allowed_id and user.id == allowed_id)
 
 
 def get_drive_status_for_user(user) -> dict[str, Any]:
@@ -51,7 +40,7 @@ def get_drive_status_for_user(user) -> dict[str, Any]:
 def build_reconnect_url(*, request: HttpRequest, user) -> str:
     if not is_drive_reconnect_user(user):
         raise DriveReconnectError(
-            "Google Drive reconnect is available only for the Vova account."
+            "Google Drive reconnect is not available for this user."
         )
 
     client_id = str(getattr(settings, "GOOGLE_DRIVE_OAUTH_CLIENT_ID", "") or "").strip()
@@ -102,12 +91,8 @@ def complete_reconnect(*, request: HttpRequest) -> dict[str, Any]:
     except signing.SignatureExpired as exc:
         raise DriveReconnectError("Google OAuth callback state has expired.") from exc
 
-    if payload.get("username") != str(
-        getattr(settings, "GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME", "Vova")
-    ) or int(payload.get("user_id") or 0) != int(
-        getattr(settings, "GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID", 4)
-    ):
-        raise DriveReconnectError("Google OAuth callback user is not allowed.")
+    if not payload.get("username") or not int(payload.get("user_id") or 0):
+        raise DriveReconnectError("Google OAuth callback user is invalid.")
 
     token_payload = _exchange_code_for_token(
         code=code, redirect_uri=_get_redirect_uri(request)

@@ -1,4 +1,4 @@
-import { useEffect, useId, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type ReactNode } from 'react';
 
 import { IconButton } from './common/Button';
 
@@ -10,6 +10,18 @@ const MODAL_SIZE_TO_CLASS: Record<ModalSize, string> = {
   lg: 'max-w-2xl',
   xl: 'max-w-3xl',
 };
+
+const FOCUSABLE_SELECTOR = [
+  'button:not([disabled])',
+  '[href]',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',');
+
+let openModalCount = 0;
+let previousBodyOverflow = '';
 
 interface ModalProps {
   title: string;
@@ -30,7 +42,7 @@ export function Modal({
   onClose,
   children,
   closeOnOverlayClick = false,
-  closeOnEscape = false,
+  closeOnEscape = true,
   hideCloseButton = false,
   size = 'md',
   zIndex = 40,
@@ -40,21 +52,88 @@ export function Modal({
 }: ModalProps) {
   const titleId = useId();
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
 
   useEffect(() => {
-    if (!closeOnEscape) {
-      return;
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    previouslyFocusedElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    if (openModalCount === 0) {
+      previousBodyOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    openModalCount += 1;
+
+    const dialog = dialogRef.current;
+    const initialFocusTarget =
+      dialog?.querySelector<HTMLElement>('[autofocus]') ??
+      dialog?.querySelector<HTMLElement>(FOCUSABLE_SELECTOR) ??
+      dialog;
+    if (!dialog?.querySelector('[role="dialog"][aria-modal="true"]')) {
+      initialFocusTarget?.focus();
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onClose();
+      const topDialog = Array.from(
+        document.querySelectorAll<HTMLDivElement>('[role="dialog"][aria-modal="true"]'),
+      ).at(-1);
+      if (!dialog || topDialog !== dialog) {
+        return;
+      }
+
+      if (event.key === 'Escape' && closeOnEscape) {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== 'Tab') {
+        return;
+      }
+
+      const focusableElements = Array.from(
+        dialog.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR),
+      ).filter(
+        (element) =>
+          !element.closest('[hidden]') &&
+          !element.closest('[aria-hidden="true"]') &&
+          element.getAttribute('aria-disabled') !== 'true',
+      );
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [closeOnEscape, onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      openModalCount = Math.max(0, openModalCount - 1);
+      if (openModalCount === 0) {
+        document.body.style.overflow = previousBodyOverflow;
+      }
+      if (previouslyFocusedElementRef.current?.isConnected) {
+        previouslyFocusedElementRef.current.focus();
+      }
+    };
+  }, [closeOnEscape]);
 
   return (
     <div
@@ -67,11 +146,13 @@ export function Modal({
       }}
     >
       <div
+        ref={dialogRef}
         className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-[var(--app-border)] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
+        tabIndex={-1}
       >
         <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
           <h2 id={titleId} className="min-w-0 break-words text-lg font-semibold text-slate-900">

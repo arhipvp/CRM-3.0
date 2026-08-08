@@ -1,8 +1,10 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Client, ClientDuplicateHint, Deal } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { Pagination } from '../Pagination';
-import { FilterParams } from '../../api';
+import { fetchClientsWithPagination, fetchClientStats, FilterParams } from '../../api';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { DriveFilesModal } from '../DriveFilesModal';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
@@ -44,24 +46,50 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   clientDuplicateHints = {},
   dealsTotalCount,
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filters, setFilters] = useState<FilterParams>({});
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentPage = Math.max(1, Number(searchParams.get('page')) || 1);
+  const initialFilters = useMemo<FilterParams>(
+    () => ({
+      search: searchParams.get('search') || undefined,
+      ordering: searchParams.get('ordering') || '-created_at',
+    }),
+    [searchParams],
+  );
+  const [filters, setFilters] = useState<FilterParams>(initialFilters);
+  const debouncedSearch = useDebouncedValue(String(filters.search ?? '').trim(), 300);
+  const [visibleClients, setVisibleClients] = useState(clients.slice(0, PAGE_SIZE));
+  const [totalClients, setTotalClients] = useState(clients.length);
+  const [newClientsCount, setNewClientsCount] = useState(0);
+  const [isClientsLoading, setIsClientsLoading] = useState(false);
+  const [clientsError, setClientsError] = useState('');
   const [filesModalClient, setFilesModalClient] = useState<Client | null>(null);
   const [actionsClientId, setActionsClientId] = useState<string | null>(null);
 
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
+
   const handleFilterChange = (newFilters: FilterParams) => {
     setFilters(newFilters);
-    setCurrentPage(1);
+    const nextParams = new URLSearchParams();
+    if (newFilters.search) nextParams.set('search', String(newFilters.search));
+    if (newFilters.ordering && newFilters.ordering !== '-created_at') {
+      nextParams.set('ordering', String(newFilters.ordering));
+    }
+    setSearchParams(nextParams, { replace: true });
   };
 
   const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+    const nextParams = new URLSearchParams(searchParams);
+    if (page <= 1) nextParams.delete('page');
+    else nextParams.set('page', String(page));
+    setSearchParams(nextParams);
   };
 
   const filteredClients = useMemo(() => {
     const searchTerm = (filters.search ?? '').trim().toLowerCase();
     const ordering = filters.ordering ?? '';
-    let filtered = [...clients];
+    let filtered = [...visibleClients];
 
     if (searchTerm) {
       filtered = filtered.filter((client) => {
@@ -90,12 +118,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
 
     return filtered;
-  }, [clients, filters]);
+  }, [filters, visibleClients]);
 
   const paginatedClients = useMemo(() => {
-    const startIndex = (currentPage - 1) * PAGE_SIZE;
-    return filteredClients.slice(startIndex, startIndex + PAGE_SIZE);
-  }, [filteredClients, currentPage]);
+    return filteredClients;
+  }, [filteredClients]);
 
   const dealCountByClient = useMemo(() => {
     const counts = new Map<string, number>();
@@ -108,15 +135,41 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   }, [deals]);
 
   useEffect(() => {
-    if (filteredClients.length > 0 && paginatedClients.length === 0) {
-      const lastPage = Math.ceil(filteredClients.length / PAGE_SIZE);
-      setCurrentPage(Math.max(1, lastPage));
-    }
-  }, [filteredClients, paginatedClients.length]);
+    const controller = new AbortController();
+    setIsClientsLoading(true);
+    setClientsError('');
+    void Promise.all([
+      fetchClientsWithPagination(
+        {
+          page: currentPage,
+          page_size: PAGE_SIZE,
+          search: debouncedSearch || undefined,
+          ordering: filters.ordering || '-created_at',
+        },
+        { signal: controller.signal },
+      ),
+      fetchClientStats({ search: debouncedSearch || undefined }, { signal: controller.signal }),
+    ])
+      .then(([payload, stats]) => {
+        if (controller.signal.aborted) return;
+        setVisibleClients(payload.results);
+        setTotalClients(payload.count);
+        setNewClientsCount(stats.createdLast30Days);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setClientsError('Не удалось обновить список клиентов.');
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsClientsLoading(false);
+      });
+    return () => controller.abort();
+  }, [clients, currentPage, debouncedSearch, filters.ordering]);
 
   const totals = {
     active: dealsTotalCount ?? deals.length,
-    clients: clients.length,
+    clients: totalClients,
   };
   const hasPartialDealsMetric = dealsTotalCount === undefined && deals.length > 0;
 
@@ -130,17 +183,6 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
     }
     return 'Клиентов не найдено.';
   }, [clients.length, filters.search]);
-
-  const newClientsCount = useMemo(() => {
-    const threshold = Date.now() - 30 * 24 * 60 * 60 * 1000;
-    return clients.filter((client) => {
-      if (!client.createdAt) {
-        return false;
-      }
-      const parsed = Date.parse(client.createdAt);
-      return !Number.isNaN(parsed) && parsed >= threshold;
-    }).length;
-  }, [clients]);
 
   return (
     <div className="space-y-6">
@@ -164,6 +206,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
 
       <FilterBar
         onFilterChange={handleFilterChange}
+        initialFilters={initialFilters}
         searchPlaceholder="Поиск по имени или телефону..."
         sortOptions={[
           { value: '-created_at', label: 'Новые' },
@@ -172,6 +215,8 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           { value: '-name', label: 'Имя (Я-А)' },
         ]}
       />
+
+      {clientsError ? <p className="text-sm text-rose-700">{clientsError}</p> : null}
 
       <DataTableShell>
         <table
@@ -197,7 +242,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
           </thead>
           <tbody className="bg-white">
             {paginatedClients.map((client) => {
-              const clientDealsCount = dealCountByClient.get(client.id) ?? 0;
+              const clientDealsCount = client.dealCount ?? dealCountByClient.get(client.id) ?? 0;
               const whatsAppLink = buildWhatsAppLink(client.phone);
               return (
                 <tr key={client.id} className={`${TABLE_ROW_CLASS} hover:bg-blue-50/60`}>
@@ -328,10 +373,11 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
         </table>
       </DataTableShell>
 
-      {filteredClients.length > PAGE_SIZE && (
+      {isClientsLoading ? <p className="text-sm text-slate-500">Обновляем список…</p> : null}
+      {totalClients > PAGE_SIZE && (
         <Pagination
           currentPage={currentPage}
-          totalItems={filteredClients.length}
+          totalItems={totalClients}
           pageSize={PAGE_SIZE}
           onPageChange={handlePageChange}
         />

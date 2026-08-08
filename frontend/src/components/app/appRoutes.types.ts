@@ -43,6 +43,7 @@ export interface AppRouteDataBundle {
 
 export interface AppRouteDealsActions {
   onClientEdit: (client: Client) => void;
+  onClientOpenById: (clientId: string) => Promise<void>;
   onClientDelete: (client: Client) => void;
   onClientMerge: (client: Client) => void;
   onClientFindSimilar: (client: Client) => void;

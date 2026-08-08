@@ -16,7 +16,7 @@ describe('Modal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it('does not close on Escape by default', () => {
+  it('closes on Escape by default', () => {
     const onClose = vi.fn();
     render(
       <Modal title="Test modal" onClose={onClose}>
@@ -24,7 +24,19 @@ describe('Modal', () => {
       </Modal>,
     );
 
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('allows Escape closing to be disabled', () => {
+    const onClose = vi.fn();
+    render(
+      <Modal title="Test modal" onClose={onClose} closeOnEscape={false}>
+        <div>Body</div>
+      </Modal>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -88,5 +100,51 @@ describe('Modal', () => {
 
     expect(body?.className).toContain('overflow-hidden');
     expect(body?.className).not.toContain('overflow-y-auto');
+  });
+
+  it('closes only the top dialog on Escape', () => {
+    const closeParent = vi.fn();
+    const closeChild = vi.fn();
+    render(
+      <Modal title="Parent" onClose={closeParent}>
+        <Modal title="Child" onClose={closeChild}>
+          <button type="button">Child action</button>
+        </Modal>
+      </Modal>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(closeChild).toHaveBeenCalledTimes(1);
+    expect(closeParent).not.toHaveBeenCalled();
+  });
+
+  it('traps focus and restores it after closing', () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const { unmount } = render(
+      <Modal title="Focus modal" onClose={vi.fn()}>
+        <button type="button">First action</button>
+        <button type="button">Last action</button>
+      </Modal>,
+    );
+
+    const closeButton = screen.getByRole('button', { name: 'Закрыть' });
+    const lastButton = screen.getByRole('button', { name: 'Last action' });
+    expect(closeButton).toHaveFocus();
+
+    lastButton.focus();
+    fireEvent.keyDown(document, { key: 'Tab' });
+    expect(closeButton).toHaveFocus();
+
+    closeButton.focus();
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
+    expect(lastButton).toHaveFocus();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    unmount();
+    expect(trigger).toHaveFocus();
+    expect(document.body.style.overflow).toBe('');
+    trigger.remove();
   });
 });

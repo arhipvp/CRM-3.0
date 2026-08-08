@@ -33,19 +33,19 @@ describe('DealActions', () => {
     fireEvent.click(screen.getByText('Редактировать'));
     expect(baseProps.onEdit).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Удалить'));
+    fireEvent.click(screen.getByText('Удалить сделку'));
     expect(baseProps.onDelete).toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Закрыть'));
     expect(baseProps.onClose).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Объединить'));
+    fireEvent.click(screen.getByText('Объединить сделки'));
     expect(baseProps.onMerge).toHaveBeenCalled();
 
     fireEvent.click(screen.getByText('Похожие сделки'));
     expect(baseProps.onSimilar).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByText('Обновить'));
+    fireEvent.click(screen.getByText('Обновить данные'));
     expect(baseProps.onRefresh).toHaveBeenCalled();
   });
 
@@ -57,7 +57,7 @@ describe('DealActions', () => {
 
   it('shows restore button when deal deleted and calls restore', () => {
     render(<DealActions {...baseProps} isSelectedDealDeleted onRestore={baseProps.onRestore} />);
-    fireEvent.click(screen.getByText('Восстановить'));
+    fireEvent.click(screen.getByText('Восстановить сделку'));
     expect(baseProps.onRestore).toHaveBeenCalled();
   });
 });

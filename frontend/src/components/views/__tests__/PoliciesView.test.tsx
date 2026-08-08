@@ -94,6 +94,28 @@ describe('PoliciesView', () => {
     vi.mocked(fetchPolicyDriveFiles).mockResolvedValue({ files: [], folderId: null });
   });
 
+  it('loads and opens a policy client that is outside the reference page', async () => {
+    const openClient = vi.fn().mockResolvedValue(undefined);
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[
+              buildPolicy({ clientId: 'client-outside-page', clientName: 'Внешний клиент' }),
+            ]}
+            payments={[]}
+            clients={[]}
+            onClientOpenById={openClient}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Внешний клиент' }));
+
+    await waitFor(() => expect(openClient).toHaveBeenCalledWith('client-outside-page'));
+  });
+
   it('renders direct policy files and folders as safe Drive links below the policy number', async () => {
     vi.mocked(fetchPolicyDriveFiles).mockResolvedValue({
       files: [

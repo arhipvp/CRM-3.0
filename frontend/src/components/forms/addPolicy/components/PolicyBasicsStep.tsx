@@ -1,6 +1,7 @@
 import React from 'react';
 
 import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../../types';
+import { Combobox } from '../../../common/forms/Combobox';
 
 interface PolicyBasicsStepProps {
   number: string;
@@ -89,8 +90,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
     <div className="space-y-4">
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="app-label">Номер полиса *</label>
+          <label className="app-label" htmlFor="policy-number-input">
+            Номер полиса *
+          </label>
           <input
+            id="policy-number-input"
             type="text"
             value={number}
             onChange={(event) => onNumberChange(event.target.value)}
@@ -99,8 +103,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
           />
         </div>
         <div>
-          <label className="app-label">Страховая компания *</label>
+          <label className="app-label" htmlFor="policy-company-select">
+            Страховая компания *
+          </label>
           <select
+            id="policy-company-select"
             value={insuranceCompanyId}
             onChange={(event) => onInsuranceCompanyChange(event.target.value)}
             disabled={loadingOptions}
@@ -118,8 +125,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="app-label">Тип страхования *</label>
+          <label className="app-label" htmlFor="policy-type-select">
+            Тип страхования *
+          </label>
           <select
+            id="policy-type-select"
             value={insuranceTypeId}
             onChange={(event) => onInsuranceTypeChange(event.target.value)}
             disabled={loadingOptions}
@@ -134,8 +144,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
           </select>
         </div>
         <div>
-          <label className="app-label">Канал продаж</label>
+          <label className="app-label" htmlFor="policy-sales-channel-select">
+            Канал продаж
+          </label>
           <select
+            id="policy-sales-channel-select"
             value={salesChannelId}
             onChange={(event) => onSalesChannelChange(event.target.value)}
             disabled={loadingOptions}
@@ -152,41 +165,25 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
       </div>
 
       <div>
-        <label className="app-label">Страхователь</label>
+        <label className="app-label" htmlFor="policy-client-combobox">
+          Страхователь
+        </label>
         <div className="mt-2 relative flex flex-col gap-2">
           <div className="relative flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={clientQuery}
-                onFocus={onClientQueryFocus}
-                onChange={(event) => onClientQueryChange(event.target.value)}
-                onBlur={onClientQueryBlur}
-                className="field field-input"
-                placeholder="Начните вводить клиента"
-              />
-              {showClientSuggestions && (
-                <div className="absolute inset-x-0 top-full z-10 mt-2 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                  {filteredClients.length ? (
-                    filteredClients.map((client) => (
-                      <button
-                        key={client.id}
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          onClientSelect(client);
-                        }}
-                      >
-                        {client.name}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-slate-500">Клиенты не найдены</div>
-                  )}
-                </div>
-              )}
-            </div>
+            <Combobox
+              id="policy-client-combobox"
+              value={clientQuery}
+              options={filteredClients}
+              isOpen={showClientSuggestions}
+              onOpen={onClientQueryFocus}
+              onClose={onClientQueryBlur}
+              onChange={onClientQueryChange}
+              onSelect={onClientSelect}
+              getOptionKey={(client) => client.id}
+              getOptionLabel={(client) => client.name}
+              placeholder="Начните вводить клиента"
+              emptyMessage="Клиенты не найдены"
+            />
             <button
               type="button"
               onClick={onRequestAddClient}
@@ -200,7 +197,7 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label className="app-label">Привязать к транспорту</label>
+          <span className="app-label">Привязать к транспорту</span>
           <label className="flex items-center gap-3 cursor-pointer mt-2">
             <input
               type="checkbox"
@@ -216,8 +213,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
       {isVehicle && (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <div>
-            <label className="app-label">Марка</label>
+            <label className="app-label" htmlFor="policy-vehicle-brand">
+              Марка
+            </label>
             <input
+              id="policy-vehicle-brand"
               list="vehicle-brand-options"
               type="text"
               value={brand}
@@ -232,8 +232,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             </datalist>
           </div>
           <div>
-            <label className="app-label">Модель</label>
+            <label className="app-label" htmlFor="policy-vehicle-model">
+              Модель
+            </label>
             <input
+              id="policy-vehicle-model"
               list="vehicle-model-options"
               type="text"
               value={model}
@@ -248,8 +251,11 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             </datalist>
           </div>
           <div>
-            <label className="app-label">VIN</label>
+            <label className="app-label" htmlFor="policy-vehicle-vin">
+              VIN
+            </label>
             <input
+              id="policy-vehicle-vin"
               type="text"
               value={vin}
               onChange={(event) => onVinChange(event.target.value)}

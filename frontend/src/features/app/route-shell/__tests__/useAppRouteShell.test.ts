@@ -44,6 +44,7 @@ describe('useAppRouteShell', () => {
       },
       routeDealsActions: {
         onClientEdit: () => undefined,
+        onClientOpenById: async () => undefined,
         onClientDelete: () => undefined,
         onClientMerge: () => undefined,
         onClientFindSimilar: () => undefined,

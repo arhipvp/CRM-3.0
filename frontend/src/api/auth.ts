@@ -13,6 +13,7 @@ export interface LoginResponse {
     is_staff: boolean;
     user_roles: UserRole[];
     roles: string[];
+    capabilities?: string[];
     date_joined: string;
   };
 }
@@ -34,6 +35,7 @@ export interface CurrentUserResponse {
   is_superuser?: boolean;
   user_roles?: UserRole[];
   roles?: string[];
+  capabilities?: string[];
 }
 
 export interface ChangePasswordResponse {

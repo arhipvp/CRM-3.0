@@ -79,6 +79,7 @@ const createProps = (): AppRoutesProps => ({
   },
   dealsActions: {
     onClientEdit: noop,
+    onClientOpenById: noopAsync,
     onClientDelete: noop,
     onClientMerge: noop,
     onClientFindSimilar: noop,

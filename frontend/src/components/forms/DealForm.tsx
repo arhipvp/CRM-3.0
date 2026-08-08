@@ -4,6 +4,7 @@ import { useClientLookup } from '../../hooks/useClientLookup';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { getUserColor } from '../../utils/userColor';
 import { DateInput } from '../common/forms/DateInput';
+import { Combobox } from '../common/forms/Combobox';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -216,11 +217,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   }, [clientsById, onPreselectedClientConsumed, preselectedClientId]);
 
   useEffect(() => {
-    if (!clients.length) {
-      setClientId('');
-      setClientQuery('');
-      return;
-    }
+    if (!clients.length) return;
     const selectedClient = clientsById.get(clientId);
     if (selectedClient) {
       return;
@@ -234,8 +231,11 @@ export const DealForm: React.FC<DealFormProps> = ({
       }
       return;
     }
-    setClientId(clients[0].id);
-    setClientQuery(clients[0].name);
+    // The selected client may be outside the compact reference page. Preserve its
+    // id instead of silently replacing the relationship with the first client.
+    if (!clientId && mode === 'create') {
+      setClientQuery('');
+    }
   }, [
     clients,
     clientsById,
@@ -367,8 +367,9 @@ export const DealForm: React.FC<DealFormProps> = ({
     <form onSubmit={handleSubmit} className="space-y-4">
       <FormError message={error} />
 
-      <FormField label="Название" required>
+      <FormField label="Название" htmlFor="deal-title" required>
         <input
+          id="deal-title"
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}
@@ -377,48 +378,23 @@ export const DealForm: React.FC<DealFormProps> = ({
         />
       </FormField>
 
-      <FormField label="Контактное лицо" required>
+      <FormField label="Контактное лицо" htmlFor="deal-client" required>
         <div className="flex flex-col gap-2">
           <div className="relative flex items-center gap-2">
-            <div className="relative flex-1">
-              <input
-                type="text"
-                value={clientQuery}
-                onFocus={() => setShowClientSuggestions(true)}
-                onChange={(event) => {
-                  setClientQuery(event.target.value);
-                  setShowClientSuggestions(true);
-                }}
-                onBlur={() => {
-                  setTimeout(() => setShowClientSuggestions(false), 120);
-                }}
-                className="field field-input"
-                placeholder="Начните вводить имя контактного лица"
-              />
-              {showClientSuggestions && (
-                <div className="absolute inset-x-0 top-full z-10 mt-1 max-h-44 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
-                  {filteredClients.length ? (
-                    filteredClients.slice(0, MAX_CLIENT_SUGGESTIONS).map((client) => (
-                      <button
-                        key={client.id}
-                        type="button"
-                        className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                        onMouseDown={(event) => {
-                          event.preventDefault();
-                          handleClientSelect(client);
-                        }}
-                      >
-                        {client.name}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-slate-600">
-                      Контактное лицо не найдено
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <Combobox
+              id="deal-client"
+              value={clientQuery}
+              options={filteredClients.slice(0, MAX_CLIENT_SUGGESTIONS)}
+              isOpen={showClientSuggestions}
+              onOpen={() => setShowClientSuggestions(true)}
+              onClose={() => setShowClientSuggestions(false)}
+              onChange={setClientQuery}
+              onSelect={handleClientSelect}
+              getOptionKey={(client) => client.id}
+              getOptionLabel={(client) => client.name}
+              placeholder="Начните вводить имя контактного лица"
+              emptyMessage="Контактное лицо не найдено"
+            />
 
             {shouldShowAddClient && (
               <button type="button" onClick={onRequestAddClient} className={BTN_SM_SECONDARY}>

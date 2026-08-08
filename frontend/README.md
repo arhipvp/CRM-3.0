@@ -31,12 +31,16 @@ npm run build        # TypeScript-компиляция и сборка productio
 npm run preview      # Проверка production-сборки локально
 npm run lint         # ESLint по конфигурации `eslint.config.js`
 npm run test         # Vitest с Testing Library и setupTests
+npm run test:e2e     # Playwright desktop smoke (Vite запускается автоматически)
 ```
 
 ## Тестирование и качество
 
 - `npm run lint` проверяет правила ESLint + React hooks.
 - `npm run test` запускает Vitest (настройка в `setupTests.ts`) и выполняет юнит-тесты в `frontend/__tests__/` и `src/__tests__/` (включая mock API и событие в DOM).
+- `npm run test:e2e` проверяет основные desktop-сценарии в viewport 1440×900; перед первым локальным запуском установите Chromium командой `npx playwright install chromium`.
+- Рабочий контекст списков хранится в URL. Для карточки сделки поддерживаются `dealId` и конечный `tab`; preview сделки использует `previewDeal`.
+- Базовые UI-примитивы проверяются `jest-axe`; новые модальные окна, вкладки и combobox должны сохранять клавиатурную навигацию и управление фокусом.
 - `tsconfig.app.json`, `tsconfig.node.json` и `tsconfig.json` обеспечивают строгую типизацию и поддержку библиотеки React.
 
 ## Горячие клавиши

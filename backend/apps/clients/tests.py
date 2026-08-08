@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, timedelta
 from unittest.mock import patch
 
 from apps.clients.models import Client, ClientMergeSession, ClientSimilarityExclusion
@@ -15,8 +15,9 @@ from apps.deals.models import Deal
 from apps.policies.models import Policy
 from apps.users.models import AuditLog
 from django.contrib.auth.models import User
-from django.db import ProgrammingError
+from django.db import ProgrammingError, connection
 from django.test import TestCase
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.test import APIRequestFactory, force_authenticate
@@ -1544,6 +1545,57 @@ class ClientReadAccessAPITests(AuthenticatedAPITestCase):
         client_ids = {item["id"] for item in payload}
         self.assertIn(str(self.owner_client.id), client_ids)
         self.assertIn(str(self.other_client.id), client_ids)
+
+    def test_list_includes_alive_deal_count_without_n_plus_one(self):
+        Deal.objects.create(
+            title="First alive deal",
+            client=self.owner_client,
+            seller=self.owner,
+        )
+        Deal.objects.create(
+            title="Second alive deal",
+            client=self.owner_client,
+            seller=self.owner,
+        )
+        deleted_deal = Deal.objects.create(
+            title="Deleted deal",
+            client=self.owner_client,
+            seller=self.owner,
+        )
+        Deal.objects.filter(pk=deleted_deal.pk).update(deleted_at=timezone.now())
+        for index in range(8):
+            Client.objects.create(
+                name=f"Additional client {index}", created_by=self.owner
+            )
+
+        self.authenticate(self.other)
+        with CaptureQueriesContext(connection) as queries:
+            response = self.api_client.get(
+                "/api/v1/clients/", {"page_size": 20}, format="json"
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.data.get("results", response.data)
+        owner_row = next(
+            item for item in payload if item["id"] == str(self.owner_client.id)
+        )
+        self.assertEqual(owner_row["deal_count"], 2)
+        self.assertLessEqual(len(queries), 5)
+
+    def test_stats_uses_client_filters_and_rolling_30_day_window(self):
+        old_client = Client.objects.create(name="Owner archived", created_by=self.owner)
+        Client.objects.filter(pk=old_client.pk).update(
+            created_at=timezone.now() - timedelta(days=31)
+        )
+        self.authenticate(self.other)
+
+        response = self.api_client.get("/api/v1/clients/stats/", {"name": "Owner"})
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data,
+            {"total": 2, "created_last_30_days": 1},
+        )
 
     def test_detail_returns_foreign_client_for_authenticated_user(self):
         self.authenticate(self.other)

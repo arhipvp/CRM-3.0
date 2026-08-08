@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Client, ClientDuplicateHint, Deal, Payment, PoliciesKPI, Policy } from '../../types';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
 import { useRef } from 'react';
@@ -36,6 +37,7 @@ import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
 import { getPolicyDocumentsState, usePolicyDocuments } from './policies/usePolicyDocuments';
 import { PolicyDocumentsList } from './policies/PolicyDocumentsList';
+import { DateInput } from '../common/forms/DateInput';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -73,6 +75,7 @@ interface PoliciesViewProps {
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onClientEdit?: (client: Client) => void;
+  onClientOpenById?: (clientId: string) => Promise<void>;
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   onRequestEditPolicy?: (policy: Policy) => void;
@@ -102,6 +105,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   clientDuplicateHints = {},
   onDealSelect,
   onDealPreview,
+  onClientOpenById,
   onClientFindSimilar,
   onClientNormalizeName,
   onLoadMorePolicies,
@@ -117,10 +121,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onMarkPaymentPaid,
   onMarkFinancialRecordPaid,
 }) => {
-  const [filters, setFilters] = useState<FilterParams>({ ordering: '-start_date' });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const urlFilters = useMemo<FilterParams>(
+    () => ({
+      ordering: searchParams.get('ordering') || '-start_date',
+      search: searchParams.get('search') || undefined,
+      computed_status: searchParams.get('computed_status') || undefined,
+      sales_channel: searchParams.get('sales_channel') || undefined,
+      unpaid_payments: searchParams.get('unpaid_payments') === 'true' || undefined,
+      unpaid_records: searchParams.get('unpaid_records') === 'true' || undefined,
+      start_date_from: searchParams.get('start_date_from') || undefined,
+      start_date_to: searchParams.get('start_date_to') || undefined,
+      end_date_from: searchParams.get('end_date_from') || undefined,
+      end_date_to: searchParams.get('end_date_to') || undefined,
+    }),
+    [searchParams],
+  );
+  const [filters, setFilters] = useState<FilterParams>(urlFilters);
   const [filterBarVersion, setFilterBarVersion] = useState(0);
   const [presetName, setPresetName] = useState('');
   const [presets, setPresets] = useState<PolicyFilterPreset[]>([]);
+  const [deletingPresetId, setDeletingPresetId] = useState<string | null>(null);
   const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
   const [paymentPaidDate, setPaymentPaidDate] = useState('');
   const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
@@ -137,9 +158,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     expiringDays: 30,
   });
   const [localPoliciesError, setLocalPoliciesError] = useState<string | null>(null);
+  const [openingClientId, setOpeningClientId] = useState<string | null>(null);
   const [kpiError, setKpiError] = useState<string | null>(null);
   const kpiRequestRef = useRef(0);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
+
+  useEffect(() => {
+    setFilters(urlFilters);
+    setFilterBarVersion((value) => value + 1);
+  }, [urlFilters]);
   const clientsById = useMemo(() => {
     const map = new Map<string, Client>();
     clients.forEach((client) => map.set(client.id, client));
@@ -295,8 +322,38 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     setFilterBarVersion((prev) => prev + 1);
   };
 
-  const handleDeletePreset = (presetId: string) => {
-    persistPresets(presets.filter((preset) => preset.id !== presetId));
+  const handleDeletePreset = async (preset: PolicyFilterPreset) => {
+    const confirmed = await confirm({
+      title: 'Удалить пресет?',
+      message: `Пресет «${preset.name}» будет удалён без возможности восстановления.`,
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    setDeletingPresetId(preset.id);
+    persistPresets(presets.filter((item) => item.id !== preset.id));
+    setDeletingPresetId(null);
+  };
+
+  const updateFilters = (nextFilters: FilterParams) => {
+    setFilters(nextFilters);
+    const nextParams = new URLSearchParams();
+    Object.entries(nextFilters).forEach(([key, value]) => {
+      if (value && !(key === 'ordering' && value === '-start_date')) {
+        nextParams.set(key, String(value));
+      }
+    });
+    setSearchParams(nextParams, { replace: true });
+  };
+
+  const setQuickEndPeriod = (days: number) => {
+    const start = new Date();
+    const end = new Date(start);
+    end.setDate(end.getDate() + days);
+    const toIso = (value: Date) => value.toISOString().slice(0, 10);
+    updateFilters({ ...filters, end_date_from: toIso(start), end_date_to: toIso(end) });
+    setFilterBarVersion((value) => value + 1);
   };
 
   const customFilters = [
@@ -484,7 +541,8 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 <button
                   type="button"
                   className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
-                  onClick={() => handleDeletePreset(preset.id)}
+                  onClick={() => void handleDeletePreset(preset)}
+                  disabled={deletingPresetId === preset.id}
                 >
                   ×
                 </button>
@@ -492,13 +550,43 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             ))}
           </div>
         </div>
+        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-2">
+          <label className="text-xs text-slate-600">
+            Окончание с
+            <DateInput
+              aria-label="Окончание с"
+              className="field field-input mt-1 h-8"
+              value={endDateFrom}
+              onChange={(event) => updateFilters({ ...filters, end_date_from: event.target.value })}
+            />
+          </label>
+          <label className="text-xs text-slate-600">
+            Окончание по
+            <DateInput
+              aria-label="Окончание по"
+              className="field field-input mt-1 h-8"
+              value={endDateTo}
+              onChange={(event) => updateFilters({ ...filters, end_date_to: event.target.value })}
+            />
+          </label>
+          {[30, 60, 90].map((days) => (
+            <button
+              key={days}
+              type="button"
+              className={BTN_SM_QUIET}
+              onClick={() => setQuickEndPeriod(days)}
+            >
+              {days} дней
+            </button>
+          ))}
+        </div>
         <FilterBar
           key={`policies-filterbar-${filterBarVersion}`}
-          onFilterChange={setFilters}
+          onFilterChange={updateFilters}
           searchPlaceholder="Поиск по номеру, клиенту или компании..."
           initialFilters={filters}
           sortOptions={POLICY_SORT_OPTIONS}
-          customFilters={customFilters}
+          customFilters={customFilters.filter((filter) => !String(filter.key).includes('date_'))}
           density="compact"
           layout="inline-wrap"
         />
@@ -601,7 +689,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               onFindSimilar={onClientFindSimilar}
                               onNormalizeName={onClientNormalizeName}
                             />
-                            <span>{model.client}</span>
+                            {model.clientId && onClientOpenById ? (
+                              <button
+                                type="button"
+                                className="underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
+                                disabled={openingClientId === model.clientId}
+                                onClick={() => {
+                                  setOpeningClientId(model.clientId);
+                                  void onClientOpenById(model.clientId!)
+                                    .catch(() => undefined)
+                                    .finally(() => {
+                                      setOpeningClientId((current) =>
+                                        current === model.clientId ? null : current,
+                                      );
+                                    });
+                                }}
+                              >
+                                {model.client}
+                              </button>
+                            ) : (
+                              <span>{model.client}</span>
+                            )}
                           </p>
                           {policy.dealId ? (
                             canOpenDeal ? (

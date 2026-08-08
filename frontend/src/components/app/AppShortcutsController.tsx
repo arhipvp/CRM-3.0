@@ -8,6 +8,8 @@ type AppShortcutsControllerProps = {
   paletteMode: PaletteMode;
   commandItems: CommandPaletteItem[];
   taskDealItems: CommandPaletteItem[];
+  taskDealLoading: boolean;
+  onTaskDealQueryChange: (query: string) => void;
   onClose: () => void;
 };
 
@@ -15,6 +17,8 @@ export const AppShortcutsController: React.FC<AppShortcutsControllerProps> = ({
   paletteMode,
   commandItems,
   taskDealItems,
+  taskDealLoading,
+  onTaskDealQueryChange,
   onClose,
 }) => (
   <>
@@ -31,6 +35,8 @@ export const AppShortcutsController: React.FC<AppShortcutsControllerProps> = ({
       placeholder="Поиск сделки или клиента..."
       emptyMessage="Не найдено подходящих сделок для создания задачи."
       items={taskDealItems}
+      isLoading={taskDealLoading}
+      onQueryChange={onTaskDealQueryChange}
       onClose={onClose}
     />
   </>

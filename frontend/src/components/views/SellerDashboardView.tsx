@@ -573,6 +573,9 @@ export const SellerDashboardView: React.FC = () => {
   const tasksCurrent = dashboard?.tasksCurrent ?? 0;
   const tasksCompleted = dashboard?.tasksCompleted ?? 0;
   const isEmpty = !isLoading && policies.length === 0;
+  const policyDrilldownHref = dashboard?.rangeStart
+    ? `/policies?start_date_from=${encodeURIComponent(dashboard.rangeStart)}&start_date_to=${encodeURIComponent(dashboard.rangeEnd)}`
+    : '/policies';
 
   const paymentsSeries = useMemo(() => {
     if (!dashboard?.rangeStart || !dashboard?.rangeEnd) {
@@ -907,26 +910,38 @@ export const SellerDashboardView: React.FC = () => {
             <p className="text-sm text-slate-600">{periodLabel}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-right">
+            <a
+              href={policyDrilldownHref}
+              aria-label="Открыть полисы выбранного периода"
+              className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-right transition hover:border-blue-300 hover:shadow-sm"
+            >
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
                 Сумма оплаченных платежей
               </p>
               <p className="text-2xl font-semibold text-slate-900">
                 {formatCurrencyRu(totalPaid, '—')}
               </p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm">
+            </a>
+            <a
+              href="/tasks?only_my_tasks=true"
+              aria-label="Открыть текущие задачи"
+              className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm transition hover:border-sky-300"
+            >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Текущие задачи
               </p>
               <p className="text-2xl font-semibold text-slate-900">{tasksCurrent}</p>
-            </div>
-            <div className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm">
+            </a>
+            <a
+              href="/tasks?only_my_tasks=true&show_completed=true"
+              aria-label="Открыть задачи, включая завершённые"
+              className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm transition hover:border-sky-300"
+            >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Завершено задач
               </p>
               <p className="text-2xl font-semibold text-slate-900">{tasksCompleted}</p>
-            </div>
+            </a>
           </div>
         </div>
         <div className="flex flex-wrap items-end gap-3">

@@ -196,6 +196,25 @@ export const DealsList: React.FC<DealsListProps> = ({
     [saveDealsListHeight],
   );
 
+  const handleResizeKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLButtonElement>) => {
+      if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
+        return;
+      }
+      event.preventDefault();
+      const currentHeight = tableScrollRef.current?.getBoundingClientRect().height ?? 0;
+      if (event.key === 'Home') {
+        saveDealsListHeight(MIN_DEALS_LIST_HEIGHT_PX);
+      } else if (event.key === 'End') {
+        saveDealsListHeight(getMaxDealsListHeight());
+      } else {
+        const step = event.shiftKey ? 48 : 16;
+        saveDealsListHeight(currentHeight + (event.key === 'ArrowDown' ? step : -step));
+      }
+    },
+    [saveDealsListHeight],
+  );
+
   const getDeadlineBadge = (value?: string | null): DeadlineBadge => {
     if (!value) {
       return {
@@ -538,6 +557,9 @@ export const DealsList: React.FC<DealsListProps> = ({
                           onSelectDeal(deal.id);
                         }}
                         onKeyDown={(event) => {
+                          if (event.target !== event.currentTarget) {
+                            return;
+                          }
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
                             if (isDealSelectionBlocked) {
@@ -699,6 +721,8 @@ export const DealsList: React.FC<DealsListProps> = ({
             aria-label="Изменить высоту списка сделок"
             title="Изменить высоту списка сделок"
             onPointerDown={handleResizePointerDown}
+            onKeyDown={handleResizeKeyDown}
+            aria-keyshortcuts="ArrowUp ArrowDown Home End"
             className="hidden h-3 w-full cursor-row-resize border-y border-slate-200 bg-slate-50 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset md:flex md:items-center md:justify-center"
           >
             <span className="h-1 w-12 rounded-full bg-slate-300" aria-hidden="true" />

@@ -549,7 +549,11 @@ class DriveReconnectApiTests(TestCase):
         self.assertIn("drive", response.data)
         self.assertEqual(response.data["drive"]["status"], "connected")
 
-    def test_drive_reconnect_is_restricted_to_vova(self):
+    @override_settings(
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID=0,
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME="Vova",
+    )
+    def test_drive_reconnect_rejects_unconfigured_user(self):
         self.api_client.force_authenticate(self.other)
 
         response = self.api_client.post(
@@ -559,19 +563,39 @@ class DriveReconnectApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("Vova", response.data["detail"])
+        self.assertIn("not available", response.data["detail"])
 
-    def test_drive_reconnect_returns_google_auth_url_for_vova(self):
+    @override_settings(
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID=0,
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME="Vova",
+        GOOGLE_DRIVE_OAUTH_CLIENT_ID="test-client-id",
+        GOOGLE_DRIVE_OAUTH_CLIENT_SECRET="test-client-secret",
+        GOOGLE_DRIVE_OAUTH_REDIRECT_URI="https://crm.example.test/drive-callback/",
+    )
+    def test_drive_reconnect_returns_google_auth_url_for_configured_user(self):
         self.api_client.force_authenticate(self.vova)
-        with patch(
-            "apps.notifications.views.build_reconnect_url",
-            return_value="https://accounts.google.com/o/oauth2/v2/auth?state=test",
-        ):
-            response = self.api_client.post(
-                "/api/v1/notifications/settings/drive-reconnect/",
-                data={},
-                format="json",
-            )
+        response = self.api_client.post(
+            "/api/v1/notifications/settings/drive-reconnect/",
+            data={},
+            format="json",
+        )
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("https://accounts.google.com", response.data["auth_url"])
+
+    @override_settings(
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID=0,
+        GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME="Vova",
+    )
+    def test_drive_reconnect_does_not_follow_admin_status(self):
+        self.other.is_staff = True
+        self.other.save(update_fields=["is_staff"])
+        self.api_client.force_authenticate(self.other)
+
+        response = self.api_client.post(
+            "/api/v1/notifications/settings/drive-reconnect/",
+            data={},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)

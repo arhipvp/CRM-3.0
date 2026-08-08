@@ -19,6 +19,8 @@ interface CommandPaletteProps {
   emptyMessage?: string;
   items: CommandPaletteItem[];
   onClose: () => void;
+  onQueryChange?: (query: string) => void;
+  isLoading?: boolean;
 }
 
 export const CommandPalette: React.FC<CommandPaletteProps> = ({
@@ -28,6 +30,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   emptyMessage = 'Ничего не найдено.',
   items,
   onClose,
+  onQueryChange,
+  isLoading = false,
 }) => {
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -39,6 +43,10 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
     setQuery('');
     setActiveIndex(0);
   }, [isOpen, title]);
+
+  useEffect(() => {
+    if (isOpen) onQueryChange?.(query);
+  }, [isOpen, onQueryChange, query]);
 
   const filteredItems = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -140,6 +148,8 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
                 );
               })}
             </ul>
+          ) : isLoading ? (
+            <p className="px-4 py-6 text-center text-sm text-slate-500">Ищем сделки...</p>
           ) : (
             <p className="px-4 py-6 text-center text-sm text-slate-500">{emptyMessage}</p>
           )}

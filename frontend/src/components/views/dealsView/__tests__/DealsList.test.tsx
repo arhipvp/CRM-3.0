@@ -337,4 +337,21 @@ describe('DealsList dealRowFocusRequest', () => {
     expect(tableScroll).toHaveStyle({ height: '700px' });
     expect(window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY)).toBe('700px');
   });
+
+  it('resizes the desktop deals table with arrow and boundary keys', () => {
+    renderDealsList();
+
+    const tableScroll = screen.getByTestId('deals-list-scroll');
+    const separator = screen.getByRole('button', { name: 'Изменить высоту списка сделок' });
+    mockTableHeight(tableScroll, 300);
+
+    fireEvent.keyDown(separator, { key: 'ArrowDown' });
+    expect(tableScroll).toHaveStyle({ height: '316px' });
+
+    fireEvent.keyDown(separator, { key: 'Home' });
+    expect(tableScroll).toHaveStyle({ height: '220px' });
+
+    fireEvent.keyDown(separator, { key: 'End' });
+    expect(tableScroll).toHaveStyle({ height: '700px' });
+  });
 });

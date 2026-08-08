@@ -6,6 +6,7 @@ import { buildDealsCacheKey } from '../../hooks/useAppData';
 import { useAppData } from '../../hooks/useAppData';
 import type { FilterParams } from '../../api';
 import {
+  fetchClientById,
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
@@ -19,6 +20,7 @@ import {
 vi.mock('../../api', () => ({
   DEFAULT_TASKS_API_ORDERING: '-priority,created_at',
   APIError: class APIError extends Error {},
+  fetchClientById: vi.fn(),
   fetchClientsWithPagination: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecordsWithPagination: vi.fn(),
@@ -30,6 +32,7 @@ vi.mock('../../api', () => ({
 }));
 
 const mockedFetchClients = vi.mocked(fetchClientsWithPagination);
+const mockedFetchClientById = vi.mocked(fetchClientById);
 const mockedFetchDealsWithPagination = vi.mocked(fetchDealsWithPagination);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
 const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatements);
@@ -113,6 +116,56 @@ describe('buildDealsCacheKey', () => {
 });
 
 describe('useAppData loading strategy', () => {
+  it('deduplicates client detail loading and keeps hydrated clients across reference refreshes', async () => {
+    const clientDeferred = deferred<never>();
+    mockedFetchClientById.mockReturnValue(clientDeferred.promise);
+    const { result } = renderHook(() => useAppData());
+
+    let firstLoad!: Promise<unknown>;
+    let secondLoad!: Promise<unknown>;
+    act(() => {
+      firstLoad = result.current.ensureClientLoaded('client-outside-page');
+      secondLoad = result.current.ensureClientLoaded('client-outside-page');
+    });
+
+    expect(mockedFetchClientById).toHaveBeenCalledTimes(1);
+    const hydratedClient = {
+      id: 'client-outside-page',
+      name: 'Клиент вне первой страницы',
+      phone: '+79990000000',
+      email: null,
+      notes: 'Важная заметка',
+      birthDate: null,
+      createdAt: '2026-01-01T00:00:00Z',
+      updatedAt: '2026-01-01T00:00:00Z',
+    };
+    await act(async () => {
+      clientDeferred.resolve(hydratedClient as never);
+      await Promise.all([firstLoad, secondLoad]);
+    });
+
+    mockedFetchClients.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          ...hydratedClient,
+          id: 'client-first-page',
+          name: 'Клиент первой страницы',
+        } as never,
+      ],
+    });
+    await act(async () => {
+      await result.current.ensureReferenceData({ force: true });
+    });
+
+    expect(result.current.dataState.clients.map((client) => client.id)).toEqual([
+      'client-first-page',
+      'client-outside-page',
+    ]);
+  });
+
   it('preserves loaded deals count when refreshing with preserveLoadedCount', async () => {
     const createDeal = (index: number) => ({
       id: `deal-${index}`,

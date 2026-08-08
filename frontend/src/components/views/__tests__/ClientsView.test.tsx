@@ -1,7 +1,19 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ClientsView } from '../ClientsView';
 import type { Client, Deal } from '../../../types';
+import { fetchClientsWithPagination, fetchClientStats } from '../../../api';
+
+vi.mock('../../../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../api')>();
+  return {
+    ...actual,
+    fetchClientsWithPagination: vi.fn(),
+    fetchClientStats: vi.fn(),
+  };
+});
 
 const buildClient = (overrides: Partial<Client> = {}): Client => ({
   id: overrides.id ?? 'client-1',
@@ -24,11 +36,30 @@ const buildDeal = (overrides: Partial<Deal> = {}): Deal => ({
 });
 
 describe('ClientsView', () => {
+  beforeEach(() => {
+    vi.mocked(fetchClientsWithPagination).mockReset();
+    vi.mocked(fetchClientStats).mockReset();
+  });
+
+  const renderView = (ui: ReactElement, clients: Client[]) => {
+    vi.mocked(fetchClientsWithPagination).mockResolvedValue({
+      count: clients.length,
+      next: null,
+      previous: null,
+      results: clients,
+    });
+    vi.mocked(fetchClientStats).mockResolvedValue({
+      total: clients.length,
+      createdLast30Days: clients.length,
+    });
+    return render(<MemoryRouter>{ui}</MemoryRouter>);
+  };
+
   it('renders KPI cards and list rows', () => {
     const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
     const deals = [buildDeal(), buildDeal({ id: 'deal-2', clientId: 'client-2' })];
 
-    render(<ClientsView clients={clients} deals={deals} dealsTotalCount={42} />);
+    renderView(<ClientsView clients={clients} deals={deals} dealsTotalCount={42} />, clients);
 
     expect(screen.getByText('Клиентов')).toBeInTheDocument();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
@@ -39,12 +70,8 @@ describe('ClientsView', () => {
   });
 
   it('filters clients by search', () => {
-    render(
-      <ClientsView
-        clients={[buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })]}
-        deals={[buildDeal()]}
-      />,
-    );
+    const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
+    renderView(<ClientsView clients={clients} deals={[buildDeal()]} />, clients);
 
     fireEvent.change(screen.getByPlaceholderText('Поиск по имени или телефону...'), {
       target: { value: 'Петр' },
@@ -57,12 +84,13 @@ describe('ClientsView', () => {
   it('renders "Объединить похожих" and triggers callback', () => {
     const onClientFindSimilar = vi.fn();
     const client = buildClient();
-    render(
+    renderView(
       <ClientsView
         clients={[client]}
         deals={[buildDeal()]}
         onClientFindSimilar={onClientFindSimilar}
       />,
+      [client],
     );
 
     fireEvent.click(

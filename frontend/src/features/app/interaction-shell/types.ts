@@ -18,5 +18,7 @@ export interface AppInteractionShellResult {
     selectedTaskShortcut: Task | null;
   };
   taskDealItems: CommandPaletteItem[];
+  taskDealLoading: boolean;
+  setTaskDealQuery: (query: string) => void;
   closePalette: () => void;
 }

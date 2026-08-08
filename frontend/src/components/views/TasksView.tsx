@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { FilterParams } from '../../api';
 import { DEFAULT_TASKS_API_ORDERING } from '../../api/tasks';
 import type { Task, TaskPriority, User } from '../../types';
@@ -12,7 +12,6 @@ import { TaskTable } from '../tasks/TaskTable';
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenCreatedAt';
 
 const DEFAULT_TASKS_SORTING = 'priorityThenCreatedAt';
-const DEFAULT_TASKS_FILTERS: FilterParams = { ordering: DEFAULT_TASKS_SORTING };
 const TASKS_PAGE_SIZE = 50;
 
 const TASK_SORT_OPTIONS = [
@@ -97,13 +96,30 @@ export const TasksView: React.FC<TasksViewProps> = ({
   isLoading = false,
   onRefreshTasks,
   onDealSelect,
-  page = 1,
   totalCount = 0,
 }) => {
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<FilterParams>(DEFAULT_TASKS_FILTERS);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialFilters = useMemo<FilterParams>(
+    () => ({
+      ordering: searchParams.get('ordering') || DEFAULT_TASKS_SORTING,
+      search: searchParams.get('search') || undefined,
+      taskStatus: searchParams.get('status') || undefined,
+      priority: searchParams.get('priority') || undefined,
+      show_completed: searchParams.get('show_completed') === 'true' || undefined,
+      show_deleted: searchParams.get('show_deleted') === 'true' || undefined,
+      only_my_tasks: searchParams.get('only_my_tasks') === 'true' || undefined,
+    }),
+    [searchParams],
+  );
+  const [filters, setFilters] = useState<FilterParams>(initialFilters);
+  const requestedPage = Math.max(1, Number(searchParams.get('page')) || 1);
   const lastLoadKeyRef = useRef('');
   const debouncedSearch = useDebouncedValue(String(filters.search ?? '').trim(), 300);
+
+  useEffect(() => {
+    setFilters(initialFilters);
+  }, [initialFilters]);
 
   const handleDealClick = useCallback(
     (dealId?: string) => {
@@ -166,8 +182,41 @@ export const TasksView: React.FC<TasksViewProps> = ({
   );
 
   useEffect(() => {
-    requestTaskPage(page);
-  }, [page, requestTaskPage]);
+    requestTaskPage(requestedPage);
+  }, [requestTaskPage, requestedPage]);
+
+  const handleFilterChange = useCallback(
+    (nextFilters: FilterParams) => {
+      setFilters(nextFilters);
+      const nextParams = new URLSearchParams();
+      const mappings: Array<[string, unknown]> = [
+        ['search', nextFilters.search],
+        ['ordering', nextFilters.ordering],
+        ['status', nextFilters.taskStatus],
+        ['priority', nextFilters.priority],
+        ['show_completed', nextFilters.show_completed],
+        ['show_deleted', nextFilters.show_deleted],
+        ['only_my_tasks', nextFilters.only_my_tasks],
+      ];
+      mappings.forEach(([key, value]) => {
+        if (value && !(key === 'ordering' && value === DEFAULT_TASKS_SORTING)) {
+          nextParams.set(key, String(value));
+        }
+      });
+      setSearchParams(nextParams, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const setRequestedPage = useCallback(
+    (nextPage: number) => {
+      const nextParams = new URLSearchParams(searchParams);
+      if (nextPage <= 1) nextParams.delete('page');
+      else nextParams.set('page', String(nextPage));
+      setSearchParams(nextParams);
+    },
+    [searchParams, setSearchParams],
+  );
 
   const filteredTasks = useMemo(() => {
     let result = [...tasks];
@@ -261,8 +310,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
         Задачи
       </h1>
       <FilterBar
-        onFilterChange={setFilters}
-        initialFilters={DEFAULT_TASKS_FILTERS}
+        onFilterChange={handleFilterChange}
+        initialFilters={initialFilters}
         searchPlaceholder="Поиск задач, сделок или описаний..."
         sortOptions={TASK_SORT_OPTIONS}
         customFilters={[
@@ -305,28 +354,23 @@ export const TasksView: React.FC<TasksViewProps> = ({
           {totalCount > TASKS_PAGE_SIZE ? (
             <div className="flex items-center justify-between gap-3 text-sm text-slate-600">
               <span>
-                Страница {page} из {Math.ceil(totalCount / TASKS_PAGE_SIZE)} · всего {totalCount}
+                Страница {requestedPage} из {Math.ceil(totalCount / TASKS_PAGE_SIZE)} · всего{' '}
+                {totalCount}
               </span>
               <div className="flex gap-2">
                 <button
                   type="button"
                   className={BTN_SM_SECONDARY}
-                  disabled={page <= 1 || isLoading}
-                  onClick={() => {
-                    lastLoadKeyRef.current = '';
-                    requestTaskPage(page - 1);
-                  }}
+                  disabled={requestedPage <= 1 || isLoading}
+                  onClick={() => setRequestedPage(requestedPage - 1)}
                 >
                   Назад
                 </button>
                 <button
                   type="button"
                   className={BTN_SM_SECONDARY}
-                  disabled={page >= Math.ceil(totalCount / TASKS_PAGE_SIZE) || isLoading}
-                  onClick={() => {
-                    lastLoadKeyRef.current = '';
-                    requestTaskPage(page + 1);
-                  }}
+                  disabled={requestedPage >= Math.ceil(totalCount / TASKS_PAGE_SIZE) || isLoading}
+                  onClick={() => setRequestedPage(requestedPage + 1)}
                 >
                   Далее
                 </button>

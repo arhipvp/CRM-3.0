@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from apps.clients.services import (
     ClientMergeService,
     ClientMergeSessionService,
@@ -10,7 +12,8 @@ from apps.common.services import manage_drive_files
 from apps.deals.models import Deal
 from apps.users.models import AuditLog
 from django.contrib.auth.models import AnonymousUser
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import PermissionDenied, ValidationError
@@ -67,7 +70,29 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Client.objects.alive().order_by("-created_at")
+        if getattr(self, "action", None) == "list":
+            queryset = queryset.annotate(
+                deal_count=Count(
+                    "deals",
+                    filter=Q(deals__deleted_at__isnull=True),
+                    distinct=True,
+                )
+            )
         return queryset
+
+    @action(detail=False, methods=["get"], url_path="stats")
+    def stats(self, request):
+        queryset = self.filter_queryset(self.get_queryset())
+        created_since = timezone.now() - timedelta(days=30)
+        values = queryset.aggregate(
+            total=Count("pk", distinct=True),
+            created_last_30_days=Count(
+                "pk",
+                filter=Q(created_at__gte=created_since),
+                distinct=True,
+            ),
+        )
+        return Response(values)
 
     @action(detail=False, methods=["get"], url_path="lookup")
     def lookup(self, request):

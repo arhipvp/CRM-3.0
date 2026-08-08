@@ -2,6 +2,7 @@ import { useCallback, useReducer, useRef, useState } from 'react';
 
 import {
   DEFAULT_TASKS_API_ORDERING,
+  fetchClientById,
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
@@ -115,6 +116,8 @@ export const useAppData = () => {
   const commissionsLoadPromiseRef = useRef<Promise<void> | null>(null);
   const financeLoadPromiseRef = useRef<Promise<void> | null>(null);
   const referenceDataLoadPromiseRef = useRef<Promise<void> | null>(null);
+  const clientLoadPromisesRef = useRef(new Map<string, Promise<Client>>());
+  const hydratedClientIdsRef = useRef(new Set<string>());
   const financeRevisionRef = useRef(0);
   const commissionsDataLoadedRef = useRef(false);
   const financeDataLoadedRef = useRef(false);
@@ -164,6 +167,40 @@ export const useAppData = () => {
     }
     dispatch({ type: 'update', updater });
   }, []);
+
+  const ensureClientLoaded = useCallback(
+    async (clientId: string): Promise<Client | null> => {
+      const normalizedId = clientId.trim();
+      if (!normalizedId) return null;
+
+      const existing = dataStateRef.current.clients.find((client) => client.id === normalizedId);
+      if (existing) return existing;
+
+      const pending = clientLoadPromisesRef.current.get(normalizedId);
+      if (pending) return pending;
+
+      const loadPromise = fetchClientById(normalizedId)
+        .then((client) => {
+          hydratedClientIdsRef.current.add(client.id);
+          updateAppData((prev) => {
+            const exists = prev.clients.some((item) => item.id === client.id);
+            return {
+              clients: exists
+                ? prev.clients.map((item) => (item.id === client.id ? client : item))
+                : [...prev.clients, client],
+            };
+          });
+          return client;
+        })
+        .finally(() => {
+          clientLoadPromisesRef.current.delete(normalizedId);
+        });
+
+      clientLoadPromisesRef.current.set(normalizedId, loadPromise);
+      return loadPromise;
+    },
+    [updateAppData],
+  );
 
   const refreshDeals = useCallback(
     async (filters?: FilterParams, options?: RefreshDealsOptions) => {
@@ -439,7 +476,18 @@ export const useAppData = () => {
             fetchUsers(),
             fetchSalesChannels(),
           ]);
-          setAppData({ clients: clientsPayload.results, users, salesChannels });
+          updateAppData((prev) => {
+            const pageClientIds = new Set(clientsPayload.results.map((client) => client.id));
+            const hydratedClients = prev.clients.filter(
+              (client) =>
+                hydratedClientIdsRef.current.has(client.id) && !pageClientIds.has(client.id),
+            );
+            return {
+              clients: [...clientsPayload.results, ...hydratedClients],
+              users,
+              salesChannels,
+            };
+          });
           referenceDataLoadedRef.current = true;
         } finally {
           referenceDataLoadPromiseRef.current = null;
@@ -448,7 +496,7 @@ export const useAppData = () => {
       referenceDataLoadPromiseRef.current = loadPromise;
       return loadPromise;
     },
-    [setAppData],
+    [updateAppData],
   );
 
   const loadData = useCallback(async () => {
@@ -671,6 +719,7 @@ export const useAppData = () => {
     dataState,
     loadData,
     ensureReferenceData,
+    ensureClientLoaded,
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureTasksLoaded,

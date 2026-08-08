@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import type { FilterParams } from '../api';
 import { Button } from './common/Button';
@@ -39,6 +39,20 @@ export function FilterBar({
   const [search, setSearch] = useState(initialSearch);
   const [ordering, setOrdering] = useState(initialOrdering);
   const [customFilterValues, setCustomFilterValues] = useState<Record<string, string>>({});
+  const initialFilterStateKey = JSON.stringify(initialFilters ?? {});
+
+  useEffect(() => {
+    setSearch(initialSearch);
+    setOrdering(initialOrdering);
+    const nextCustomValues: Record<string, string> = {};
+    customFilters.forEach((filter) => {
+      const value = initialFilters?.[filter.key];
+      if (value) nextCustomValues[filter.key] = String(value);
+    });
+    setCustomFilterValues(nextCustomValues);
+    // The serialized key intentionally makes URL back/forward updates controlled.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialFilterStateKey]);
   const searchInputId = `${idPrefix}-search`;
   const orderingSelectId = `${idPrefix}-ordering`;
 

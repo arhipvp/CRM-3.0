@@ -1,6 +1,8 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { fetchDealsWithPagination } from '../../../api/deals';
 import type { CommandPaletteItem } from '../../../components/common/modal/CommandPalette';
+import { useDebouncedValue } from '../../../hooks/useDebouncedValue';
 import type { Client, Deal, Policy, Task } from '../../../types';
 import type { PaletteMode } from './types';
 
@@ -68,6 +70,34 @@ export const useCommandPalette = ({
   markSelectedTaskDone,
 }: UseCommandPaletteParams) => {
   const [paletteMode, setPaletteMode] = useState<PaletteMode>(null);
+  const [taskDealQuery, setTaskDealQuery] = useState('');
+  const [remoteTaskDeals, setRemoteTaskDeals] = useState<Deal[]>([]);
+  const [taskDealLoading, setTaskDealLoading] = useState(false);
+  const debouncedTaskDealQuery = useDebouncedValue(taskDealQuery.trim(), 300);
+
+  useEffect(() => {
+    if (paletteMode !== 'taskDeal' || debouncedTaskDealQuery.length < 2) {
+      setRemoteTaskDeals([]);
+      setTaskDealLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    setTaskDealLoading(true);
+    void fetchDealsWithPagination(
+      { search: debouncedTaskDealQuery, page_size: 20 },
+      { embed: 'none', signal: controller.signal },
+    )
+      .then((response) => {
+        if (!controller.signal.aborted) setRemoteTaskDeals(response.results);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setRemoteTaskDeals([]);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setTaskDealLoading(false);
+      });
+    return () => controller.abort();
+  }, [debouncedTaskDealQuery, paletteMode]);
 
   const openCommandsPalette = useCallback(() => {
     setPaletteMode((prev) => (prev === 'commands' ? null : 'commands'));
@@ -217,7 +247,10 @@ export const useCommandPalette = ({
   );
 
   const taskDealItems = useMemo<CommandPaletteItem[]>(() => {
-    const candidates = deals
+    const mergedDeals = [...remoteTaskDeals, ...deals].filter(
+      (deal, index, items) => items.findIndex((item) => item.id === deal.id) === index,
+    );
+    const candidates = mergedDeals
       .filter((deal) => !deal.deletedAt)
       .sort((left, right) => {
         const leftPinned = left.isPinned ? 1 : 0;
@@ -238,7 +271,7 @@ export const useCommandPalette = ({
         setQuickTaskDealId(deal.id);
       },
     }));
-  }, [deals, selectDealById, setQuickTaskDealId]);
+  }, [deals, remoteTaskDeals, selectDealById, setQuickTaskDealId]);
 
   return {
     paletteMode,
@@ -247,5 +280,7 @@ export const useCommandPalette = ({
     closePalette,
     commandItems,
     taskDealItems,
+    taskDealLoading,
+    setTaskDealQuery,
   };
 };

@@ -26,15 +26,35 @@ export const DEAL_TABS = [
   { id: 'overview', label: 'Обзор' },
   { id: 'tasks', label: 'Задачи' },
   { id: 'quotes', label: 'Расчёты' },
-  { id: 'recognition', label: 'Данные' },
+  { id: 'recognition', label: 'Распознавание полиса' },
   { id: 'policies', label: 'Полисы' },
   { id: 'chat', label: 'Чат' },
   { id: 'files', label: 'Файлы' },
-  { id: 'events', label: 'Лента' },
-  { id: 'history', label: 'Журнал' },
+  { id: 'events', label: 'События' },
+  { id: 'history', label: 'История изменений' },
 ] as const;
 
 export type DealTabId = (typeof DEAL_TABS)[number]['id'];
+
+export const isDealTabId = (value: string | null | undefined): value is DealTabId =>
+  DEAL_TABS.some((tab) => tab.id === value);
+
+export const DEAL_TAB_GROUPS = [
+  { id: 'overview', label: 'Обзор', tabs: ['overview'] },
+  { id: 'work', label: 'Работа', tabs: ['tasks', 'quotes'] },
+  { id: 'policies', label: 'Полисы и финансы', tabs: ['policies'] },
+  { id: 'documents', label: 'Документы', tabs: ['files', 'recognition'] },
+  { id: 'activity', label: 'Активность', tabs: ['chat', 'events', 'history'] },
+] as const satisfies ReadonlyArray<{
+  id: string;
+  label: string;
+  tabs: readonly DealTabId[];
+}>;
+
+export type DealTabGroupId = (typeof DEAL_TAB_GROUPS)[number]['id'];
+
+export const getDealTabGroup = (tabId: DealTabId) =>
+  DEAL_TAB_GROUPS.find((group) => group.tabs.some((tab) => tab === tabId)) ?? DEAL_TAB_GROUPS[0];
 
 export const formatDate = (value?: string | null) => {
   if (!value) {

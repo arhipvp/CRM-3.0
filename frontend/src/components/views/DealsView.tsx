@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import {
   ActivityLog,
@@ -22,12 +23,14 @@ import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/d
 import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
 import { useSelectedDeal } from '../../hooks/useSelectedDeal';
+import { isDealTabId, type DealTabId } from './dealsView/helpers';
 
 interface DealsViewProps {
   deals: Deal[];
   clients: Client[];
   clientDuplicateHints: Record<string, ClientDuplicateHint>;
   onClientEdit?: (client: Client) => void;
+  onClientOpenById?: (clientId: string) => Promise<void>;
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   policies: Policy[];
@@ -147,6 +150,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   clients,
   clientDuplicateHints,
   onClientEdit,
+  onClientOpenById,
   onClientFindSimilar,
   onClientNormalizeName,
   policies,
@@ -229,6 +233,9 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDealOrderingChange,
   onDealSelectionBlockedChange,
 }) => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedTabValue = searchParams.get('tab');
+  const requestedTab: DealTabId = isDealTabId(requestedTabValue) ? requestedTabValue : 'overview';
   const [isDealSelectionBlocked, setDealSelectionBlocked] = React.useState(false);
   const { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser } = useSelectedDeal({
     deals,
@@ -250,8 +257,31 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return;
       }
       onSelectDeal(dealId);
+      setSearchParams((current) => {
+        const next = new URLSearchParams(current);
+        next.set('dealId', dealId);
+        next.delete('tab');
+        return next;
+      });
     },
-    [isDealSelectionBlocked, onSelectDeal],
+    [isDealSelectionBlocked, onSelectDeal, setSearchParams],
+  );
+  const handleTabChange = React.useCallback(
+    (tab: DealTabId) => {
+      setSearchParams(
+        (current) => {
+          const next = new URLSearchParams(current);
+          if (tab === 'overview') {
+            next.delete('tab');
+          } else {
+            next.set('tab', tab);
+          }
+          return next;
+        },
+        { replace: true },
+      );
+    },
+    [setSearchParams],
   );
 
   return (
@@ -297,6 +327,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             deals={deals}
             clients={clients}
             onClientEdit={onClientEdit}
+            onClientOpenById={onClientOpenById}
             policies={policies}
             payments={payments}
             financialRecords={financialRecords}
@@ -366,6 +397,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onClearAccessMessage={onClearDealAccessMessage}
             isTasksLoading={isSelectedDealTasksLoading}
             isQuotesLoading={isSelectedDealQuotesLoading}
+            requestedTab={requestedTab}
+            onTabChange={handleTabChange}
           />
         </div>
       </section>

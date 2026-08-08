@@ -3,8 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { fetchNotificationSettings } from '../../../../api/notifications';
 import type { Deal, Task } from '../../../../types';
 import { runAsyncUiAction } from '../../../../utils/uiAction';
+import type { DealTabId } from '../helpers';
 
 interface UseDealDetailsPanelActionsParams {
+  requestedTab?: DealTabId;
+  onTabChange?: (tab: DealTabId) => void;
   selectedDeal: Deal | null;
   relatedTasks: Task[];
   isSelectedDealDeleted: boolean;
@@ -42,6 +45,8 @@ interface UseDealDetailsPanelActionsParams {
 }
 
 export const useDealDetailsPanelActions = ({
+  requestedTab,
+  onTabChange,
   selectedDeal,
   relatedTasks,
   isSelectedDealDeleted,
@@ -81,17 +86,14 @@ export const useDealDetailsPanelActions = ({
   const [dealRefreshError, setDealRefreshError] = useState<string | null>(null);
   const [delayLeadDays, setDelayLeadDays] = useState<number | null>(null);
   const [delayLeadDaysLoading, setDelayLeadDaysLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<
-    | 'overview'
-    | 'tasks'
-    | 'policies'
-    | 'quotes'
-    | 'recognition'
-    | 'files'
-    | 'chat'
-    | 'events'
-    | 'history'
-  >('overview');
+  const [activeTab, setActiveTabState] = useState<DealTabId>(requestedTab ?? 'overview');
+  const setActiveTab = useCallback(
+    (tab: DealTabId) => {
+      setActiveTabState(tab);
+      onTabChange?.(tab);
+    },
+    [onTabChange],
+  );
   const [isEditingDeal, setIsEditingDeal] = useState(false);
   const [isCreatingTask, setIsCreatingTask] = useState(false);
   const [isCreatingMailbox, setIsCreatingMailbox] = useState(false);
@@ -120,10 +122,11 @@ export const useDealDetailsPanelActions = ({
   }, [selectedDeal?.id]);
 
   useEffect(() => {
-    setActiveTab('overview');
+    const nextTab = requestedTab ?? 'overview';
+    setActiveTabState(nextTab);
     setActionError(null);
     setDealRefreshError(null);
-  }, [selectedDeal?.id]);
+  }, [requestedTab, selectedDeal?.id]);
 
   useEffect(() => {
     setMailboxActionError(null);

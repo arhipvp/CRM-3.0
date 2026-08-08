@@ -25,5 +25,14 @@ export const InlineAlert: React.FC<InlineAlertProps> = ({
   const Component = as;
   const resolvedClassName = [TONE_CLASS[tone], className].filter(Boolean).join(' ');
 
-  return <Component className={resolvedClassName}>{children}</Component>;
+  const liveProps =
+    tone === 'danger'
+      ? { role: 'alert' as const, 'aria-live': 'assertive' as const }
+      : { role: 'status' as const, 'aria-live': 'polite' as const };
+
+  return (
+    <Component className={resolvedClassName} {...liveProps}>
+      {children}
+    </Component>
+  );
 };

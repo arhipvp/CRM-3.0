@@ -490,6 +490,84 @@ class AuthenticationTest(APITestCase):
         self.assertIn("access", response.data)
         self.assertIn("refresh", response.data)
         self.assertIn("user", response.data)
+        self.assertEqual(
+            response.data["user"]["capabilities"],
+            [
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
+
+    def test_auth_capabilities_follow_permissions_and_are_stably_sorted(self):
+        role = Role.objects.create(name="Оператор")
+        notification_permission = Permission.objects.create(
+            resource="notification", action="view"
+        )
+        deal_permission = Permission.objects.create(resource="deal", action="view")
+        RolePermission.objects.create(role=role, permission=notification_permission)
+        RolePermission.objects.create(role=role, permission=deal_permission)
+        UserRole.objects.create(user=self.user, role=role)
+
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "testuser", "password": "testpass123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["user"]["capabilities"],
+            [
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
+
+    def test_admin_role_grants_admin_capability(self):
+        admin_role = Role.objects.create(name="Admin")
+        UserRole.objects.create(user=self.user, role=admin_role)
+
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "testuser", "password": "testpass123"},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.data["user"]["capabilities"],
+            [
+                "settings.admin",
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
+
+    def test_configured_drive_username_grants_reconnect_capability(self):
+        self.user.username = "Vova"
+        self.user.save(update_fields=["username"])
+
+        response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "Vova", "password": "testpass123"},
+            format="json",
+        )
+
+        self.assertEqual(
+            response.data["user"]["capabilities"],
+            [
+                "drive.reconnect",
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
 
     def test_login_invalid_credentials(self):
         """Тест входа с неверными учетными данными"""
@@ -521,6 +599,46 @@ class AuthenticationTest(APITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["username"], "testuser")
+        self.assertEqual(
+            response.data["capabilities"],
+            [
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
+
+    def test_current_user_capabilities_have_bounded_query_count(self):
+        first_role = Role.objects.create(name="First operator role")
+        second_role = Role.objects.create(name="Second operator role")
+        permission = Permission.objects.create(resource="notification", action="view")
+        RolePermission.objects.create(role=first_role, permission=permission)
+        UserRole.objects.create(user=self.user, role=first_role)
+        UserRole.objects.create(user=self.user, role=second_role)
+        login_response = self.client.post(
+            "/api/v1/auth/login/",
+            {"username": "testuser", "password": "testpass123"},
+            format="json",
+        )
+        self.client.credentials(
+            HTTP_AUTHORIZATION=f"Bearer {login_response.data['access']}"
+        )
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get("/api/v1/auth/me/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            response.data["capabilities"],
+            [
+                "settings.integrations",
+                "settings.mail",
+                "settings.notifications",
+                "settings.profile",
+            ],
+        )
+        self.assertLessEqual(len(queries), 7)
 
     def test_current_user_without_token(self):
         """Тест получения информации о текущем пользователе без токена"""

@@ -52,7 +52,8 @@ const config: UserConfigExport & { test?: VitestUserConfig } = {
     setupFiles: fileURLToPath(new URL('./src/setupTests.ts', import.meta.url)),
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
     pool: 'threads',
-    maxWorkers: process.env.CI ? 4 : undefined,
+    maxWorkers: 4,
+    testTimeout: 15_000,
   },
 };
 

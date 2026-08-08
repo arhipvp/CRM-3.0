@@ -1,3 +1,4 @@
+from apps.notifications.access import is_drive_reconnect_user
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
@@ -130,6 +131,8 @@ class UserSerializer(serializers.ModelSerializer):
 class UserDetailSerializer(UserSerializer):
     """Детальный сериализатор для пользователя с полной информацией"""
 
+    capabilities = serializers.SerializerMethodField()
+
     class Meta:
         model = User
         fields = [
@@ -142,9 +145,39 @@ class UserDetailSerializer(UserSerializer):
             "is_staff",
             "user_roles",
             "roles",
+            "capabilities",
             "date_joined",
         ]
         read_only_fields = ["id", "date_joined"]
+
+    def get_capabilities(self, obj):
+        permission_pairs = set()
+        role_names = set()
+        for user_role in obj.user_roles.all():
+            role = user_role.role
+            role_names.add((role.name or "").strip().casefold())
+            for role_permission in role.permissions.all():
+                permission = role_permission.permission
+                if permission.deleted_at is None:
+                    permission_pairs.add((permission.resource, permission.action))
+
+        is_admin = bool(
+            obj.is_superuser
+            or obj.is_staff
+            or role_names & {"admin", "администратор"}
+            or ("user", "admin") in permission_pairs
+        )
+        capabilities = {
+            "settings.profile",
+            "settings.notifications",
+            "settings.mail",
+            "settings.integrations",
+        }
+        if is_admin:
+            capabilities.add("settings.admin")
+        if is_drive_reconnect_user(obj):
+            capabilities.add("drive.reconnect")
+        return sorted(capabilities)
 
 
 class UserCreateUpdateSerializer(serializers.ModelSerializer):

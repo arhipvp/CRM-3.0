@@ -49,6 +49,7 @@ vi.mock('../hooks/useAppData', () => ({
     ensureCommissionsDataLoaded: vi.fn(),
     ensureFinanceDataLoaded: vi.fn(),
     ensureReferenceData: vi.fn(),
+    ensureClientLoaded: vi.fn().mockResolvedValue(null),
     ensureTasksLoaded: vi.fn(),
     refreshDeals: vi.fn(),
     invalidateDealsCache: vi.fn(),

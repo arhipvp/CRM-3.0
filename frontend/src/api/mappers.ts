@@ -149,6 +149,10 @@ export const mapClient = (raw: Record<string, unknown>): Client => ({
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
   driveFolderId: raw.drive_folder_id === undefined ? null : toNullableString(raw.drive_folder_id),
+  dealCount:
+    raw.deal_count === undefined && raw.dealCount === undefined
+      ? undefined
+      : Number(raw.deal_count ?? raw.dealCount),
 });
 
 export const mapQuote = (raw: Record<string, unknown>): Quote => ({
@@ -362,6 +366,11 @@ export const mapUser = (raw: Record<string, unknown>): User => {
     lastName: toOptionalString(raw.last_name ?? raw.lastName),
     roles: userRoleEntries.length > 0 ? userRoleEntries : legacyRoles,
     isStaff: Boolean(raw.is_staff ?? raw.isStaff),
+    capabilities: Array.isArray(raw.capabilities)
+      ? raw.capabilities
+          .map(toOptionalString)
+          .filter((capability): capability is string => Boolean(capability))
+      : [],
   };
 };
 

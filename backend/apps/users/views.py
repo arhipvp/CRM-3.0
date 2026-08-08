@@ -24,6 +24,17 @@ from .serializers import (
 )
 
 
+def user_access_queryset():
+    role_permissions = RolePermission.objects.select_related("permission")
+    user_roles = UserRole.objects.select_related("role").prefetch_related(
+        Prefetch("role__permissions", queryset=role_permissions),
+        "role__users",
+    )
+    return User.objects.order_by("id").prefetch_related(
+        Prefetch("user_roles", queryset=user_roles)
+    )
+
+
 class PermissionViewSet(ModelViewSet):
     """ViewSet для управления правами доступа (требуется авторизация)"""
 
@@ -146,17 +157,7 @@ class UserViewSet(ModelViewSet):
     pagination_class = StandardPageNumberPagination
 
     def get_queryset(self):
-        role_permissions = RolePermission.objects.select_related("permission")
-        user_roles = UserRole.objects.select_related("role").prefetch_related(
-            Prefetch("role__permissions", queryset=role_permissions),
-            "role__users",
-        )
-        return (
-            super()
-            .get_queryset()
-            .order_by("id")
-            .prefetch_related(Prefetch("user_roles", queryset=user_roles))
-        )
+        return user_access_queryset()
 
     def get_serializer_class(self):
         if (
@@ -338,7 +339,8 @@ def login_view(request):
     serializer = LoginSerializer(data=request.data)
     serializer.is_valid(raise_exception=True)
 
-    user = serializer.validated_data["user"]
+    authenticated_user = serializer.validated_data["user"]
+    user = user_access_queryset().get(pk=authenticated_user.pk)
 
     # Генерируем токены
     refresh = RefreshToken.for_user(user)
@@ -395,7 +397,8 @@ def current_user_view(request):
     """
 
     if request.user.is_authenticated:
-        serializer = UserDetailSerializer(request.user)
+        user = user_access_queryset().get(pk=request.user.pk)
+        serializer = UserDetailSerializer(user)
         data = serializer.data
         data["is_authenticated"] = True
         return Response(data)

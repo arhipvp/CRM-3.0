@@ -14,6 +14,7 @@ import type { AttachFinanceStatementRecordsResult } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { handleTabKeyboardNavigation } from '../common/tabs';
 import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
@@ -32,6 +33,9 @@ import { useStatementDriveManager } from './commissions/hooks/useStatementDriveM
 import { useStatementRecordsController } from './commissions/hooks/useStatementRecordsController';
 import { useStatementRecordsSelection } from './commissions/hooks/useStatementRecordsSelection';
 import { useStatementsManager } from './commissions/hooks/useStatementsManager';
+
+const FINANCE_TAB_IDS = ['statements', 'all'] as const;
+const STATEMENT_TAB_IDS = ['records', 'files'] as const;
 
 interface CommissionsViewProps {
   payments: Payment[];
@@ -531,7 +535,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           type="button"
           aria-selected={viewMode === 'statements'}
           aria-controls="financial-tabpanel-statements"
+          tabIndex={viewMode === 'statements' ? 0 : -1}
           onClick={() => setViewMode('statements')}
+          onKeyDown={(event) =>
+            handleTabKeyboardNavigation({
+              event,
+              tabs: FINANCE_TAB_IDS,
+              activeTab: viewMode,
+              onChange: setViewMode,
+              getTabElementId: (tabId) => `financial-tab-${tabId}`,
+            })
+          }
           className={`app-segmented-control-button min-w-[200px] ${
             viewMode === 'statements'
               ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
@@ -546,7 +560,17 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           type="button"
           aria-selected={viewMode === 'all'}
           aria-controls="financial-tabpanel-all"
+          tabIndex={viewMode === 'all' ? 0 : -1}
           onClick={() => setViewMode('all')}
+          onKeyDown={(event) =>
+            handleTabKeyboardNavigation({
+              event,
+              tabs: FINANCE_TAB_IDS,
+              activeTab: viewMode,
+              onChange: setViewMode,
+              getTabElementId: (tabId) => `financial-tab-${tabId}`,
+            })
+          }
           className={`app-segmented-control-button min-w-[240px] ${
             viewMode === 'all'
               ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
@@ -759,8 +783,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             aria-label={tab.label}
                             aria-selected={isActive}
                             aria-controls={`statement-tabpanel-${tab.id}`}
+                            tabIndex={isActive ? 0 : -1}
                             type="button"
                             onClick={() => setStatementTab(tab.id)}
+                            onKeyDown={(event) =>
+                              handleTabKeyboardNavigation({
+                                event,
+                                tabs: STATEMENT_TAB_IDS,
+                                activeTab: statementTab,
+                                onChange: setStatementTab,
+                                getTabElementId: (tabId) => `statement-tab-${tabId}`,
+                              })
+                            }
                             className={`app-segmented-control-button min-w-[120px] ${
                               isActive
                                 ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'

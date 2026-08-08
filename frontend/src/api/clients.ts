@@ -14,9 +14,29 @@ import type {
 
 export async function fetchClientsWithPagination(
   filters?: FilterParams,
+  options?: RequestInit,
 ): Promise<PaginatedResponse<Client>> {
   const qs = buildQueryString(filters);
-  return fetchClientsPage(`/clients/${qs}`);
+  return fetchClientsPage(`/clients/${qs}`, options);
+}
+
+export interface ClientStats {
+  total: number;
+  createdLast30Days: number;
+}
+
+export async function fetchClientStats(
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<ClientStats> {
+  const payload = await request<Record<string, unknown>>(
+    `/clients/stats/${buildQueryString(filters)}`,
+    options,
+  );
+  return {
+    total: Number(payload.total ?? 0),
+    createdLast30Days: Number(payload.created_last_30_days ?? payload.createdLast30Days ?? 0),
+  };
 }
 
 export async function fetchClientLookup(
@@ -34,6 +54,11 @@ export async function fetchClientLookup(
     previous: payload.previous || null,
     results: unwrapList<Record<string, unknown>>(payload).map(mapClient),
   };
+}
+
+export async function fetchClientById(id: string, options?: RequestInit): Promise<Client> {
+  const payload = await request<Record<string, unknown>>(`/clients/${id}/`, options);
+  return mapClient(payload);
 }
 
 const API_BASE_PATH = (() => {
@@ -67,9 +92,15 @@ function normalizeClientRequestPath(rawPath: string): string {
   }
 }
 
-async function fetchClientsPage(path: string): Promise<PaginatedResponse<Client>> {
+async function fetchClientsPage(
+  path: string,
+  options?: RequestInit,
+): Promise<PaginatedResponse<Client>> {
   const normalizedPath = normalizeClientRequestPath(path);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(normalizedPath);
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+    normalizedPath,
+    options,
+  );
   return {
     count: payload.count || 0,
     next: payload.next || null,

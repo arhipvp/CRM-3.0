@@ -45,6 +45,7 @@ import {
   closedDealStatuses,
   formatDate,
   getDeadlineTone,
+  getDealTabGroup,
   getPolicySortValue,
   getUserDisplayName,
 } from './helpers';
@@ -60,6 +61,7 @@ export interface DealDetailsPanelProps {
   deals: Deal[];
   clients: Client[];
   onClientEdit?: (client: Client) => void;
+  onClientOpenById?: (clientId: string) => Promise<void>;
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
   policies: Policy[];
@@ -161,6 +163,8 @@ export interface DealDetailsPanelProps {
   onRefreshDeal?: (dealId: string) => Promise<void>;
   isTasksLoading?: boolean;
   isQuotesLoading?: boolean;
+  requestedTab?: DealTabId;
+  onTabChange?: (tab: DealTabId) => void;
 }
 
 const getTodayInputValue = () => new Date().toISOString().slice(0, 10);
@@ -169,6 +173,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   deals,
   clients,
   onClientEdit,
+  onClientOpenById,
   onClientFindSimilar,
   onClientNormalizeName,
   policies,
@@ -237,6 +242,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   onClearDealFocus,
   accessMessage,
   onClearAccessMessage,
+  requestedTab,
+  onTabChange,
   onRefreshDeal,
   isTasksLoading = false,
   isQuotesLoading = false,
@@ -482,6 +489,8 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
     scheduleNextContact,
     handleSimilarClick,
   } = useDealDetailsPanelActions({
+    requestedTab,
+    onTabChange,
     selectedDeal,
     relatedTasks,
     isSelectedDealDeleted,
@@ -629,11 +638,17 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   }, [activeTab, loadDriveFiles]);
 
   const handleOpenClient = useCallback(
-    (client: Client) => {
-      onClientEdit?.(client);
+    async (clientId: string) => {
+      if (onClientOpenById) {
+        await onClientOpenById(clientId);
+      } else {
+        const client = clients.find((item) => item.id === clientId);
+        if (!client) throw new Error('Клиент не найден');
+        onClientEdit?.(client);
+      }
       navigate('/clients');
     },
-    [navigate, onClientEdit],
+    [clients, navigate, onClientEdit, onClientOpenById],
   );
 
   const quotes = useMemo(
@@ -646,6 +661,20 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   );
   const quotesCount = useMemo(() => quotes.filter((quote) => !quote.deletedAt).length, [quotes]);
   const policiesCount = relatedPolicies.length;
+  const overdueTasksCount = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return relatedTasks.filter(
+      (task) =>
+        !task.deletedAt && task.status !== 'done' && task.dueAt && task.dueAt.slice(0, 10) < today,
+    ).length;
+  }, [relatedTasks]);
+  const recommendedNextAction = overdueTasksCount
+    ? `Разобрать просроченные задачи: ${overdueTasksCount}`
+    : !selectedDeal?.nextContactDate
+      ? 'Назначить следующий контакт'
+      : policiesCount === 0
+        ? 'Добавить расчёт или полис'
+        : 'Связаться с клиентом по плану';
   const chatCount = chatMessages.length;
   const filesCount = sortedDriveFiles.length;
   const selectedClientDisplayName = selectedClient?.name || selectedDeal?.clientName || '—';
@@ -848,9 +877,48 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 className="border-t border-slate-100 pt-6"
                 role="tabpanel"
                 id={`deal-tabpanel-${activeTab}`}
-                aria-labelledby={`deal-tab-${activeTab}`}
+                aria-labelledby={`deal-tab-group-${getDealTabGroup(activeTab).id}`}
                 tabIndex={0}
               >
+                {activeTab === 'overview' && selectedDeal && (
+                  <section
+                    className="mb-6 grid gap-3 lg:grid-cols-4"
+                    aria-label="Следующие шаги по сделке"
+                  >
+                    <div className="app-panel-muted p-4">
+                      <p className="app-label">Следующий контакт</p>
+                      <p className="mt-2 text-sm font-semibold text-slate-900">
+                        {formatDate(selectedDeal.nextContactDate)}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="app-panel-muted p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      onClick={() => setActiveTab('tasks')}
+                    >
+                      <span className="app-label">Просроченные задачи</span>
+                      <span className="mt-2 block text-sm font-semibold text-slate-900">
+                        {overdueTasksCount}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      className="app-panel-muted p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
+                      onClick={() => setActiveTab('policies')}
+                    >
+                      <span className="app-label">Полисы</span>
+                      <span className="mt-2 block text-sm font-semibold text-slate-900">
+                        {policiesCount}
+                      </span>
+                    </button>
+                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
+                      <p className="app-label text-sky-700">Следующее действие</p>
+                      <p className="mt-2 text-sm font-semibold text-sky-900">
+                        {recommendedNextAction}
+                      </p>
+                    </div>
+                  </section>
+                )}
                 <DealDetailsPanelTabContent
                   activeTab={activeTab}
                   notesSectionProps={{

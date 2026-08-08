@@ -25,8 +25,10 @@ import { FORM_INPUT_DISABLED } from '../common/forms/formClassNames';
 import { InlineAlert } from '../common/InlineAlert';
 import { Panel, SectionHeader, StatusBadge } from '../common/layoutPrimitives';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { useConfirm } from '../../hooks/useConfirm';
 
 export const SettingsView: React.FC = () => {
+  const { confirm, ConfirmDialogRenderer } = useConfirm();
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -45,7 +47,8 @@ export const SettingsView: React.FC = () => {
   const [driveError, setDriveError] = useState('');
   const [driveReconnectBusy, setDriveReconnectBusy] = useState(false);
   const [driveReconnectNotice, setDriveReconnectNotice] = useState('');
-  const [currentUsername, setCurrentUsername] = useState('');
+  const [canReconnectDrive, setCanReconnectDrive] = useState(false);
+  const [capabilities, setCapabilities] = useState<string[]>([]);
   const [nextContactLeadDaysInput, setNextContactLeadDaysInput] = useState('');
   const [nextContactLeadDaysError, setNextContactLeadDaysError] = useState('');
   const [nextContactLeadDaysSaving, setNextContactLeadDaysSaving] = useState(false);
@@ -60,6 +63,7 @@ export const SettingsView: React.FC = () => {
   const [selectedMailboxId, setSelectedMailboxId] = useState<number | null>(null);
   const [mailMessages, setMailMessages] = useState<MailboxMessage[]>([]);
   const [mailMessagesLoading, setMailMessagesLoading] = useState(false);
+  const [deletingMailboxId, setDeletingMailboxId] = useState<number | null>(null);
   const telegramBotUsername = (import.meta.env.VITE_TELEGRAM_BOT_USERNAME ?? '').trim();
   const normalizedTelegramBotUsername = telegramBotUsername.replace(/^@/, '');
   const telegramBotLink = normalizedTelegramBotUsername
@@ -117,7 +121,11 @@ export const SettingsView: React.FC = () => {
         }
         applyTelegramSettings(response);
         setDriveStatus(response.drive ?? null);
-        setCurrentUsername(currentUser.username ?? '');
+        setCapabilities(currentUser.capabilities ?? []);
+        setCanReconnectDrive(
+          (currentUser.capabilities ?? []).includes('drive.reconnect') &&
+            Boolean(response.drive?.reconnect_available),
+        );
       } catch (err) {
         if (mounted) {
           setTelegramError(formatErrorMessage(err, 'Не удалось загрузить Telegram-настройки.'));
@@ -249,7 +257,10 @@ export const SettingsView: React.FC = () => {
     }
   };
 
-  const isDriveReconnectUser = currentUsername === 'Vova';
+  const isDriveReconnectUser = canReconnectDrive;
+  const canViewNotifications = capabilities.includes('settings.notifications');
+  const canViewIntegrations = capabilities.includes('settings.integrations');
+  const canViewMail = capabilities.includes('settings.mail');
   const driveStatusLabel = (() => {
     switch (driveStatus?.status) {
       case 'connected':
@@ -316,6 +327,14 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleUnlinkTelegram = async () => {
+    const confirmed = await confirm({
+      title: 'Отвязать Telegram?',
+      message: 'Telegram-уведомления перестанут приходить до повторной привязки.',
+      confirmText: 'Отвязать',
+      cancelText: 'Отмена',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
     setTelegramError('');
     setTelegramSaving(true);
     try {
@@ -378,6 +397,16 @@ export const SettingsView: React.FC = () => {
   };
 
   const handleMailboxDelete = async (mailboxId: number) => {
+    const mailbox = mailboxes.find((item) => item.id === mailboxId);
+    const confirmed = await confirm({
+      title: 'Удалить почтовый ящик?',
+      message: `Ящик ${mailbox?.email ?? ''} и доступ к его письмам будут удалены.`,
+      confirmText: 'Удалить',
+      cancelText: 'Отмена',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    setDeletingMailboxId(mailboxId);
     setMailboxError('');
     try {
       await deleteMailbox(mailboxId);
@@ -388,6 +417,8 @@ export const SettingsView: React.FC = () => {
       }
     } catch (err) {
       setMailboxError(formatErrorMessage(err, 'Не удалось удалить ящик.'));
+    } finally {
+      setDeletingMailboxId(null);
     }
   };
 
@@ -441,8 +472,30 @@ export const SettingsView: React.FC = () => {
         title="Настройки"
         description="Обновите пароль для доступа в систему. Используйте надежную комбинацию и не повторяйте старые пароли."
       />
+      <nav aria-label="Разделы настроек" className="flex flex-wrap gap-2 text-sm">
+        {(
+          [
+            ['security-settings', 'Профиль', true],
+            ['telegram-settings', 'Уведомления', canViewNotifications],
+            ['drive-settings', 'Интеграции', canViewIntegrations],
+            ['mail-settings', 'Почта', canViewMail],
+          ] as Array<[string, string, boolean]>
+        )
+          .filter(([, , visible]) => visible)
+          .map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="link-action rounded-lg px-2 py-1">
+              {label}
+            </a>
+          ))}
+      </nav>
 
-      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+      <Panel
+        id="telegram-settings"
+        as="section"
+        padding="lg"
+        variant="flat"
+        className={`space-y-4 ${canViewNotifications ? '' : 'hidden'}`}
+      >
         <SectionHeader
           title="Telegram-уведомления"
           description="Подключите Telegram и выберите события, по которым хотите получать уведомления."
@@ -601,12 +654,54 @@ export const SettingsView: React.FC = () => {
             </div>
           </>
         )}
+        <div className="border-t border-slate-200 pt-4">
+          <h3 className="text-sm font-semibold text-slate-900">Следующий контакт</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Укажите, за сколько дней до выбранного события ставить следующий контакт по умолчанию.
+          </p>
+          {nextContactLeadDaysError && (
+            <InlineAlert as="p" className="mt-3">
+              {nextContactLeadDaysError}
+            </InlineAlert>
+          )}
+          <div className="mt-3 max-w-xs space-y-2">
+            <label htmlFor="next-contact-lead-days" className="app-label">
+              Дней до события
+            </label>
+            <input
+              id="next-contact-lead-days"
+              type="number"
+              min={1}
+              step={1}
+              value={nextContactLeadDaysInput}
+              onChange={(event) => {
+                setNextContactLeadDaysInput(event.target.value);
+                setNextContactLeadDaysError('');
+              }}
+              onBlur={handleNextContactLeadDaysSave}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') event.currentTarget.blur();
+              }}
+              disabled={nextContactLeadDaysSaving || telegramLoading}
+              className={FORM_INPUT_DISABLED}
+            />
+            <p className="text-xs text-slate-500">
+              Минимум 1. Значение влияет на «Отложить до следующего контакта».
+            </p>
+          </div>
+        </div>
       </Panel>
 
-      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+      <Panel
+        id="drive-settings"
+        as="section"
+        padding="lg"
+        variant="flat"
+        className={`space-y-4 ${canViewIntegrations ? '' : 'hidden'}`}
+      >
         <SectionHeader
           title="Google Drive"
-          description="Контролируйте состояние интеграции Drive и перепривязывайте OAuth для пользователя Vova без ручного SSH."
+          description="Контролируйте состояние интеграции Drive и перепривязывайте OAuth без ручного SSH."
         />
 
         {driveError && <InlineAlert as="p">{driveError}</InlineAlert>}
@@ -678,7 +773,7 @@ export const SettingsView: React.FC = () => {
 
             {!isDriveReconnectUser && (
               <p className="text-xs text-slate-500">
-                Персональная перепривязка OAuth доступна только для пользователя Vova.
+                Персональная перепривязка OAuth доступна назначенному владельцу интеграции.
               </p>
             )}
             {driveStatus?.using_fallback && (
@@ -691,7 +786,13 @@ export const SettingsView: React.FC = () => {
         )}
       </Panel>
 
-      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
+      <Panel
+        id="mail-settings"
+        as="section"
+        padding="lg"
+        variant="flat"
+        className={`space-y-4 ${canViewMail ? '' : 'hidden'}`}
+      >
         <SectionHeader
           title="Почта"
           description="Создавайте почтовые ящики и просматривайте входящие письма прямо здесь."
@@ -794,11 +895,12 @@ export const SettingsView: React.FC = () => {
                           Письма
                         </Button>
                         <Button
-                          onClick={() => handleMailboxDelete(mailbox.id)}
+                          onClick={() => void handleMailboxDelete(mailbox.id)}
                           variant="outline"
                           size="sm"
+                          disabled={deletingMailboxId === mailbox.id}
                         >
-                          Удалить
+                          {deletingMailboxId === mailbox.id ? 'Удаляем...' : 'Удалить'}
                         </Button>
                       </div>
                     </li>
@@ -848,44 +950,7 @@ export const SettingsView: React.FC = () => {
         )}
       </Panel>
 
-      <Panel as="section" padding="lg" variant="flat" className="space-y-4">
-        <SectionHeader
-          title="Настройки сделок"
-          description="Укажите, за сколько дней до выбранного события ставить следующий контакт по умолчанию."
-        />
-
-        {nextContactLeadDaysError && <InlineAlert as="p">{nextContactLeadDaysError}</InlineAlert>}
-
-        <div className="max-w-xs space-y-2">
-          <label htmlFor="next-contact-lead-days" className="app-label">
-            Дней до события
-          </label>
-          <input
-            id="next-contact-lead-days"
-            type="number"
-            min={1}
-            step={1}
-            value={nextContactLeadDaysInput}
-            onChange={(event) => {
-              setNextContactLeadDaysInput(event.target.value);
-              setNextContactLeadDaysError('');
-            }}
-            onBlur={handleNextContactLeadDaysSave}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.currentTarget.blur();
-              }
-            }}
-            disabled={nextContactLeadDaysSaving || telegramLoading}
-            className={FORM_INPUT_DISABLED}
-          />
-          <p className="text-xs text-slate-500">
-            Минимум 1. Значение влияет на «Отложить до следующего контакта».
-          </p>
-        </div>
-      </Panel>
-
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-xl">
+      <form id="security-settings" onSubmit={handleSubmit} className="space-y-4 max-w-xl">
         {error && <InlineAlert as="p">{error}</InlineAlert>}
         {success && (
           <InlineAlert as="p" tone="success">
@@ -944,6 +1009,7 @@ export const SettingsView: React.FC = () => {
           </Button>
         </div>
       </form>
+      <ConfirmDialogRenderer />
     </Panel>
   );
 };

@@ -101,4 +101,21 @@ describe('SellerDashboardView', () => {
       await screen.findByText('В этом периоде у вас нет полисов с началом в выбранном диапазоне.'),
     ).toBeInTheDocument();
   });
+
+  it('links key KPI cards to filtered workflows', async () => {
+    mockedFetchSellerDashboard.mockResolvedValueOnce(createDashboardPayload());
+
+    render(<SellerDashboardView />);
+
+    expect(
+      await screen.findByRole('link', { name: 'Открыть полисы выбранного периода' }),
+    ).toHaveAttribute('href', '/policies?start_date_from=2025-01-01&start_date_to=2025-01-31');
+    expect(screen.getByRole('link', { name: 'Открыть текущие задачи' })).toHaveAttribute(
+      'href',
+      '/tasks?only_my_tasks=true',
+    );
+    expect(
+      screen.getByRole('link', { name: 'Открыть задачи, включая завершённые' }),
+    ).toHaveAttribute('href', '/tasks?only_my_tasks=true&show_completed=true');
+  });
 });

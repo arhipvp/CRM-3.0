@@ -27,6 +27,7 @@ export interface User {
   firstName?: string;
   lastName?: string;
   isStaff?: boolean;
+  capabilities?: string[];
 }
 
 export interface Client {
@@ -40,6 +41,7 @@ export interface Client {
   createdAt: string;
   updatedAt: string;
   driveFolderId?: string | null;
+  dealCount?: number;
 }
 
 export interface ClientDuplicateHint {

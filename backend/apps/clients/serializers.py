@@ -4,6 +4,7 @@ from .models import Client
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    deal_count = serializers.IntegerField(read_only=True)
     email = serializers.EmailField(
         required=False,
         allow_blank=True,

@@ -104,7 +104,7 @@ describe('DealForm', () => {
     const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
     fireEvent.focus(clientInput);
     fireEvent.change(clientInput, { target: { value: 'Клиент 2' } });
-    fireEvent.mouseDown(await screen.findByRole('button', { name: 'Клиент 2' }));
+    fireEvent.mouseDown(await screen.findByRole('option', { name: 'Клиент 2' }));
 
     expect(clientInput).toHaveValue('Клиент 2');
 
@@ -122,6 +122,27 @@ describe('DealForm', () => {
     );
 
     expect(clientInput).toHaveValue('Клиент 2');
+  });
+
+  it('сохраняет исходного клиента, если его нет в компактном справочнике', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <DealForm
+        {...baseProps}
+        onSubmit={onSubmit}
+        clients={[makeClient('client-visible', 'Видимый клиент')]}
+        mode="edit"
+        initialValues={{ title: 'Сделка', clientId: 'client-outside-page' }}
+      />,
+    );
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ clientId: 'client-outside-page' }),
+      );
+    });
   });
 
   it('показывает новый label и текст ошибки для контактного лица', async () => {

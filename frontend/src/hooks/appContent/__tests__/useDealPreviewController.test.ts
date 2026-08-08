@@ -1,11 +1,15 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
+import { createElement, type PropsWithChildren } from 'react';
 
 import { useDealPreviewController } from '../useDealPreviewController';
 
 describe('useDealPreviewController', () => {
+  const wrapper = ({ children }: PropsWithChildren) => createElement(MemoryRouter, null, children);
+
   it('выбирает сделку и сбрасывает флаг очистки фокуса', () => {
-    const { result } = renderHook(() => useDealPreviewController());
+    const { result } = renderHook(() => useDealPreviewController(), { wrapper });
 
     act(() => {
       result.current.clearSelectedDealFocus();
@@ -21,7 +25,7 @@ describe('useDealPreviewController', () => {
   });
 
   it('открывает и закрывает preview сделки', () => {
-    const { result } = renderHook(() => useDealPreviewController());
+    const { result } = renderHook(() => useDealPreviewController(), { wrapper });
 
     act(() => {
       result.current.handleOpenDealPreview('deal-42');
@@ -38,7 +42,7 @@ describe('useDealPreviewController', () => {
   });
 
   it('формирует dealRowFocusRequest c растущим nonce', () => {
-    const { result } = renderHook(() => useDealPreviewController());
+    const { result } = renderHook(() => useDealPreviewController(), { wrapper });
 
     act(() => {
       result.current.requestDealRowFocus('deal-a');
@@ -52,7 +56,7 @@ describe('useDealPreviewController', () => {
   });
 
   it('позволяет внешнему handler блокировать выбор сделки', () => {
-    const { result } = renderHook(() => useDealPreviewController());
+    const { result } = renderHook(() => useDealPreviewController(), { wrapper });
 
     const handleSelectDeal = (dealId: string, isBlocked: boolean) => {
       if (isBlocked) {

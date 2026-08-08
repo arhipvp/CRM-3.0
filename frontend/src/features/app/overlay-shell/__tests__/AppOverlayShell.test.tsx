@@ -111,6 +111,7 @@ const baseProps = {
     previewSellerUser: undefined,
     previewExecutorUser: undefined,
     onClose: vi.fn(),
+    onOpenFull: vi.fn(),
     panelProps: {} as never,
   },
   quickTaskDeal: {

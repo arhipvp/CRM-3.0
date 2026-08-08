@@ -48,7 +48,7 @@ interface PoliciesTabProps {
   sortedPolicies: Policy[];
   relatedPayments: Payment[];
   clients: Client[];
-  onOpenClient: (client: Client) => void;
+  onOpenClient: (clientId: string) => Promise<void>;
   policySortKey: PolicySortKey;
   policySortOrder: 'asc' | 'desc';
   setPolicySortKey: (value: PolicySortKey) => void;
@@ -94,6 +94,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   onMovePolicy,
   onUpdatePolicyRenewed,
   onRequestEditPolicy,
+  onOpenClient,
   onUploadAndRecognizePolicyFiles,
   onMarkPaymentPaid,
   onMarkFinancialRecordPaid,
@@ -103,6 +104,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   isRecognizingPolicyFiles = false,
   isLoading = false,
 }) => {
+  const [openingClientId, setOpeningClientId] = useState<string | null>(null);
   const [showUnpaidPaymentsOnly, setShowUnpaidPaymentsOnly] = useState(false);
   const [showUnpaidRecordsOnly, setShowUnpaidRecordsOnly] = useState(false);
   const [showRenewedPolicies, setShowRenewedPolicies] = useState(false);
@@ -478,7 +480,27 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       </td>
                       <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
                         <div className="space-y-1.5">
-                          <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                          {model.clientId ? (
+                            <button
+                              type="button"
+                              className="text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
+                              disabled={openingClientId === model.clientId}
+                              onClick={() => {
+                                setOpeningClientId(model.clientId);
+                                void onOpenClient(model.clientId!)
+                                  .catch(() => undefined)
+                                  .finally(() => {
+                                    setOpeningClientId((current) =>
+                                      current === model.clientId ? null : current,
+                                    );
+                                  });
+                              }}
+                            >
+                              {model.client}
+                            </button>
+                          ) : (
+                            <p className="text-sm font-semibold text-slate-900">{model.client}</p>
+                          )}
                           {policy.dealId ? (
                             canOpenDeal ? (
                               <button

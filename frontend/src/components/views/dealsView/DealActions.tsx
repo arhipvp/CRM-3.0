@@ -56,25 +56,6 @@ export const DealActions: React.FC<DealActionsProps> = ({
       >
         Редактировать
       </button>
-      <button
-        type="button"
-        onClick={onMerge}
-        disabled={isSelectedDealDeleted}
-        className={BTN_SECONDARY}
-      >
-        Объединить
-      </button>
-      <button
-        type="button"
-        onClick={onSimilar}
-        disabled={isSelectedDealDeleted}
-        className={BTN_SECONDARY}
-      >
-        Похожие сделки
-      </button>
-      <button type="button" onClick={onRefresh} disabled={isRefreshing} className={BTN_SECONDARY}>
-        {isRefreshing ? 'Обновляем...' : 'Обновить'}
-      </button>
     </div>
 
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -100,15 +81,49 @@ export const DealActions: React.FC<DealActionsProps> = ({
         </button>
       )}
 
-      {isSelectedDealDeleted ? (
-        <button type="button" onClick={onRestore} disabled={isRestoringDeal} className={BTN_QUIET}>
-          {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить'}
-        </button>
-      ) : (
-        <button type="button" onClick={onDelete} disabled={isDeletingDeal} className={BTN_DANGER}>
-          {isDeletingDeal ? 'Удаляем...' : 'Удалить'}
-        </button>
-      )}
+      <details className="relative">
+        <summary className={`${BTN_SECONDARY} cursor-pointer list-none`}>Ещё</summary>
+        <div className="absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
+          <button type="button" onClick={onRefresh} disabled={isRefreshing} className={BTN_QUIET}>
+            {isRefreshing ? 'Обновляем...' : 'Обновить данные'}
+          </button>
+          <button
+            type="button"
+            onClick={onSimilar}
+            disabled={isSelectedDealDeleted}
+            className={BTN_QUIET}
+          >
+            Похожие сделки
+          </button>
+          <button
+            type="button"
+            onClick={onMerge}
+            disabled={isSelectedDealDeleted}
+            className={BTN_QUIET}
+          >
+            Объединить сделки
+          </button>
+          {isSelectedDealDeleted ? (
+            <button
+              type="button"
+              onClick={onRestore}
+              disabled={isRestoringDeal}
+              className={BTN_QUIET}
+            >
+              {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить сделку'}
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeletingDeal}
+              className={BTN_DANGER}
+            >
+              {isDeletingDeal ? 'Удаляем...' : 'Удалить сделку'}
+            </button>
+          )}
+        </div>
+      </details>
     </div>
   </div>
 );

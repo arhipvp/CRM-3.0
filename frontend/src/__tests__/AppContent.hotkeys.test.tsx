@@ -97,6 +97,7 @@ const createDealMock = vi.hoisted(() => vi.fn());
 const ensureCommissionsDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const ensureFinanceDataLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 const ensureReferenceDataMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+const ensureClientLoadedMock = vi.hoisted(() => vi.fn().mockResolvedValue(null));
 
 vi.mock('../hooks/useAppData', () => ({
   useAppData: () => ({
@@ -115,6 +116,7 @@ vi.mock('../hooks/useAppData', () => ({
     ensureCommissionsDataLoaded: ensureCommissionsDataLoadedMock,
     ensureFinanceDataLoaded: ensureFinanceDataLoadedMock,
     ensureReferenceData: ensureReferenceDataMock,
+    ensureClientLoaded: ensureClientLoadedMock,
     ensureTasksLoaded: vi.fn().mockResolvedValue(undefined),
     refreshDeals: refreshDealsMock.mockImplementation(async () => appDataMock.deals),
     invalidateDealsCache: invalidateDealsCacheMock,
@@ -363,6 +365,8 @@ describe('AppContent hotkeys integration', () => {
     ensureFinanceDataLoadedMock.mockResolvedValue(undefined);
     ensureReferenceDataMock.mockReset();
     ensureReferenceDataMock.mockResolvedValue(undefined);
+    ensureClientLoadedMock.mockReset();
+    ensureClientLoadedMock.mockResolvedValue(null);
     fetchDealMock.mockImplementation(async (dealId: string) => ({
       id: dealId,
       title: `Сделка ${dealId}`,
@@ -635,6 +639,27 @@ describe('AppContent hotkeys integration', () => {
     });
   });
 
+  it('hydrates the selected deal client when it is outside the reference page', async () => {
+    appDataMock.deals = [
+      {
+        id: 'deal-1',
+        title: 'Сделка 1',
+        clientId: 'client-outside-page',
+        status: 'open',
+        createdAt: '2026-01-01T00:00:00Z',
+        quotes: [],
+        documents: [],
+      },
+    ];
+
+    renderAppContent('/deals?dealId=deal-1');
+
+    await waitFor(() => {
+      expect(ensureClientLoadedMock).toHaveBeenCalledTimes(1);
+      expect(ensureClientLoadedMock).toHaveBeenCalledWith('client-outside-page');
+    });
+  });
+
   it('keeps deep-linked deal object after deals list refresh drops it', async () => {
     appDataMock.deals = [];
     refreshDealsMock.mockResolvedValueOnce([]).mockImplementation(async () => {
@@ -772,18 +797,20 @@ describe('AppContent hotkeys integration', () => {
       expect(createDeal).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
     });
+    await waitFor(() => expect(refreshDealsMock).toHaveBeenCalledTimes(1));
+    refreshDealsMock.mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
 
     await waitFor(() => {
-      expect(refreshDealsMock).toHaveBeenCalledTimes(1);
+      expect(refreshDealsMock).not.toHaveBeenCalled();
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger search submit' }));
 
     await waitFor(() => {
-      expect(refreshDealsMock).toHaveBeenCalledTimes(2);
+      expect(refreshDealsMock).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
     });
   });

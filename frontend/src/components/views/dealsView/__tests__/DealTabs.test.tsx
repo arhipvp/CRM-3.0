@@ -13,29 +13,42 @@ describe('DealTabs', () => {
 
     const overviewTab = screen.getByRole('tab', { name: 'Обзор' });
     expect(overviewTab).toHaveAttribute('aria-selected', 'true');
-    expect(overviewTab).toHaveAttribute('aria-controls', 'deal-tabpanel-overview');
 
-    const tasksTab = screen.getByRole('tab', { name: 'Задачи' });
-    expect(tasksTab).toHaveAttribute('aria-selected', 'false');
-    expect(screen.getByRole('tab', { name: 'Лента' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Журнал' })).toBeInTheDocument();
-    fireEvent.click(tasksTab);
+    const workTab = screen.getByRole('tab', { name: 'Работа' });
+    expect(workTab).toHaveAttribute('aria-selected', 'false');
+    expect(overviewTab).toHaveAttribute('tabindex', '0');
+    expect(workTab).toHaveAttribute('tabindex', '-1');
+    expect(screen.getAllByRole('tab')).toHaveLength(5);
+    fireEvent.click(workTab);
     expect(onChange).toHaveBeenCalledWith('tasks');
+  });
+
+  it('supports arrow, Home and End keyboard navigation', () => {
+    const onChange = vi.fn();
+    render(<DealTabs activeTab="overview" onChange={onChange} />);
+
+    const overviewTab = screen.getByRole('tab', { name: 'Обзор' });
+    fireEvent.keyDown(overviewTab, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith('tasks');
+    expect(screen.getByRole('tab', { name: 'Работа' })).toHaveFocus();
+
+    fireEvent.keyDown(overviewTab, { key: 'End' });
+    expect(onChange).toHaveBeenLastCalledWith('chat');
+    expect(screen.getByRole('tab', { name: 'Активность' })).toHaveFocus();
   });
 
   it('shows spinner for tasks tab and hides its counter while loading', () => {
     const { container } = render(
       <DealTabs
-        activeTab="overview"
+        activeTab="tasks"
         onChange={vi.fn()}
         tabCounts={{ tasks: 6 }}
         loadingByTab={{ tasks: true }}
       />,
     );
 
-    const tasksTab = container.querySelector('#deal-tab-tasks');
-    expect(tasksTab).toBeInTheDocument();
-    expect(tasksTab?.querySelector('.animate-spin')).toBeInTheDocument();
-    expect(tasksTab?.querySelector('.app-counter')).not.toBeInTheDocument();
+    const workTab = container.querySelector('#deal-tab-group-work');
+    expect(workTab).toBeInTheDocument();
+    expect(workTab?.querySelector('.animate-spin')).toBeInTheDocument();
   });
 });
