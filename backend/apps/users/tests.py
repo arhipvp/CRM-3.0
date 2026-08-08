@@ -471,18 +471,18 @@ class AuthenticationTest(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
+        self.login_password = "testpass123"  # pragma: allowlist secret
         self.user = User.objects.create_user(
             username="testuser",
             email="test@test.com",
-            password="testpass123",  # pragma: allowlist secret
+            password=self.login_password,
         )
 
     def test_login(self):
         """Тест входа пользователя и получения токенов"""
-        login_password = "testpass123"  # pragma: allowlist secret
         data = {
             "username": "testuser",
-            "password": login_password,
+            "password": self.login_password,
         }
         response = self.client.post("/api/v1/auth/login/", data, format="json")
 
@@ -512,7 +512,7 @@ class AuthenticationTest(APITestCase):
 
         response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "testuser", "password": "testpass123"},
+            {"username": "testuser", "password": self.login_password},
             format="json",
         )
 
@@ -533,7 +533,7 @@ class AuthenticationTest(APITestCase):
 
         response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "testuser", "password": "testpass123"},
+            {"username": "testuser", "password": self.login_password},
             format="json",
         )
 
@@ -554,7 +554,7 @@ class AuthenticationTest(APITestCase):
 
         response = self.client.post(
             "/api/v1/auth/login/",
-            {"username": "Vova", "password": "testpass123"},
+            {"username": "Vova", "password": self.login_password},
             format="json",
         )
 
