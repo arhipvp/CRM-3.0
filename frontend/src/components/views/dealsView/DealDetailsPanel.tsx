@@ -661,20 +661,6 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
   );
   const quotesCount = useMemo(() => quotes.filter((quote) => !quote.deletedAt).length, [quotes]);
   const policiesCount = relatedPolicies.length;
-  const overdueTasksCount = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    return relatedTasks.filter(
-      (task) =>
-        !task.deletedAt && task.status !== 'done' && task.dueAt && task.dueAt.slice(0, 10) < today,
-    ).length;
-  }, [relatedTasks]);
-  const recommendedNextAction = overdueTasksCount
-    ? `Разобрать просроченные задачи: ${overdueTasksCount}`
-    : !selectedDeal?.nextContactDate
-      ? 'Назначить следующий контакт'
-      : policiesCount === 0
-        ? 'Добавить расчёт или полис'
-        : 'Связаться с клиентом по плану';
   const chatCount = chatMessages.length;
   const filesCount = sortedDriveFiles.length;
   const selectedClientDisplayName = selectedClient?.name || selectedDeal?.clientName || '—';
@@ -874,51 +860,12 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 }}
               />
               <div
-                className="border-t border-slate-100 pt-6"
+                className="min-h-[100dvh] border-t border-slate-100 pt-6 [overflow-anchor:none]"
                 role="tabpanel"
                 id={`deal-tabpanel-${activeTab}`}
                 aria-labelledby={`deal-tab-group-${getDealTabGroup(activeTab).id}`}
                 tabIndex={0}
               >
-                {activeTab === 'overview' && selectedDeal && (
-                  <section
-                    className="mb-6 grid gap-3 lg:grid-cols-4"
-                    aria-label="Следующие шаги по сделке"
-                  >
-                    <div className="app-panel-muted p-4">
-                      <p className="app-label">Следующий контакт</p>
-                      <p className="mt-2 text-sm font-semibold text-slate-900">
-                        {formatDate(selectedDeal.nextContactDate)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className="app-panel-muted p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
-                      onClick={() => setActiveTab('tasks')}
-                    >
-                      <span className="app-label">Просроченные задачи</span>
-                      <span className="mt-2 block text-sm font-semibold text-slate-900">
-                        {overdueTasksCount}
-                      </span>
-                    </button>
-                    <button
-                      type="button"
-                      className="app-panel-muted p-4 text-left transition hover:border-sky-300 hover:bg-sky-50"
-                      onClick={() => setActiveTab('policies')}
-                    >
-                      <span className="app-label">Полисы</span>
-                      <span className="mt-2 block text-sm font-semibold text-slate-900">
-                        {policiesCount}
-                      </span>
-                    </button>
-                    <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4">
-                      <p className="app-label text-sky-700">Следующее действие</p>
-                      <p className="mt-2 text-sm font-semibold text-sky-900">
-                        {recommendedNextAction}
-                      </p>
-                    </div>
-                  </section>
-                )}
                 <DealDetailsPanelTabContent
                   activeTab={activeTab}
                   notesSectionProps={{

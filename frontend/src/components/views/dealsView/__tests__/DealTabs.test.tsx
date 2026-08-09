@@ -51,4 +51,17 @@ describe('DealTabs', () => {
     expect(workTab).toBeInTheDocument();
     expect(workTab?.querySelector('.animate-spin')).toBeInTheDocument();
   });
+
+  it('reserves space for subtabs even when the active section has none', () => {
+    const { rerender } = render(<DealTabs activeTab="overview" onChange={vi.fn()} />);
+
+    const subtabs = screen.getByTestId('deal-subtabs');
+    expect(subtabs).toHaveClass('min-h-8');
+    expect(subtabs).toHaveAttribute('aria-hidden', 'true');
+
+    rerender(<DealTabs activeTab="tasks" onChange={vi.fn()} />);
+    expect(screen.getByTestId('deal-subtabs')).toHaveClass('min-h-8');
+    expect(screen.getByRole('button', { name: 'Задачи' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Расчёты' })).toBeInTheDocument();
+  });
 });

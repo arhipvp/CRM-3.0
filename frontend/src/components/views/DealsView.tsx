@@ -278,7 +278,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
           }
           return next;
         },
-        { replace: true },
+        { replace: true, preventScrollReset: true },
       );
     },
     [setSearchParams],

@@ -75,9 +75,14 @@ export const DealTabs: React.FC<DealTabsProps> = ({
           );
         })}
       </div>
-      {activeGroup.tabs.length > 1 && (
-        <div className="flex flex-wrap gap-2" aria-label={`Подразделы: ${activeGroup.label}`}>
-          {activeGroup.tabs.map((tabId) => {
+      <div
+        className="flex min-h-8 flex-wrap items-start gap-2"
+        aria-label={activeGroup.tabs.length > 1 ? `Подразделы: ${activeGroup.label}` : undefined}
+        aria-hidden={activeGroup.tabs.length > 1 ? undefined : true}
+        data-testid="deal-subtabs"
+      >
+        {activeGroup.tabs.length > 1 &&
+          activeGroup.tabs.map((tabId) => {
             const tab = DEAL_TAB_BY_ID.get(tabId);
             if (!tab) return null;
             const isActive = activeTab === tabId;
@@ -98,8 +103,7 @@ export const DealTabs: React.FC<DealTabsProps> = ({
               </button>
             );
           })}
-        </div>
-      )}
+      </div>
     </div>
   );
 };

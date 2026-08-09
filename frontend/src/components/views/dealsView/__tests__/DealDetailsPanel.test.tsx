@@ -462,6 +462,9 @@ describe('DealDetailsPanel', () => {
       />,
     );
 
+    expect(screen.getByRole('tabpanel')).toHaveClass('min-h-[100dvh]');
+    expect(screen.queryByLabelText('Следующие шаги по сделке')).not.toBeInTheDocument();
+
     fireEvent.click(screen.getByRole('button', { name: 'Open Files' }));
     const baselineReloadCalls = reloadNotesMock.mock.calls.length;
     const baselineLoadCalls = loadDriveFilesMock.mock.calls.length;
