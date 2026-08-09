@@ -4,6 +4,7 @@ import type { AddFinancialRecordFormValues } from '../../../forms/AddFinancialRe
 import type { IncomeExpenseRow } from '../RecordsTable';
 import type { StatementAmountApplyMode, StatementAmountApplyResult } from '../../../../types';
 import { normalizeNumericAmount, parseNumericAmount } from '../../../../utils/parseNumericAmount';
+import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 
 type AmountDraft = { mode: 'rub' | 'percent'; value: string };
 
@@ -32,6 +33,8 @@ export const useRecordAmountEditing = ({
     value: '',
   });
   const [isApplyingStatementAmount, setIsApplyingStatementAmount] = useState(false);
+  const [savingRecordIds, setSavingRecordIds] = useState<Set<string>>(new Set());
+  const [recordAmountErrors, setRecordAmountErrors] = useState<Record<string, string>>({});
 
   const getAbsoluteSaldoBase = useCallback((row: IncomeExpenseRow) => {
     const value = Number(row.paymentPaidBalance ?? 0);
@@ -90,6 +93,11 @@ export const useRecordAmountEditing = ({
   );
 
   const handleRecordAmountChange = useCallback((recordId: string, value: string) => {
+    setRecordAmountErrors((prev) => {
+      const next = { ...prev };
+      delete next[recordId];
+      return next;
+    });
     setAmountDrafts((prev) => ({
       ...prev,
       [recordId]: { mode: prev[recordId]?.mode ?? 'rub', value },
@@ -159,15 +167,35 @@ export const useRecordAmountEditing = ({
       if (absoluteAmount === null) {
         return;
       }
-      await onUpdateFinancialRecord(
-        row.recordId,
-        buildRecordUpdateValues(row, Math.abs(absoluteAmount)),
-      );
-      setAmountDrafts((prev) => {
-        const next = { ...prev };
-        delete next[row.recordId];
-        return next;
-      });
+      if (savingRecordIds.has(row.recordId)) return;
+      setSavingRecordIds((prev) => new Set(prev).add(row.recordId));
+      try {
+        await onUpdateFinancialRecord(
+          row.recordId,
+          buildRecordUpdateValues(row, Math.abs(absoluteAmount)),
+        );
+        setAmountDrafts((prev) => {
+          const next = { ...prev };
+          delete next[row.recordId];
+          return next;
+        });
+      } catch (error) {
+        setAmountDrafts((prev) => {
+          const next = { ...prev };
+          delete next[row.recordId];
+          return next;
+        });
+        setRecordAmountErrors((prev) => ({
+          ...prev,
+          [row.recordId]: formatErrorMessage(error, 'Не удалось сохранить сумму.'),
+        }));
+      } finally {
+        setSavingRecordIds((prev) => {
+          const next = new Set(prev);
+          next.delete(row.recordId);
+          return next;
+        });
+      }
     },
     [
       amountDrafts,
@@ -175,8 +203,22 @@ export const useRecordAmountEditing = ({
       getAbsoluteAmountFromDraft,
       isRowAmountLocked,
       onUpdateFinancialRecord,
+      savingRecordIds,
     ],
   );
+
+  const cancelRecordAmountEdit = useCallback((recordId: string) => {
+    setAmountDrafts((prev) => {
+      const next = { ...prev };
+      delete next[recordId];
+      return next;
+    });
+    setRecordAmountErrors((prev) => {
+      const next = { ...prev };
+      delete next[recordId];
+      return next;
+    });
+  }, []);
 
   const handleStatementAmountChange = useCallback((value: string) => {
     setStatementAmountDraft((prev) => ({ ...prev, value }));
@@ -228,11 +270,14 @@ export const useRecordAmountEditing = ({
     amountDrafts,
     statementAmountDraft,
     isApplyingStatementAmount,
+    savingRecordIds,
+    recordAmountErrors,
     getAbsoluteSaldoBase,
     getPercentFromSaldo,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,
+    cancelRecordAmountEdit,
     handleStatementAmountChange,
     toggleStatementAmountMode,
     applyStatementAmountToRows,

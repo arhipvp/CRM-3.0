@@ -85,22 +85,23 @@ export const useFinanceActions = ({
           description: values.description,
           scheduledDate: values.scheduledDate || null,
           actualDate: values.actualDate || null,
+          initialRecord: {
+            amount: 0,
+            recordType: 'income',
+            date: new Date().toISOString().split('T')[0],
+            description: 'Счёт: автоматически создан для учета',
+            source: 'Система',
+          },
         });
-
-        const zeroIncome = await createFinancialRecord({
-          paymentId: created.id,
-          amount: 0,
-          recordType: 'income',
-          date: new Date().toISOString().split('T')[0],
-          description: 'Счёт: автоматически создан для учета',
-          source: 'Система',
-        });
+        const zeroIncome = created.financialRecords?.[0];
 
         const paymentAmount = parseAmountValue(created.amount);
         const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
         updateAppData((prev) => ({
           payments: [created, ...prev.payments],
-          financialRecords: [zeroIncome, ...prev.financialRecords],
+          financialRecords: zeroIncome
+            ? [zeroIncome, ...prev.financialRecords]
+            : prev.financialRecords,
           policies: adjustPaymentsTotals(
             prev.policies,
             created.policyId,

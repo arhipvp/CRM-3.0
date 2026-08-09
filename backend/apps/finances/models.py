@@ -34,6 +34,13 @@ class Payment(SoftDeleteModel):
         null=True, blank=True, help_text="Запланированная дата"
     )
     actual_date = models.DateField(null=True, blank=True, help_text="Фактическая дата")
+    paid_balance = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        db_index=True,
+        help_text="Денормализованная сумма проведённых финансовых записей",
+    )
 
     class Meta:
         ordering = ["-created_at"]

@@ -117,6 +117,20 @@ def _execute(job: ExternalJob) -> dict:
             "files": list_drive_folder_contents(parent_id or folder_id),
         }
 
+    if job.kind == ExternalJob.Kind.FINANCE_STATEMENT_EXPORT:
+        from apps.finances.services.exports import export_statement
+
+        return export_statement(
+            user=job.created_by, statement_id=job.payload["statement_id"]
+        )
+
+    if job.kind == ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT:
+        from apps.finances.services.exports import export_financial_records
+
+        return export_financial_records(
+            user=job.created_by, filters=job.payload.get("filters") or {}
+        )
+
     raise ValueError(f"Неизвестный тип внешнего задания: {job.kind}")
 
 

@@ -8,6 +8,7 @@ interface UseCommissionsViewModelArgs {
   statementsById: Map<string, Statement>;
   viewMode: 'all' | 'statements';
   targetStatementId: string;
+  initialSelectedStatementId?: string | null;
 }
 
 export const useCommissionsViewModel = ({
@@ -15,8 +16,11 @@ export const useCommissionsViewModel = ({
   statementsById,
   viewMode,
   targetStatementId,
+  initialSelectedStatementId,
 }: UseCommissionsViewModelArgs) => {
-  const [selectedStatementId, setSelectedStatementId] = useState<string | null>(null);
+  const [selectedStatementId, setSelectedStatementId] = useState<string | null>(
+    initialSelectedStatementId ?? null,
+  );
 
   useEffect(() => {
     if (viewMode === 'all') {

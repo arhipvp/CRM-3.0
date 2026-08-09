@@ -10,6 +10,7 @@ from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 
 from .models import FinancialRecord, Payment, Statement
+from .services.balances import recalculate_payment_paid_balance
 
 logger = logging.getLogger(__name__)
 
@@ -160,6 +161,7 @@ def log_financial_record_change(sender, instance, created, **kwargs):
         delattr(instance, "_now_deleted")
     if hasattr(instance, "_old_value"):
         delattr(instance, "_old_value")
+    recalculate_payment_paid_balance(instance.payment_id)
 
 
 @receiver(post_delete, sender=FinancialRecord)
@@ -177,6 +179,7 @@ def log_financial_record_delete(sender, instance, **kwargs):
         action="hard_delete",
         description=f"Окончательно удалена {record_name}",
     )
+    recalculate_payment_paid_balance(instance.payment_id)
 
 
 # ============ STATEMENT SIGNALS ============

@@ -104,6 +104,11 @@ class ExternalJob(SoftDeleteModel):
     class Kind(models.TextChoices):
         OPEN_NOTEBOOK_ASK = "open_notebook_ask", "Вопрос Open Notebook"
         DEAL_DRIVE_LIST = "deal_drive_list", "Список файлов сделки в Drive"
+        FINANCE_STATEMENT_EXPORT = "finance_statement_export", "Экспорт ведомости"
+        FINANCIAL_RECORDS_EXPORT = (
+            "financial_records_export",
+            "Экспорт финансовых записей",
+        )
 
     class Status(models.TextChoices):
         QUEUED = "queued", "В очереди"

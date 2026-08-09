@@ -1,5 +1,6 @@
 import { request, requestBlobWithHeaders } from './request';
 import { mapDriveFile } from './mappers';
+import { waitForFinanceExport } from './finance';
 import type { DriveFile } from '../types';
 
 export interface DriveFilesResponse {
@@ -287,17 +288,10 @@ export async function trashStatementDriveFiles(
 }
 
 export async function exportStatementXlsx(statementId: string): Promise<DriveFile> {
-  const payload = await request<{ file?: unknown; folder_id?: string | null }>(
-    `/finance_statements/${statementId}/export-xlsx/`,
-    {
-      method: 'POST',
-      body: JSON.stringify({}),
-    },
-  );
+  const job = await request<{ id: string }>(`/finance_statements/${statementId}/export-xlsx/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
 
-  if (!payload?.file) {
-    throw new Error('Failed to export statement to XLSX');
-  }
-
-  return mapDriveFile(payload.file as Record<string, unknown>);
+  return waitForFinanceExport(job.id);
 }

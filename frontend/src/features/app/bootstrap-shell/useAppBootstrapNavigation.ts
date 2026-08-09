@@ -7,6 +7,7 @@ export interface UseAppBootstrapNavigationArgs {
   ensureCommissionsDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureFinanceDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureReferenceData: (options?: { force?: boolean }) => Promise<void>;
+  ensureSalesChannelsLoaded?: () => Promise<void>;
   ensureTasksLoaded: (options?: { force?: boolean }) => Promise<void>;
   isAuthenticated: boolean;
   isClientsRoute: boolean;
@@ -26,6 +27,7 @@ export const useAppBootstrapNavigation = ({
   ensureCommissionsDataLoaded,
   ensureFinanceDataLoaded,
   ensureReferenceData,
+  ensureSalesChannelsLoaded,
   ensureTasksLoaded,
   isAuthenticated,
   isClientsRoute,
@@ -42,6 +44,10 @@ export const useAppBootstrapNavigation = ({
   const pendingPostLoginRedirect = useMemo(
     () => (isAuthenticated && isLoginRoute ? getPostLoginRedirect(locationSearch) : null),
     [isAuthenticated, isLoginRoute, locationSearch],
+  );
+  const loadSalesChannels = useMemo(
+    () => ensureSalesChannelsLoaded ?? (() => ensureReferenceData()),
+    [ensureReferenceData, ensureSalesChannelsLoaded],
   );
 
   const deepLinkedDealId = useMemo(() => {
@@ -75,13 +81,20 @@ export const useAppBootstrapNavigation = ({
     if (!isAuthenticated) {
       return;
     }
-    if (isClientsRoute || isDealsRoute || isPoliciesRoute || isCommissionsRoute) {
+    if (isCommissionsRoute) {
+      loadSalesChannels().catch((err) => {
+        setError(formatErrorMessage(err, 'Ошибка при загрузке каналов продаж'));
+      });
+      return;
+    }
+    if (isClientsRoute || isDealsRoute || isPoliciesRoute) {
       ensureReferenceData().catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке справочников'));
       });
     }
   }, [
     ensureReferenceData,
+    loadSalesChannels,
     isAuthenticated,
     isClientsRoute,
     isCommissionsRoute,

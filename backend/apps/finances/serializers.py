@@ -1,4 +1,5 @@
-﻿from django.db.models import Sum
+﻿from django.db import transaction
+from django.db.models import Sum
 from rest_framework import serializers
 
 from .models import FinancialRecord, Payment, Statement
@@ -289,6 +290,15 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class InitialFinancialRecordSerializer(serializers.Serializer):
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2)
+    record_type = serializers.ChoiceField(choices=FinancialRecord.RecordType.choices)
+    date = serializers.DateField(required=False, allow_null=True)
+    description = serializers.CharField(required=False, allow_blank=True, default="")
+    source = serializers.CharField(required=False, allow_blank=True, default="")
+    note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     deal_title = serializers.SerializerMethodField()
     deal_client_name = serializers.SerializerMethodField()
@@ -301,6 +311,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     note = serializers.CharField(source="description", allow_blank=True, read_only=True)
     financial_records = FinancialRecordSerializer(many=True, read_only=True)
     can_delete = serializers.SerializerMethodField()
+    initial_record = InitialFinancialRecordSerializer(write_only=True, required=False)
 
     class Meta:
         model = Payment
@@ -352,6 +363,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             attrs["deal"] = policy.deal
         return attrs
 
+    @transaction.atomic
+    def create(self, validated_data):
+        initial_record = validated_data.pop("initial_record", None)
+        payment = super().create(validated_data)
+        if initial_record is not None:
+            FinancialRecord.objects.create(payment=payment, **initial_record)
+        return payment
+
 
 class PaymentListSerializer(PaymentSerializer):
     """Лёгкое представление платежа без вложенных финансовых записей."""
@@ -368,6 +387,15 @@ class StatementFinancialRecordSerializer(FinancialRecordSerializer):
     Для таблицы ведомости не нужна история проведённых записей. Сальдо платежа
     остаётся в ответе: оно используется при массовом изменении суммы в процентах.
     """
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields.pop("payment_paid_entries", None)
+        return fields
+
+
+class FinancialRecordTableSerializer(FinancialRecordSerializer):
+    """List row; repeated payment operations live in page-level payment_summaries."""
 
     def get_fields(self):
         fields = super().get_fields()

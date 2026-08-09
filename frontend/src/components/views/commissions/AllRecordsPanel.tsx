@@ -1,8 +1,14 @@
-import type { ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { SalesChannel, Statement } from '../../../types';
+import {
+  fetchFinanceStatementLookup,
+  type FinanceStatementLookupOption,
+  type FinancialRecordsSummary,
+} from '../../../api';
+import type { DriveFile, SalesChannel, Statement } from '../../../types';
 import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../common/buttonStyles';
 import { InlineAlert } from '../../common/InlineAlert';
+import { Combobox } from '../../common/forms/Combobox';
 import {
   CHECKBOX_LABEL_XS,
   LOAD_MORE_CONTAINER,
@@ -37,8 +43,11 @@ interface AllRecordsPanelProps {
   activeAllRecordsFilterCount: number;
   canResetAllRecordsFilters: boolean;
   onResetAllRecordsFilters: () => void;
+  onApplyProcessingPreset?: () => void;
+  summary?: FinancialRecordsSummary | null;
   isAllRecordsExporting: boolean;
   allRecordsExportError: string | null;
+  allRecordsExportFile?: DriveFile | null;
   onExportAllRecords: () => Promise<void> | void;
   recordTypeFilter: 'all' | 'income' | 'expense';
   onRecordTypeFilterChange: (nextValue: 'all' | 'income' | 'expense') => void;
@@ -117,6 +126,91 @@ function RecordTypeButton({
   );
 }
 
+function StatementLookup({
+  value,
+  onChange,
+  statements,
+  statementType,
+}: {
+  value: string;
+  onChange: (statementId: string) => void;
+  statements: Statement[];
+  statementType: 'all' | 'income' | 'expense';
+}) {
+  const selectedStatement = statements.find((statement) => statement.id === value);
+  const [query, setQuery] = useState(selectedStatement?.name ?? '');
+  const [options, setOptions] = useState<FinanceStatementLookupOption[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!value) setQuery('');
+    else if (selectedStatement) setQuery(selectedStatement.name);
+  }, [selectedStatement, value]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      setIsLoading(true);
+      void fetchFinanceStatementLookup(query, statementType === 'all' ? undefined : statementType, {
+        signal: controller.signal,
+      })
+        .then(setOptions)
+        .catch((error) => {
+          if ((error as Error).name !== 'AbortError') setOptions([]);
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) setIsLoading(false);
+        });
+    }, 200);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [isOpen, query, statementType]);
+
+  const lookupOptions = useMemo(() => {
+    if (!selectedStatement || options.some((option) => option.id === selectedStatement.id)) {
+      return options;
+    }
+    return [
+      {
+        id: selectedStatement.id,
+        name: selectedStatement.name,
+        statementType: selectedStatement.statementType,
+        paidAt: selectedStatement.paidAt,
+      },
+      ...options,
+    ];
+  }, [options, selectedStatement]);
+
+  return (
+    <Combobox
+      id="finance-target-statement"
+      value={query}
+      options={lookupOptions}
+      isOpen={isOpen}
+      isLoading={isLoading}
+      onOpen={() => setIsOpen(true)}
+      onClose={() => setIsOpen(false)}
+      onChange={(nextQuery) => {
+        setQuery(nextQuery);
+        if (value) onChange('');
+      }}
+      onSelect={(option) => {
+        onChange(option.id);
+        setQuery(option.name);
+        setIsOpen(false);
+      }}
+      getOptionKey={(option) => option.id}
+      getOptionLabel={(option) => option.name}
+      placeholder="Найти ведомость"
+      emptyMessage="Черновики ведомостей не найдены"
+    />
+  );
+}
+
 export function AllRecordsPanel({
   allRecordsSearchInput,
   onSearchChange,
@@ -142,8 +236,11 @@ export function AllRecordsPanel({
   activeAllRecordsFilterCount,
   canResetAllRecordsFilters,
   onResetAllRecordsFilters,
+  onApplyProcessingPreset,
+  summary,
   isAllRecordsExporting,
   allRecordsExportError,
+  allRecordsExportFile,
   onExportAllRecords,
   recordTypeFilter,
   onRecordTypeFilterChange,
@@ -318,6 +415,14 @@ export function AllRecordsPanel({
           <button
             type="button"
             className={BTN_SM_SECONDARY}
+            onClick={onApplyProcessingPreset}
+            disabled={!onApplyProcessingPreset}
+          >
+            К обработке
+          </button>
+          <button
+            type="button"
+            className={BTN_SM_SECONDARY}
             onClick={onResetAllRecordsFilters}
             disabled={!canResetAllRecordsFilters}
           >
@@ -331,29 +436,49 @@ export function AllRecordsPanel({
           >
             {isAllRecordsExporting ? 'Выгружаем...' : 'Экспорт XLSX'}
           </button>
+          {allRecordsExportFile?.webViewLink && (
+            <a
+              href={allRecordsExportFile.webViewLink}
+              target="_blank"
+              rel="noreferrer"
+              className={BTN_SM_SECONDARY}
+            >
+              Открыть в Google Drive
+            </a>
+          )}
           {activeAllRecordsFilterCount > 0 && (
             <span className={SECTION_META_TEXT}>
               Активных фильтров: {activeAllRecordsFilterCount}
             </span>
           )}
-          <select
-            value={targetStatementId}
-            onChange={(event) => onTargetStatementChange(event.target.value)}
-            className="field field-input h-10 min-w-[220px] text-sm"
-          >
-            <option value="">Выберите ведомость</option>
-            {statements
-              .filter((statement) => !statement.paidAt)
-              .map((statement) => (
-                <option key={statement.id} value={statement.id}>
-                  {statement.statementType === 'income' ? 'Доходы' : 'Расходы'} ·{' '}
-                  {normalizeText(statement.name)}
-                </option>
-              ))}
-          </select>
+          <div className="min-w-[260px]">
+            <StatementLookup
+              value={targetStatementId}
+              onChange={onTargetStatementChange}
+              statements={statements}
+              statementType={recordTypeFilter}
+            />
+          </div>
         </div>
       </div>
       <div className="bg-white px-4 py-5 space-y-3">
+        {summary && (
+          <div className="grid gap-2 sm:grid-cols-3 xl:grid-cols-6" role="status">
+            {[
+              ['Записей', summary.recordsCount],
+              ['Доходы', `${summary.incomeTotal.toLocaleString('ru-RU')} ₽`],
+              ['Расходы', `${summary.expenseTotal.toLocaleString('ru-RU')} ₽`],
+              ['Итого', `${summary.netTotal.toLocaleString('ru-RU')} ₽`],
+              ['Без даты', summary.unpaidRecordsCount],
+              ['Без ведомости', summary.withoutStatementCount],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-lg border border-slate-200 px-3 py-2">
+                <div className="text-[11px] text-slate-500">{label}</div>
+                <div className="font-semibold text-slate-900">{value}</div>
+              </div>
+            ))}
+          </div>
+        )}
         <div className={`flex flex-wrap items-center justify-between gap-3 ${SECTION_META_TEXT}`}>
           <span>
             Показано: <span className="font-semibold text-slate-700">{shownRecordsCount}</span>

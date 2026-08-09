@@ -68,7 +68,7 @@ describe('useStatementRecordsController', () => {
 
     expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
       'statement-2',
-      { page: 1, page_size: 100 },
+      { page: 1, page_size: 50, ordering: '-date,-created_at' },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });

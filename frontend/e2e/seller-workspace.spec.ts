@@ -62,3 +62,54 @@ test('login form has a usable keyboard order at desktop size', async ({ page }) 
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Войти' })).toBeFocused();
 });
+
+test('finance defaults to all records and processing preset is shareable', async ({ page }) => {
+  await page.addInitScript(() => {
+    const token = 'header.eyJleHAiOjQxMDI0NDQ4MDB9.signature';
+    localStorage.setItem('jwt_access_token', token);
+    localStorage.setItem('jwt_refresh_token', token);
+  });
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/auth/me/')) {
+      await route.fulfill({
+        json: {
+          id: '00000000-0000-0000-0000-000000000001',
+          username: 'seller',
+          is_authenticated: true,
+          roles: ['Продавец'],
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/financial_records/summary/')) {
+      await route.fulfill({
+        json: {
+          records_count: 0,
+          income_total: '0.00',
+          expense_total: '0.00',
+          net_total: '0.00',
+          unpaid_records_count: 0,
+          without_statement_count: 0,
+          payments_paid_balance_total: '0.00',
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: emptyPage });
+  });
+
+  await page.goto('/commissions?financeView=all');
+
+  await expect(page.getByText('Активных фильтров:')).toHaveCount(0);
+  await expect(page.getByLabel('Показывать неоплаченные платежи')).toBeChecked();
+  await expect(page.getByLabel('Показывать записи в ведомостях')).toBeChecked();
+  await expect(page.getByLabel('Показать оплаченные расходы/доходы')).toBeChecked();
+  await expect(page.getByLabel('Показывать нулевое сальдо')).toBeChecked();
+
+  await page.getByRole('button', { name: 'К обработке' }).click();
+  await expect(page).toHaveURL(/fr_show_unpaid_payments=0/);
+  await expect(page).toHaveURL(/fr_show_statement_records=0/);
+  await expect(page).toHaveURL(/fr_show_paid_records=0/);
+  await expect(page).toHaveURL(/fr_show_zero_saldo=0/);
+});

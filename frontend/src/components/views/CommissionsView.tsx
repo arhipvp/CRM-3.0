@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type {
   Payment,
@@ -8,8 +8,9 @@ import type {
   Statement,
   StatementAmountApplyMode,
   StatementAmountApplyResult,
+  User,
 } from '../../types';
-import { fetchPolicy } from '../../api';
+import { fetchPolicy, reopenFinanceStatement } from '../../api';
 import type { AttachFinanceStatementRecordsResult } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
@@ -42,9 +43,14 @@ interface CommissionsViewProps {
   policies: Policy[];
   statements: Statement[];
   salesChannels: SalesChannel[];
+  currentUser?: User | null;
   isLoading?: boolean;
   hasCommissionsSnapshotLoaded?: boolean;
   onRefreshStatements?: () => Promise<void>;
+  onLoadMoreStatements?: () => Promise<void>;
+  statementsTotalCount?: number;
+  statementsHasMore?: boolean;
+  isLoadingMoreStatements?: boolean;
   onDealSelect?: (dealId: string) => void;
   onDealPreview?: (dealId: string) => void;
   onRequestEditPolicy?: (policy: Policy) => void;
@@ -105,9 +111,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   policies,
   statements,
   salesChannels,
+  currentUser,
   isLoading = false,
   hasCommissionsSnapshotLoaded = false,
   onRefreshStatements,
+  onLoadMoreStatements,
+  statementsTotalCount = statements.length,
+  statementsHasMore = false,
+  isLoadingMoreStatements = false,
   onDealSelect,
   onDealPreview,
   onRequestEditPolicy,
@@ -120,11 +131,24 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   onUpdateStatement,
 }) => {
   const navigate = useNavigate();
+  const [financeSearchParams, setFinanceSearchParams] = useSearchParams();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
+  const [isReopeningStatement, setIsReopeningStatement] = useState(false);
+  const [reopenStatementError, setReopenStatementError] = useState<string | null>(null);
+  const canReopenStatement = Boolean(
+    currentUser?.isStaff ||
+    currentUser?.roles?.some((role) => role === 'Admin' || role === 'Администратор'),
+  );
 
-  const [viewMode, setViewMode] = useState<'all' | 'statements'>('statements');
-  const [statementTab, setStatementTab] = useState<'records' | 'files'>('records');
-  const [showPaidStatements, setShowPaidStatements] = useState(false);
+  const [viewMode, setViewMode] = useState<'all' | 'statements'>(() =>
+    financeSearchParams.get('financeView') === 'all' ? 'all' : 'statements',
+  );
+  const [statementTab, setStatementTab] = useState<'records' | 'files'>(() =>
+    financeSearchParams.get('statementTab') === 'files' ? 'files' : 'records',
+  );
+  const [showPaidStatements, setShowPaidStatements] = useState(
+    () => financeSearchParams.get('showPaidStatements') === '1',
+  );
   const [editingPolicyRecordId, setEditingPolicyRecordId] = useState<string | null>(null);
   const [policyEditError, setPolicyEditError] = useState<string | null>(null);
 
@@ -161,8 +185,10 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     activeAllRecordsFilterCount,
     canResetAllRecordsFilters,
     resetAllRecordsFilters,
+    applyProcessingPreset,
     isAllRecordsExporting,
     allRecordsExportError,
+    allRecordsExportFile,
     exportAllRecords,
     recordTypeFilter,
     setRecordTypeFilter,
@@ -175,6 +201,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     allRecordsError,
     allRecordsHasMore,
     allRecordsTotalCount,
+    allRecordsSummary,
     allRecordsFilterKey,
     applyAttachedRecords,
     loadAllRecords,
@@ -200,7 +227,57 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     statementsById,
     viewMode,
     targetStatementId,
+    initialSelectedStatementId: financeSearchParams.get('statementId'),
   });
+  useEffect(() => {
+    const next = new URLSearchParams(financeSearchParams);
+    if (viewMode === 'all') next.set('financeView', 'all');
+    else next.delete('financeView');
+    if (selectedStatementId) next.set('statementId', selectedStatementId);
+    else next.delete('statementId');
+    if (statementTab === 'files') next.set('statementTab', 'files');
+    else next.delete('statementTab');
+    if (showPaidStatements) next.set('showPaidStatements', '1');
+    else next.delete('showPaidStatements');
+    if (next.toString() !== financeSearchParams.toString()) {
+      setFinanceSearchParams(next, { replace: true });
+    }
+  }, [
+    financeSearchParams,
+    selectedStatementId,
+    setFinanceSearchParams,
+    showPaidStatements,
+    statementTab,
+    viewMode,
+  ]);
+
+  useLayoutEffect(() => {
+    setViewMode(financeSearchParams.get('financeView') === 'all' ? 'all' : 'statements');
+    setStatementTab(financeSearchParams.get('statementTab') === 'files' ? 'files' : 'records');
+    setShowPaidStatements(financeSearchParams.get('showPaidStatements') === '1');
+    const statementId = financeSearchParams.get('statementId');
+    if (statementId) setSelectedStatementId(statementId);
+  }, [financeSearchParams, setSelectedStatementId]);
+  const handleReopenStatement = useCallback(async () => {
+    if (!selectedStatementId || isReopeningStatement) return;
+    const confirmed = await confirm({
+      title: 'Отменить выплату ведомости?',
+      message: 'Дата выплаты и даты всех записей ведомости будут очищены.',
+      confirmText: 'Отменить выплату',
+      tone: 'danger',
+    });
+    if (!confirmed) return;
+    setIsReopeningStatement(true);
+    setReopenStatementError(null);
+    try {
+      await reopenFinanceStatement(selectedStatementId);
+      await onRefreshStatements?.();
+    } catch (error) {
+      setReopenStatementError(formatErrorMessage(error, 'Не удалось отменить выплату ведомости.'));
+    } finally {
+      setIsReopeningStatement(false);
+    }
+  }, [confirm, isReopeningStatement, onRefreshStatements, selectedStatementId]);
   const {
     statementRecords,
     isStatementRecordsLoading,
@@ -208,6 +285,9 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     statementRecordsHasMore,
     isStatementRecordsLoadingMore,
     loadStatementRecords,
+    toggleAmountSort,
+    getAmountSortIndicator,
+    getAmountSortLabel,
   } = useStatementRecordsController({
     selectedStatementId,
     viewMode,
@@ -216,11 +296,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     amountDrafts,
     statementAmountDraft,
     isApplyingStatementAmount,
+    savingRecordIds,
+    recordAmountErrors,
     getAbsoluteSaldoBase,
     getPercentFromSaldo,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,
+    cancelRecordAmountEdit,
     handleStatementAmountChange,
     toggleStatementAmountMode,
     applyStatementAmountToRows,
@@ -242,24 +325,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
     isRowAmountLocked: (row) =>
       Boolean(row.statementId && statementsById.get(row.statementId)?.paidAt),
   });
-  const { filteredRows, toggleAmountSort, getAmountSortIndicator, getAmountSortLabel } =
-    useCommissionsRows({
-      statementRecords,
-      allRecords,
-      paymentsById,
-      selectedStatementId,
-      viewMode,
-    });
-
-  useEffect(() => {
-    setStatementTab('records');
-  }, [selectedStatementId]);
-
-  useEffect(() => {
-    if (viewMode !== 'statements') {
-      setStatementTab('records');
-    }
-  }, [viewMode]);
+  const { filteredRows } = useCommissionsRows({
+    statementRecords,
+    allRecords,
+    paymentsById,
+    selectedStatementId,
+    viewMode,
+    statementOrderingManagedByServer: true,
+  });
 
   const {
     isStatementDriveLoading,
@@ -425,6 +498,8 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       policiesById={policiesById}
       statementsById={statementsById}
       amountDrafts={amountDrafts}
+      savingRecordIds={savingRecordIds}
+      recordAmountErrors={recordAmountErrors}
       statementAmountDraft={statementAmountDraft}
       isApplyingStatementAmount={isApplyingStatementAmount}
       isAttaching={isAttaching}
@@ -454,6 +529,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
       getAbsoluteSaldoBase={getAbsoluteSaldoBase}
       onRecordAmountChange={handleRecordAmountChange}
       onRecordAmountBlur={handleRecordAmountBlur}
+      onCancelRecordAmountEdit={cancelRecordAmountEdit}
       onToggleRecordAmountMode={toggleRecordAmountMode}
       onStatementAmountChange={handleStatementAmountChange}
       onToggleStatementAmountMode={toggleStatementAmountMode}
@@ -598,7 +674,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     Ведомости
                   </span>
                   <span className="text-sm text-slate-500 whitespace-nowrap">
-                    Всего: {statements.length}
+                    Показано: {statements.length} из {statementsTotalCount}
                   </span>
                 </div>
                 <p className="text-sm text-slate-600">
@@ -623,6 +699,18 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                     />
                     Показывать оплаченные ведомости
                   </label>
+                </div>
+              )}
+              {!shouldShowStatementsPendingState && statementsHasMore && (
+                <div className="border-t border-slate-200 p-3 text-center">
+                  <button
+                    type="button"
+                    className={BTN_SM_SECONDARY}
+                    disabled={isLoadingMoreStatements}
+                    onClick={() => void onLoadMoreStatements?.()}
+                  >
+                    {isLoadingMoreStatements ? 'Загружаем…' : 'Показать ещё ведомости'}
+                  </button>
                 </div>
               )}
             </div>
@@ -749,6 +837,21 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                             >
                               Редактировать
                             </button>
+                          )}
+                          {selectedStatement.paidAt && canReopenStatement && (
+                            <button
+                              type="button"
+                              onClick={() => void handleReopenStatement()}
+                              disabled={isReopeningStatement}
+                              className={BTN_DANGER}
+                            >
+                              {isReopeningStatement ? 'Отменяем…' : 'Отменить выплату'}
+                            </button>
+                          )}
+                          {reopenStatementError && (
+                            <span role="alert" className={STATUS_TEXT_DANGER_XS}>
+                              {reopenStatementError}
+                            </span>
                           )}
                           {onDeleteStatement && (
                             <button
@@ -911,8 +1014,11 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
             activeAllRecordsFilterCount={activeAllRecordsFilterCount}
             canResetAllRecordsFilters={canResetAllRecordsFilters}
             onResetAllRecordsFilters={resetAllRecordsFilters}
+            onApplyProcessingPreset={applyProcessingPreset}
+            summary={allRecordsSummary}
             isAllRecordsExporting={isAllRecordsExporting}
             allRecordsExportError={allRecordsExportError}
+            allRecordsExportFile={allRecordsExportFile}
             onExportAllRecords={exportAllRecords}
             recordTypeFilter={recordTypeFilter}
             onRecordTypeFilterChange={setRecordTypeFilter}

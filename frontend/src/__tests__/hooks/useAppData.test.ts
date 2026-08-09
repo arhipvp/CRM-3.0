@@ -10,7 +10,7 @@ import {
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
-  fetchFinanceStatements,
+  fetchFinanceStatementsWithPagination,
   fetchPaymentsWithPagination,
   fetchSalesChannels,
   fetchTasksWithPagination,
@@ -24,7 +24,7 @@ vi.mock('../../api', () => ({
   fetchClientsWithPagination: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecordsWithPagination: vi.fn(),
-  fetchFinanceStatements: vi.fn(),
+  fetchFinanceStatementsWithPagination: vi.fn(),
   fetchPaymentsWithPagination: vi.fn(),
   fetchSalesChannels: vi.fn(),
   fetchTasksWithPagination: vi.fn(),
@@ -35,7 +35,7 @@ const mockedFetchClients = vi.mocked(fetchClientsWithPagination);
 const mockedFetchClientById = vi.mocked(fetchClientById);
 const mockedFetchDealsWithPagination = vi.mocked(fetchDealsWithPagination);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
-const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatements);
+const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatementsWithPagination);
 const mockedFetchPaymentsWithPagination = vi.mocked(fetchPaymentsWithPagination);
 const mockedFetchSalesChannels = vi.mocked(fetchSalesChannels);
 const mockedFetchTasks = vi.mocked(fetchTasksWithPagination);
@@ -84,7 +84,12 @@ beforeEach(() => {
     previous: null,
     results: [],
   });
-  mockedFetchFinanceStatements.mockResolvedValue([]);
+  mockedFetchFinanceStatements.mockResolvedValue({
+    count: 0,
+    next: null,
+    previous: null,
+    results: [],
+  });
   mockedFetchTasks.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
 });
 
@@ -224,6 +229,7 @@ describe('useAppData loading strategy', () => {
       3,
       {
         ordering: 'next_contact_date',
+        include: 'client_active_deals_count',
         page: 1,
         page_size: 40,
       },
@@ -239,6 +245,7 @@ describe('useAppData loading strategy', () => {
       4,
       {
         ordering: 'next_contact_date',
+        include: 'client_active_deals_count',
         page: 3,
         page_size: 20,
       },
@@ -296,6 +303,7 @@ describe('useAppData loading strategy', () => {
       2,
       {
         ordering: 'next_contact_date',
+        include: 'client_active_deals_count',
         page: 2,
         page_size: 20,
       },
@@ -371,6 +379,7 @@ describe('useAppData loading strategy', () => {
       3,
       {
         ordering: 'next_contact_date',
+        include: 'client_active_deals_count',
         page: 1,
         page_size: 40,
       },
@@ -578,7 +587,12 @@ describe('useAppData loading strategy', () => {
       previous: null,
       results: [],
     });
-    mockedFetchFinanceStatements.mockResolvedValueOnce([]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce({
+      count: 0,
+      next: null,
+      previous: null,
+      results: [],
+    });
 
     const { result } = renderHook(() => useAppData());
 
@@ -623,28 +637,36 @@ describe('useAppData loading strategy', () => {
   });
 
   it('retries commissions snapshot load after a stale response and marks it as loaded', async () => {
-    const statementsDeferred = deferred<
-      Array<{
+    const statementsDeferred = deferred<{
+      count: number;
+      next: string | null;
+      previous: string | null;
+      results: Array<{
         id: string;
         name: string;
         statementType: 'income' | 'expense';
         status: 'draft' | 'paid';
         createdAt: string;
         updatedAt: string;
-      }>
-    >();
+      }>;
+    }>();
 
     mockedFetchFinanceStatements.mockReturnValueOnce(statementsDeferred.promise as never);
-    mockedFetchFinanceStatements.mockResolvedValueOnce([
-      {
-        id: 'server-statement',
-        name: 'Повторная ведомость',
-        statementType: 'income',
-        status: 'draft',
-        createdAt: '2026-01-03T00:00:00Z',
-        updatedAt: '2026-01-03T00:00:00Z',
-      } as never,
-    ]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'server-statement',
+          name: 'Повторная ведомость',
+          statementType: 'income',
+          status: 'draft',
+          createdAt: '2026-01-03T00:00:00Z',
+          updatedAt: '2026-01-03T00:00:00Z',
+        } as never,
+      ],
+    });
 
     const { result } = renderHook(() => useAppData());
 
@@ -669,16 +691,21 @@ describe('useAppData loading strategy', () => {
     });
 
     await act(async () => {
-      statementsDeferred.resolve([
-        {
-          id: 'stale-statement',
-          name: 'Устаревшая ведомость',
-          statementType: 'income',
-          status: 'draft',
-          createdAt: '2026-01-02T00:00:00Z',
-          updatedAt: '2026-01-02T00:00:00Z',
-        },
-      ]);
+      statementsDeferred.resolve({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [
+          {
+            id: 'stale-statement',
+            name: 'Устаревшая ведомость',
+            statementType: 'income',
+            status: 'draft',
+            createdAt: '2026-01-02T00:00:00Z',
+            updatedAt: '2026-01-02T00:00:00Z',
+          },
+        ],
+      });
       await Promise.resolve();
     });
 
@@ -738,16 +765,21 @@ describe('useAppData loading strategy', () => {
         } as never,
       ],
     });
-    mockedFetchFinanceStatements.mockResolvedValueOnce([
-      {
-        id: 'statement-1',
-        name: 'Ведомость 1',
-        statementType: 'income',
-        status: 'draft',
-        createdAt: '2026-01-02T00:00:00Z',
-        updatedAt: '2026-01-02T00:00:00Z',
-      } as never,
-    ]);
+    mockedFetchFinanceStatements.mockResolvedValueOnce({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'statement-1',
+          name: 'Ведомость 1',
+          statementType: 'income',
+          status: 'draft',
+          createdAt: '2026-01-02T00:00:00Z',
+          updatedAt: '2026-01-02T00:00:00Z',
+        } as never,
+      ],
+    });
     mockedFetchPaymentsWithPagination.mockResolvedValueOnce({
       count: 1,
       next: null,

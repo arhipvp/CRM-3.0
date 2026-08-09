@@ -124,6 +124,7 @@ class AuditLog(models.Model):
         ("restore", "Восстановление"),
         ("assign", "Назначение"),
         ("revoke", "Отзыв"),
+        ("reopen", "Возврат в черновик"),
     ]
 
     OBJECT_TYPE_CHOICES = [
@@ -141,6 +142,7 @@ class AuditLog(models.Model):
         ("policy", "Полис"),
         ("note", "Заметка"),
         ("financial_record", "Финансовая запись"),
+        ("statement", "Финансовая ведомость"),
         ("notification", "Уведомление"),
         ("user", "Пользователь"),
     ]

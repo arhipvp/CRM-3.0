@@ -200,6 +200,10 @@ export interface AppRouteLoadingState {
   tasksPage?: number;
   tasksTotalCount?: number;
   onRefreshCommissionsSnapshot?: () => Promise<void>;
+  onLoadMoreStatements?: () => Promise<void>;
+  statementsTotalCount?: number;
+  statementsHasMore?: boolean;
+  isLoadingMoreStatements?: boolean;
   onLoadMoreDeals: () => Promise<void>;
   dealsHasMore: boolean;
   dealsTotalCount: number;

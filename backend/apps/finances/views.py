@@ -17,12 +17,16 @@ from apps.common.drive import (
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.permissions import build_deal_visibility_q
+from apps.documents.external_jobs import create_external_job, serialize_external_job
+from apps.documents.models import ExternalJob
+from apps.users.models import AuditLog
 from django.db import transaction
 from django.db.models import (
     Case,
     Count,
     DateField,
     DecimalField,
+    Exists,
     F,
     IntegerField,
     OuterRef,
@@ -56,12 +60,14 @@ from .permissions import get_deal_from_payment, is_admin_user, user_has_deal_acc
 from .record_filters import apply_financial_record_filters
 from .serializers import (
     FinancialRecordSerializer,
+    FinancialRecordTableSerializer,
     PaymentListSerializer,
     PaymentSerializer,
     StatementFinancialRecordSerializer,
     StatementSerializer,
 )
 from .services import build_finance_summary_payload
+from .services.balances import recalculate_payment_paid_balances
 from .services.statements import (
     ensure_unique_zip_path,
     normalize_statement_amount,
@@ -119,24 +125,45 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def get_serializer_class(self):
         if self.request.query_params.get("statement"):
             return StatementFinancialRecordSerializer
+        if (
+            self.action == "list"
+            and self.request.query_params.get("projection") == "table"
+        ):
+            return FinancialRecordTableSerializer
         return super().get_serializer_class()
+
+    def list(self, request, *args, **kwargs):
+        if request.query_params.get("projection") != "table":
+            return super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        if page is None:
+            return Response(self.get_serializer(queryset, many=True).data)
+        payment_summaries = {}
+        for record in page:
+            payment = record.payment
+            key = str(payment.id)
+            if key in payment_summaries:
+                continue
+            payment_summaries[key] = {
+                "paid_balance": str(payment.paid_balance),
+                "paid_entries": [
+                    {"amount": str(entry.amount), "date": entry.date.isoformat()}
+                    for entry in getattr(payment, "paid_records", [])
+                    if entry.date
+                ],
+            }
+        response = self.get_paginated_response(
+            self.get_serializer(page, many=True).data
+        )
+        response.data["payment_summaries"] = payment_summaries
+        return response
 
     def get_queryset(self):
         user = self.request.user
         statement_id = self.request.query_params.get("statement")
         is_statement_list = bool(statement_id)
         is_list = self.action == "list"
-        paid_balance_subquery = (
-            FinancialRecord.objects.filter(
-                payment_id=OuterRef("payment_id"),
-                date__isnull=False,
-                deleted_at__isnull=True,
-            )
-            .order_by()
-            .values("payment_id")
-            .annotate(total=Sum("amount"))
-            .values("total")[:1]
-        )
         list_related_fields = (
             "payment",
             "payment__policy",
@@ -207,14 +234,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 output_field=TextField(),
             ),
         }
-        annotations["payment_paid_balance"] = Coalesce(
-            Subquery(
-                paid_balance_subquery,
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            ),
-            0,
-            output_field=DecimalField(max_digits=12, decimal_places=2),
-        )
+        annotations["payment_paid_balance"] = F("payment__paid_balance")
         queryset = queryset.annotate(**annotations)
 
         # Если пользователь не аутентифицирован, возвращаем все записи (AllowAny режим)
@@ -253,166 +273,56 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         return queryset
 
-    @action(detail=False, methods=["get"], url_path="export-xlsx")
-    def export_xlsx(self, request, *args, **kwargs):
-        records = self.filter_queryset(self.get_queryset()).iterator(chunk_size=500)
-
-        def format_date(value) -> str:
-            if not value:
-                return "—"
-            if hasattr(value, "strftime"):
-                return value.strftime("%d.%m.%Y")
-            return str(value)
-
-        def format_money(value) -> str:
-            try:
-                return f"{float(value):,.2f} ₽".replace(",", " ")
-            except Exception:
-                return f"{value} ₽"
-
-        workbook = Workbook(write_only=True)
-        ws = workbook.create_sheet()
-        ws.title = "Финансовые записи"
-
-        headers = [
-            "Клиент / сделка",
-            "Номер полиса",
-            "Тип полиса",
-            "Канал продаж",
-            "Дата платежа",
-            "Платеж, ₽",
-            "Сальдо, ₽",
-            "Примечание",
-            "Сумма, ₽",
-        ]
-        header_font = Font(bold=True, color="1F2937")
-        header_fill = PatternFill("solid", fgColor="F8FAFC")
-        wrap_top = Alignment(wrap_text=True, vertical="top")
-        currency_number_format = "# ##0.00 [$₽-419]"
-
-        header_cells = []
-        for header in headers:
-            cell = WriteOnlyCell(ws, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = wrap_top
-            header_cells.append(cell)
-        ws.append(header_cells)
-
-        ws.freeze_panes = "A2"
-        for column, width in {
-            "A": 36,
-            "B": 18,
-            "C": 20,
-            "D": 20,
-            "E": 16,
-            "F": 22,
-            "G": 16,
-            "H": 32,
-            "I": 16,
-        }.items():
-            ws.column_dimensions[column].width = width
-
-        for record in records:
-            payment = getattr(record, "payment", None)
-            policy = getattr(payment, "policy", None) if payment else None
-            deal = get_deal_from_payment(payment)
-            statement = getattr(record, "statement", None)
-
-            deal_title = getattr(deal, "title", None) or "-"
-            deal_client_name = (
-                getattr(getattr(deal, "client", None), "name", None) or "-"
-            )
-            policy_number = (
-                getattr(policy, "number", None)
-                or getattr(payment, "policy_number", None)
-                or "-"
-            )
-            policy_type = (
-                getattr(getattr(policy, "insurance_type", None), "name", None) or "-"
-            )
-            sales_channel = (
-                getattr(getattr(policy, "sales_channel", None), "name", None) or "-"
-            )
-            policy_client_name = (
-                getattr(getattr(policy, "client", None), "name", None)
-                or getattr(getattr(policy, "insured_client", None), "name", None)
-                or deal_client_name
-                or "-"
-            )
-
-            payment_amount = getattr(payment, "amount", None)
-            payment_actual = getattr(payment, "actual_date", None)
-            payment_scheduled = getattr(payment, "scheduled_date", None)
-            payment_cell = (
-                f"{format_money(payment_amount)}\n"
-                + (
-                    f"Оплачен: {format_date(payment_actual)}"
-                    if payment_actual
-                    else f"Не оплачен (план: {format_date(payment_scheduled)})"
-                )
-                if payment_amount is not None
-                else "—"
-            )
-
-            paid_records = getattr(payment, "paid_records", []) if payment else []
-            saldo_value = (
-                sum((paid_record.amount for paid_record in paid_records), 0)
-                if paid_records
-                else 0
-            )
-            comment_parts = [
-                (record.note or "").strip(),
-                (record.description or "").strip(),
-                (record.source or "").strip(),
-            ]
-            comment_parts = [part for part in comment_parts if part]
-            comment_cell = comment_parts[0] if comment_parts else "—"
-            if len(comment_parts) > 1:
-                comment_cell = f"{comment_cell}\n" + " · ".join(comment_parts[1:])
-            if statement:
-                if statement.paid_at:
-                    comment_cell += f"\nВедомость от {format_date(statement.paid_at)}: {statement.name}"
-                else:
-                    comment_cell += f"\nВедомость: {statement.name}"
-
-            client_cell = f"{policy_client_name}\n{deal_title}\nКонтакт по сделке: {deal_client_name}"
-            values = [
-                client_cell,
-                policy_number,
-                policy_type,
-                sales_channel,
-                format_date(payment_scheduled),
-                payment_cell,
-                saldo_value,
-                comment_cell,
-                abs(record.amount),
-            ]
-            cells = []
-            for index, value in enumerate(values):
-                cell = WriteOnlyCell(ws, value=value)
-                cell.alignment = wrap_top
-                if index in {6, 8}:
-                    cell.number_format = currency_number_format
-                cells.append(cell)
-            ws.append(cells)
-
-        buffer = BytesIO()
-        workbook.save(buffer)
-        buffer.seek(0)
-
-        now = timezone.localtime(timezone.now())
-        filename = f"financial_records_{now.strftime('%d_%m_%Y_%H_%M_%S')}.xlsx"
-        response = HttpResponse(
-            buffer.getvalue(),
-            content_type=(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    @action(detail=False, methods=["get"], url_path="summary")
+    def summary(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        aggregates = queryset.aggregate(
+            records_count=Count("id", distinct=True),
+            income_total=Coalesce(
+                Sum("amount", filter=Q(record_type=FinancialRecord.RecordType.INCOME)),
+                Decimal("0"),
+            ),
+            expense_signed=Coalesce(
+                Sum("amount", filter=Q(record_type=FinancialRecord.RecordType.EXPENSE)),
+                Decimal("0"),
+            ),
+            net_total=Coalesce(Sum("amount"), Decimal("0")),
+            unpaid_records_count=Count(
+                "id", filter=Q(date__isnull=True), distinct=True
+            ),
+            without_statement_count=Count(
+                "id", filter=Q(statement__isnull=True), distinct=True
             ),
         )
-        response["Content-Disposition"] = (
-            f"attachment; filename*=UTF-8''{iri_to_uri(filename)}"
+        payment_ids = (
+            queryset.order_by().values_list("payment_id", flat=True).distinct()
         )
-        return response
+        paid_balance_total = Payment.objects.filter(id__in=payment_ids).aggregate(
+            total=Coalesce(Sum("paid_balance"), Decimal("0"))
+        )["total"]
+        return Response(
+            {
+                "records_count": aggregates["records_count"],
+                "income_total": aggregates["income_total"],
+                "expense_total": abs(aggregates["expense_signed"]),
+                "net_total": aggregates["net_total"],
+                "unpaid_records_count": aggregates["unpaid_records_count"],
+                "without_statement_count": aggregates["without_statement_count"],
+                "payments_paid_balance_total": paid_balance_total,
+            }
+        )
+
+    @action(detail=False, methods=["post"], url_path="export-xlsx")
+    def export_xlsx(self, request, *args, **kwargs):
+        filters = request.query_params.dict()
+        if isinstance(request.data, dict):
+            filters.update(request.data)
+        job = create_external_job(
+            kind=ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT,
+            payload={"filters": filters},
+            user=request.user,
+        )
+        return Response(serialize_external_job(job), status=status.HTTP_202_ACCEPTED)
 
     def _can_modify(self, user, instance):
         payment = getattr(instance, "payment", None)
@@ -446,13 +356,6 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             )
         return super().destroy(request, *args, **kwargs)
 
-    def get_object(self):
-        from django.shortcuts import get_object_or_404
-
-        kwargs = {self.lookup_field: self.kwargs.get(self.lookup_field)}
-        lookup = FinancialRecord.objects.select_related("payment")
-        return get_object_or_404(lookup, **kwargs)
-
 
 class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     serializer_class = StatementSerializer
@@ -464,33 +367,20 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         "statement_type",
     ]
     ordering = ["-created_at"]
+    search_fields = ["name", "counterparty", "comment"]
+    filterset_fields = ["statement_type"]
     owner_field = "created_by"
 
     def get_queryset(self):
         user = self.request.user
-        active_records = FinancialRecord.objects.filter(
-            statement=OuterRef("pk"),
-            deleted_at__isnull=True,
-        ).values("statement")
         queryset = (
             Statement.objects.annotate(
-                records_count=Coalesce(
-                    Subquery(
-                        active_records.annotate(total=Count("id")).values("total")[:1],
-                        output_field=IntegerField(),
-                    ),
-                    Value(0),
-                    output_field=IntegerField(),
+                records_count=Count(
+                    "records", filter=Q(records__deleted_at__isnull=True), distinct=True
                 ),
                 total_amount=Coalesce(
-                    Subquery(
-                        active_records.annotate(total=Sum("amount")).values("total")[
-                            :1
-                        ],
-                        output_field=DecimalField(max_digits=12, decimal_places=2),
-                    ),
-                    Value(0),
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
+                    Sum("records__amount", filter=Q(records__deleted_at__isnull=True)),
+                    Decimal("0"),
                 ),
             )
             .all()
@@ -498,13 +388,22 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         )
         if not user.is_authenticated:
             return queryset.none()
+        paid = self.request.query_params.get("paid")
+        if paid in {"1", "true"}:
+            queryset = queryset.filter(paid_at__isnull=False)
+        elif paid in {"0", "false"}:
+            queryset = queryset.filter(paid_at__isnull=True)
         if is_admin_user(user):
             return queryset
-        return queryset.filter(
-            Q(created_by=user)
-            | build_deal_visibility_q(user, prefix="records__payment__deal__")
-            | build_deal_visibility_q(user, prefix="records__payment__policy__deal__")
-        ).distinct()
+        visible_records = FinancialRecord.objects.filter(
+            statement_id=OuterRef("pk"), deleted_at__isnull=True
+        ).filter(
+            build_deal_visibility_q(user, prefix="payment__deal__")
+            | build_deal_visibility_q(user, prefix="payment__policy__deal__")
+        )
+        return queryset.annotate(has_visible_record=Exists(visible_records)).filter(
+            Q(created_by=user) | Q(has_visible_record=True)
+        )
 
     def perform_create(self, serializer):
         record_ids = serializer.validated_data.get("record_ids") or []
@@ -512,10 +411,19 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         serializer.save(created_by=self.request.user)
 
     def _validate_record_access(self, records):
-        for record in records:
-            deal = get_deal_from_payment(getattr(record, "payment", None))
-            if not user_has_deal_access(self.request.user, deal, allow_executor=False):
-                raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
+        if is_admin_user(self.request.user):
+            return
+        record_ids = [getattr(record, "pk", record) for record in records]
+        allowed_ids = set(
+            FinancialRecord.objects.filter(pk__in=record_ids)
+            .filter(
+                Q(payment__policy__deal__seller=self.request.user)
+                | Q(payment__deal__seller=self.request.user)
+            )
+            .values_list("pk", flat=True)
+        )
+        if len(allowed_ids) != len(set(record_ids)):
+            raise PermissionDenied("Нет доступа к финансовой записи для ведомости.")
 
     @staticmethod
     def _parse_record_ids(data):
@@ -639,6 +547,30 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise ValidationError("Нельзя удалять выплаченную ведомость.")
         return super().destroy(request, *args, **kwargs)
 
+    @action(detail=False, methods=["get"], url_path="lookup")
+    def lookup(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset()).order_by("-created_at")
+        try:
+            page_size = min(max(int(request.query_params.get("page_size", 20)), 1), 100)
+        except (TypeError, ValueError):
+            page_size = 20
+        rows = list(
+            queryset.values("id", "name", "statement_type", "paid_at")[:page_size]
+        )
+        return Response(
+            {
+                "results": [
+                    {
+                        "id": str(row["id"]),
+                        "name": row["name"],
+                        "statement_type": row["statement_type"],
+                        "paid_at": row["paid_at"],
+                    }
+                    for row in rows
+                ]
+            }
+        )
+
     @action(detail=True, methods=["post"], url_path="remove-records")
     def remove_records(self, request, *args, **kwargs):
         record_ids = self._parse_record_ids(request.data)
@@ -709,6 +641,9 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
                 statement.updated_at = timezone.now()
                 statement.save(update_fields=["updated_at"])
+                recalculate_payment_paid_balances(
+                    record.payment_id for record in updated_records
+                )
 
         response_records = list(records_with_paid_balance(statement))
         payload = {
@@ -728,6 +663,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["post"], url_path="mark-paid")
     def mark_paid(self, request, *args, **kwargs):
         statement = self.get_object()
+        if not self._can_modify(request.user, statement):
+            raise PermissionDenied("Нет прав на выплату ведомости.")
         if statement.paid_at:
             raise ValidationError("У ведомости уже указана дата выплаты.")
 
@@ -738,6 +675,7 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             raise ValidationError({"paid_at": "Укажите дату оплаты ведомости."})
 
         with transaction.atomic():
+            old_value = {"paid_at": None, "status": statement.status}
             if statement.paid_at != paid_at:
                 statement.paid_at = paid_at
                 # Keep status consistent for admin/UI legacy, but business logic relies on paid_at.
@@ -747,14 +685,77 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             FinancialRecord.objects.filter(
                 statement=statement, deleted_at__isnull=True
             ).update(date=paid_at)
+            payment_ids = FinancialRecord.objects.filter(
+                statement=statement
+            ).values_list("payment_id", flat=True)
+            recalculate_payment_paid_balances(payment_ids)
+            AuditLog.objects.create(
+                actor=request.user,
+                object_type="statement",
+                object_id=str(statement.id),
+                object_name=statement.name,
+                action="update",
+                description=f"Ведомость отмечена выплаченной {paid_at}",
+                old_value=old_value,
+                new_value={
+                    "paid_at": paid_at.isoformat(),
+                    "status": Statement.STATUS_PAID,
+                },
+            )
 
         payload = StatementSerializer(statement, context={"request": request}).data
         return Response(payload)
 
+    @action(detail=True, methods=["post"], url_path="reopen")
+    def reopen(self, request, *args, **kwargs):
+        if not is_admin_user(request.user):
+            raise PermissionDenied("Отменить выплату может только администратор.")
+        with transaction.atomic():
+            statement = Statement.objects.select_for_update().get(
+                pk=self.kwargs[self.lookup_field]
+            )
+            if not statement.paid_at:
+                raise ValidationError("Ведомость уже является черновиком.")
+            old_paid_at = statement.paid_at
+            payment_ids = list(
+                FinancialRecord.objects.filter(statement=statement).values_list(
+                    "payment_id", flat=True
+                )
+            )
+            FinancialRecord.objects.filter(statement=statement).update(date=None)
+            statement.paid_at = None
+            statement.status = Statement.STATUS_DRAFT
+            statement.save(update_fields=["paid_at", "status", "updated_at"])
+            recalculate_payment_paid_balances(payment_ids)
+            AuditLog.objects.create(
+                actor=request.user,
+                object_type="statement",
+                object_id=str(statement.id),
+                object_name=statement.name,
+                action="reopen",
+                description="Отменена выплата ведомости",
+                old_value={
+                    "paid_at": old_paid_at.isoformat(),
+                    "status": Statement.STATUS_PAID,
+                },
+                new_value={"paid_at": None, "status": Statement.STATUS_DRAFT},
+            )
+        return Response(
+            StatementSerializer(statement, context={"request": request}).data
+        )
+
     @action(detail=True, methods=["post"], url_path="export-xlsx")
     def export_xlsx(self, request, *args, **kwargs):
         statement = self.get_object()
+        job = create_external_job(
+            kind=ExternalJob.Kind.FINANCE_STATEMENT_EXPORT,
+            payload={"statement_id": str(statement.id)},
+            user=request.user,
+        )
+        return Response(serialize_external_job(job), status=status.HTTP_202_ACCEPTED)
 
+        # Legacy synchronous implementation intentionally remains below for one
+        # release as a reviewed reference while the worker path is stabilized.
         try:
             folder_id = statement.drive_folder_id or ensure_statement_folder(statement)
         except DriveError as exc:

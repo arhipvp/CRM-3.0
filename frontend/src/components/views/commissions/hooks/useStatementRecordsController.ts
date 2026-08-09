@@ -18,6 +18,7 @@ export const useStatementRecordsController = ({
   const [statementRecordsError, setStatementRecordsError] = useState<string | null>(null);
   const [statementRecordsHasMore, setStatementRecordsHasMore] = useState(false);
   const [isStatementRecordsLoadingMore, setIsStatementRecordsLoadingMore] = useState(false);
+  const [amountOrdering, setAmountOrdering] = useState<'none' | 'asc' | 'desc'>('none');
   const requestRef = useRef(0);
   const pageRef = useRef(1);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -50,7 +51,16 @@ export const useStatementRecordsController = ({
       try {
         const payload = await fetchStatementFinancialRecordsWithPagination(
           selectedStatementId,
-          { page: nextPage, page_size: 100 },
+          {
+            page: nextPage,
+            page_size: 50,
+            ordering:
+              amountOrdering === 'none'
+                ? '-date,-created_at'
+                : amountOrdering === 'asc'
+                  ? 'amount,-date'
+                  : '-amount,-date',
+          },
           { signal: controller.signal },
         );
         if (requestRef.current !== requestId) {
@@ -79,7 +89,7 @@ export const useStatementRecordsController = ({
         }
       }
     },
-    [selectedStatementId, viewMode],
+    [amountOrdering, selectedStatementId, viewMode],
   );
 
   useEffect(() => {
@@ -99,5 +109,15 @@ export const useStatementRecordsController = ({
     statementRecordsHasMore,
     isStatementRecordsLoadingMore,
     loadStatementRecords,
+    toggleAmountSort: () =>
+      setAmountOrdering((value) => (value === 'none' ? 'asc' : value === 'asc' ? 'desc' : 'none')),
+    getAmountSortIndicator: () =>
+      amountOrdering === 'asc' ? '↑' : amountOrdering === 'desc' ? '↓' : '↕',
+    getAmountSortLabel: () =>
+      amountOrdering === 'asc'
+        ? 'по возрастанию'
+        : amountOrdering === 'desc'
+          ? 'по убыванию'
+          : 'не сортируется',
   };
 };

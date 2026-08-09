@@ -9,6 +9,7 @@ interface UseCommissionsRowsArgs {
   paymentsById: Map<string, Payment>;
   selectedStatementId: string | null;
   viewMode: 'all' | 'statements';
+  statementOrderingManagedByServer?: boolean;
 }
 
 const buildPaymentFallback = (record: FinancialRecord): Payment => ({
@@ -81,6 +82,7 @@ export const useCommissionsRows = ({
   paymentsById,
   selectedStatementId,
   viewMode,
+  statementOrderingManagedByServer = false,
 }: UseCommissionsRowsArgs) => {
   const [recordAmountSort, setRecordAmountSort] = useState<'none' | 'asc' | 'desc'>('none');
 
@@ -119,6 +121,7 @@ export const useCommissionsRows = ({
     }
 
     const result = statementRows.filter((row) => row.statementId === selectedStatementId);
+    if (statementOrderingManagedByServer) return result;
     const compareByDate = (a: IncomeExpenseRow, b: IncomeExpenseRow) => {
       const aTime = a.recordDate ? new Date(a.recordDate).getTime() : 0;
       const bTime = b.recordDate ? new Date(b.recordDate).getTime() : 0;
@@ -138,7 +141,14 @@ export const useCommissionsRows = ({
       result.sort(compareByDate);
     }
     return result;
-  }, [allRows, recordAmountSort, selectedStatementId, statementRows, viewMode]);
+  }, [
+    allRows,
+    recordAmountSort,
+    selectedStatementId,
+    statementOrderingManagedByServer,
+    statementRows,
+    viewMode,
+  ]);
 
   const toggleAmountSort = useCallback(() => {
     setRecordAmountSort((prev) => {

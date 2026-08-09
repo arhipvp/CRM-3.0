@@ -1,34 +1,38 @@
-import { request, requestBlobWithHeaders } from './request';
+import { request } from './request';
 import { buildQueryString, FilterParams, PaginatedResponse, unwrapList } from './helpers';
-import { mapFinancialRecord, mapPayment, mapStatement } from './mappers';
+import { mapDriveFile, mapFinancialRecord, mapPayment, mapStatement } from './mappers';
 import type {
   FinancialRecord,
   Payment,
   Statement,
   StatementAmountApplyMode,
   StatementAmountApplyResult,
+  DriveFile,
 } from '../types';
 
 const FINANCE_PAGE_SIZE = 200;
 
-function extractFilename(contentDisposition: string | null): string | null {
-  if (!contentDisposition) {
-    return null;
-  }
-  const utfMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
-  if (utfMatch?.[1]) {
-    try {
-      return decodeURIComponent(utfMatch[1].trim());
-    } catch {
-      return utfMatch[1].trim();
-    }
-  }
-  const asciiMatch = contentDisposition.match(/filename=([^;]+)/i);
-  if (!asciiMatch?.[1]) {
-    return null;
-  }
-  return asciiMatch[1].trim().replace(/^"|"$/g, '');
+interface FinanceExportJob {
+  id: string;
+  status: 'queued' | 'running' | 'succeeded' | 'failed';
+  result?: { file?: Record<string, unknown> } | null;
+  error?: string | null;
 }
+
+export const waitForFinanceExport = async (jobId: string): Promise<DriveFile> => {
+  const deadline = Date.now() + 120_000;
+  while (Date.now() < deadline) {
+    const job = await request<FinanceExportJob>(`/external-jobs/${jobId}/`);
+    if (job.status === 'succeeded' && job.result?.file) {
+      return mapDriveFile(job.result.file);
+    }
+    if (job.status === 'failed') {
+      throw new Error(job.error || 'Не удалось сформировать финансовую выгрузку.');
+    }
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error('Превышено время ожидания финансовой выгрузки.');
+};
 
 async function fetchAllPages<T>(
   path: string,
@@ -85,6 +89,14 @@ export async function createPayment(data: {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
+  initialRecord?: {
+    amount: number;
+    recordType: 'income' | 'expense';
+    date?: string | null;
+    description?: string;
+    source?: string;
+    note?: string;
+  };
 }): Promise<Payment> {
   const payload = await request<Record<string, unknown>>('/payments/', {
     method: 'POST',
@@ -95,6 +107,16 @@ export async function createPayment(data: {
       description: data.description || '',
       scheduled_date: data.scheduledDate || null,
       actual_date: data.actualDate || null,
+      initial_record: data.initialRecord
+        ? {
+            amount: data.initialRecord.amount,
+            record_type: data.initialRecord.recordType,
+            date: data.initialRecord.date || null,
+            description: data.initialRecord.description || '',
+            source: data.initialRecord.source || '',
+            note: data.initialRecord.note || '',
+          }
+        : undefined,
     }),
   });
   return mapPayment(payload);
@@ -164,27 +186,66 @@ export async function fetchFinancialRecordsWithPagination(
   options?: RequestInit,
 ): Promise<PaginatedResponse<FinancialRecord>> {
   const qs = buildQueryString(filters);
-  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
-    `/financial_records/${qs}`,
-    options,
-  );
+  const payload = await request<
+    PaginatedResponse<Record<string, unknown>> & {
+      payment_summaries?: Record<string, { paid_balance?: unknown; paid_entries?: unknown }>;
+    }
+  >(`/financial_records/${qs}`, options);
+  const rows = unwrapList<Record<string, unknown>>(payload).map((row) => {
+    const paymentId = String(row.payment ?? '');
+    const summary = payload.payment_summaries?.[paymentId];
+    return summary
+      ? {
+          ...row,
+          payment_paid_balance: summary.paid_balance,
+          payment_paid_entries: Array.isArray(summary.paid_entries) ? summary.paid_entries : [],
+        }
+      : row;
+  });
   return {
     count: payload.count || 0,
     next: payload.next || null,
     previous: payload.previous || null,
-    results: unwrapList<Record<string, unknown>>(payload).map(mapFinancialRecord),
+    results: rows.map(mapFinancialRecord),
   };
 }
 
-export async function exportFinancialRecordsXlsx(
+export interface FinancialRecordsSummary {
+  recordsCount: number;
+  incomeTotal: number;
+  expenseTotal: number;
+  netTotal: number;
+  unpaidRecordsCount: number;
+  withoutStatementCount: number;
+  paymentsPaidBalanceTotal: number;
+}
+
+export async function fetchFinancialRecordsSummary(
   filters?: FilterParams,
-): Promise<{ blob: Blob; filename: string | null }> {
-  const qs = buildQueryString(filters);
-  const { blob, headers } = await requestBlobWithHeaders(`/financial_records/export-xlsx/${qs}`);
+  options?: RequestInit,
+): Promise<FinancialRecordsSummary> {
+  const payload = await request<Record<string, unknown>>(
+    `/financial_records/summary/${buildQueryString(filters)}`,
+    options,
+  );
   return {
-    blob,
-    filename: extractFilename(headers.get('Content-Disposition')),
+    recordsCount: Number(payload.records_count ?? 0),
+    incomeTotal: Number(payload.income_total ?? 0),
+    expenseTotal: Number(payload.expense_total ?? 0),
+    netTotal: Number(payload.net_total ?? 0),
+    unpaidRecordsCount: Number(payload.unpaid_records_count ?? 0),
+    withoutStatementCount: Number(payload.without_statement_count ?? 0),
+    paymentsPaidBalanceTotal: Number(payload.payments_paid_balance_total ?? 0),
   };
+}
+
+export async function exportFinancialRecordsXlsx(filters?: FilterParams): Promise<DriveFile> {
+  const qs = buildQueryString(filters);
+  const job = await request<FinanceExportJob>(`/financial_records/export-xlsx/${qs}`, {
+    method: 'POST',
+    body: JSON.stringify({}),
+  });
+  return waitForFinanceExport(job.id);
 }
 export async function createFinancialRecord(data: {
   paymentId: string;
@@ -244,6 +305,46 @@ export async function fetchFinanceStatements(
   options?: RequestInit,
 ): Promise<Statement[]> {
   return fetchAllPages('/finance_statements/', mapStatement, filters, options);
+}
+
+export async function fetchFinanceStatementsWithPagination(
+  filters?: FilterParams,
+  options?: RequestInit,
+): Promise<PaginatedResponse<Statement>> {
+  const payload = await request<PaginatedResponse<Record<string, unknown>>>(
+    `/finance_statements/${buildQueryString({ page_size: 50, ...(filters ?? {}) })}`,
+    options,
+  );
+  return { ...payload, results: payload.results.map(mapStatement) };
+}
+
+export interface FinanceStatementLookupOption {
+  id: string;
+  name: string;
+  statementType: Statement['statementType'];
+  paidAt: string | null;
+}
+
+export async function fetchFinanceStatementLookup(
+  search = '',
+  statementType?: Statement['statementType'],
+  options?: RequestInit,
+): Promise<FinanceStatementLookupOption[]> {
+  const payload = await request<{ results: Record<string, unknown>[] }>(
+    `/finance_statements/lookup/${buildQueryString({
+      search: search.trim() || undefined,
+      statement_type: statementType,
+      paid: false,
+      page_size: 50,
+    })}`,
+    options,
+  );
+  return payload.results.map((row) => ({
+    id: String(row.id),
+    name: String(row.name ?? ''),
+    statementType: row.statement_type as Statement['statementType'],
+    paidAt: row.paid_at ? String(row.paid_at) : null,
+  }));
 }
 
 export async function createFinanceStatement(data: {
@@ -378,6 +479,14 @@ export async function markFinanceStatementPaid(
   const payload = await request<Record<string, unknown>>(`/finance_statements/${id}/mark-paid/`, {
     method: 'POST',
     body: JSON.stringify({ paid_at: paidAt }),
+  });
+  return mapStatement(payload);
+}
+
+export async function reopenFinanceStatement(id: string): Promise<Statement> {
+  const payload = await request<Record<string, unknown>>(`/finance_statements/${id}/reopen/`, {
+    method: 'POST',
+    body: JSON.stringify({}),
   });
   return mapStatement(payload);
 }

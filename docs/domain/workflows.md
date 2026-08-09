@@ -120,3 +120,14 @@
 1. `POST /api/v1/auth/login/` в объекте `user` и `GET /api/v1/auth/me/` возвращают обратно совместимое поле `capabilities: string[]` со стабильной сортировкой.
 2. Авторизованный пользователь получает `settings.profile`, `settings.notifications`, `settings.mail` и `settings.integrations`; административная роль или право `user:admin` дополнительно дают `settings.admin`.
 3. Capability `drive.reconnect` и backend-доступ к переподключению Google Drive выдаются только владельцу, настроенному через `GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID` или `GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME` (по умолчанию `4`/`Vova`). Административная роль сама по себе этот доступ не даёт.
+
+## 17) Доходы, расходы и ведомости
+
+1. `POST /api/v1/payments/` сохраняет обратную совместимость и дополнительно принимает необязательный объект `initial_record` с полями финансовой записи. Платёж и начальная запись создаются в одной транзакции: ошибка вложенной записи откатывает весь запрос.
+2. `GET /api/v1/financial_records/summary/` применяет те же фильтры и ограничения доступа, что список, и возвращает `records_count`, суммы доходов/расходов, итоговое сальдо, число непроведённых записей, записей без ведомости и сумму сальдо уникальных платежей.
+3. Табличный клиент запрашивает `projection=table`: повторяющиеся операции платежей вынесены в `payment_summaries` пагинированного ответа. Старое подробное представление остаётся доступным без параметра.
+4. Проведённое сальдо хранится в `Payment.paid_balance` и пересчитывается при создании, изменении, мягком/жёстком удалении и восстановлении финансовой записи, а также при выплате или повторном открытии ведомости.
+5. `POST /api/v1/finance_statements/<id>/reopen/` доступен только администраторам, переводит выплаченную ведомость в черновик, очищает даты записей и создаёт `AuditLog`. Выплата и отмена выплаты требуют подтверждения в UI.
+6. `GET /api/v1/finance_statements/lookup/` — компактный поиск черновиков для селектора; основной список ведомостей поддерживает `search`, `ordering`, `page`, `page_size`, `paid` и `statement_type`.
+7. `POST /api/v1/finance_statements/<id>/export-xlsx/` и `POST /api/v1/financial_records/export-xlsx/` возвращают `202` и объект `ExternalJob`. Worker `python manage.py run_external_job_worker` повторно проверяет доступ, формирует XLSX и загружает его в Google Drive; UI опрашивает `GET /api/v1/external-jobs/<id>/` и после успеха показывает ссылку Drive.
+8. Экспорт ведомости сохраняется в её Drive-папке, общий экспорт — в папке `Финансовые выгрузки` внутри `GOOGLE_DRIVE_ROOT_FOLDER_ID`. Для production необходимо развернуть миграции и backend/worker до нового frontend.

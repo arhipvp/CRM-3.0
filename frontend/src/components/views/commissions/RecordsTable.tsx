@@ -58,6 +58,8 @@ interface RecordsTableProps {
   policiesById: Map<string, Policy>;
   statementsById: Map<string, Statement>;
   amountDrafts: Record<string, AmountDraft>;
+  savingRecordIds?: Set<string>;
+  recordAmountErrors?: Record<string, string>;
   statementAmountDraft: StatementAmountDraft;
   isApplyingStatementAmount: boolean;
   isAttaching?: boolean;
@@ -87,6 +89,7 @@ interface RecordsTableProps {
   getAbsoluteSaldoBase: (row: IncomeExpenseRow) => number;
   onRecordAmountChange: (recordId: string, value: string) => void;
   onRecordAmountBlur: (row: IncomeExpenseRow) => Promise<void> | void;
+  onCancelRecordAmountEdit?: (recordId: string) => void;
   onToggleRecordAmountMode: (row: IncomeExpenseRow) => void;
   onStatementAmountChange: (value: string) => void;
   onToggleStatementAmountMode: () => void;
@@ -102,6 +105,8 @@ interface RecordsTableRowProps {
   isSelected: boolean;
   isSelectable: boolean;
   amountDraft?: AmountDraft;
+  isSavingAmount?: boolean;
+  amountError?: string;
   isRecordAmountEditable: boolean;
   editingPolicyRecordId?: string | null;
   normalizeText: (value?: string | null) => string;
@@ -113,6 +118,7 @@ interface RecordsTableRowProps {
   getAbsoluteSaldoBase: (row: IncomeExpenseRow) => number;
   onRecordAmountChange: (recordId: string, value: string) => void;
   onRecordAmountBlur: (row: IncomeExpenseRow) => Promise<void> | void;
+  onCancelRecordAmountEdit?: (recordId: string) => void;
   onToggleRecordAmountMode: (row: IncomeExpenseRow) => void;
 }
 
@@ -125,6 +131,8 @@ const RecordsTableRow = memo(function RecordsTableRow({
   isSelected,
   isSelectable,
   amountDraft,
+  isSavingAmount = false,
+  amountError,
   isRecordAmountEditable,
   editingPolicyRecordId = null,
   normalizeText,
@@ -136,6 +144,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
   getAbsoluteSaldoBase,
   onRecordAmountChange,
   onRecordAmountBlur,
+  onCancelRecordAmountEdit,
   onToggleRecordAmountMode,
 }: RecordsTableRowProps) {
   const payment = row.payment;
@@ -352,7 +361,16 @@ const RecordsTableRow = memo(function RecordsTableRow({
                   }
                 }}
                 onBlur={() => void onRecordAmountBlur(row)}
-                disabled={isRecordLocked}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') event.currentTarget.blur();
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    onCancelRecordAmountEdit?.(row.recordId);
+                  }
+                }}
+                disabled={isRecordLocked || isSavingAmount}
+                aria-invalid={Boolean(amountError)}
+                aria-describedby={amountError ? `record-amount-error-${row.recordId}` : undefined}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
               />
               <span className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-400">
@@ -381,6 +399,16 @@ const RecordsTableRow = memo(function RecordsTableRow({
             </button>
           </div>
         )}
+        {isSavingAmount && <p className="mt-1 text-[11px] text-sky-600">Сохраняем…</p>}
+        {amountError && (
+          <p
+            id={`record-amount-error-${row.recordId}`}
+            role="alert"
+            className="mt-1 text-[11px] text-rose-600"
+          >
+            {amountError}
+          </p>
+        )}
         {isRecordAmountEditable && amountMode === 'percent' && (
           <p className="mt-1 text-[11px] text-slate-500">
             {percentPreviewAmount === null
@@ -407,6 +435,8 @@ export const RecordsTable = ({
   policiesById,
   statementsById,
   amountDrafts,
+  savingRecordIds = new Set(),
+  recordAmountErrors = {},
   statementAmountDraft,
   isApplyingStatementAmount,
   isAttaching = false,
@@ -436,6 +466,7 @@ export const RecordsTable = ({
   getAbsoluteSaldoBase,
   onRecordAmountChange,
   onRecordAmountBlur,
+  onCancelRecordAmountEdit,
   onToggleRecordAmountMode,
   onStatementAmountChange,
   onToggleStatementAmountMode,
@@ -748,6 +779,8 @@ export const RecordsTable = ({
                   isSelected={selectedRecordIdSet.has(row.recordId)}
                   isSelectable={isSelectable}
                   amountDraft={amountDrafts[row.recordId]}
+                  isSavingAmount={savingRecordIds.has(row.recordId)}
+                  amountError={recordAmountErrors[row.recordId]}
                   isRecordAmountEditable={isRecordAmountEditable}
                   editingPolicyRecordId={editingPolicyRecordId}
                   normalizeText={normalizeText}
@@ -759,6 +792,7 @@ export const RecordsTable = ({
                   getAbsoluteSaldoBase={getAbsoluteSaldoBase}
                   onRecordAmountChange={onRecordAmountChange}
                   onRecordAmountBlur={onRecordAmountBlur}
+                  onCancelRecordAmountEdit={onCancelRecordAmountEdit}
                   onToggleRecordAmountMode={onToggleRecordAmountMode}
                 />
               );

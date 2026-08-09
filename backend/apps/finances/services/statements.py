@@ -1,24 +1,12 @@
 import re
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.db.models import DecimalField, OuterRef, Prefetch, Subquery, Sum
-from django.db.models.functions import Coalesce
+from django.db.models import F, Prefetch
 
 from ..models import FinancialRecord
 
 
 def records_with_paid_balance(statement):
-    paid_balance_subquery = (
-        FinancialRecord.objects.filter(
-            payment_id=OuterRef("payment_id"),
-            date__isnull=False,
-            deleted_at__isnull=True,
-        )
-        .order_by()
-        .values("payment_id")
-        .annotate(total=Sum("amount"))
-        .values("total")[:1]
-    )
     return (
         FinancialRecord.objects.filter(statement=statement, deleted_at__isnull=True)
         .select_related(
@@ -43,16 +31,7 @@ def records_with_paid_balance(statement):
                 to_attr="paid_records",
             )
         )
-        .annotate(
-            payment_paid_balance=Coalesce(
-                Subquery(
-                    paid_balance_subquery,
-                    output_field=DecimalField(max_digits=12, decimal_places=2),
-                ),
-                0,
-                output_field=DecimalField(max_digits=12, decimal_places=2),
-            )
-        )
+        .annotate(payment_paid_balance=F("payment__paid_balance"))
         .order_by("created_at", "id")
     )
 

@@ -121,3 +121,44 @@ class ExternalJobApiTests(AuthenticatedAPITestCase):
         self.assertEqual(job.status, ExternalJob.Status.FAILED)
         self.assertIn("не настроен", job.error)
         self.assertIsNotNone(job.finished_at)
+
+    @patch("apps.finances.services.exports.export_statement")
+    def test_worker_exports_finance_statement(self, export_statement):
+        export_statement.return_value = {
+            "folder_id": "folder-1",
+            "file": {"id": "file-1", "name": "statement.xlsx"},
+        }
+        job = ExternalJob.objects.create(
+            kind=ExternalJob.Kind.FINANCE_STATEMENT_EXPORT,
+            payload={"statement_id": "7b7ad40f-9301-4bb4-a049-6597fe226bcd"},
+            created_by=self.user,
+        )
+
+        self.assertTrue(process_next_external_job())
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, ExternalJob.Status.SUCCEEDED)
+        self.assertEqual(job.result["folder_id"], "folder-1")
+        export_statement.assert_called_once_with(
+            user=self.user, statement_id=job.payload["statement_id"]
+        )
+
+    @patch("apps.finances.services.exports.export_financial_records")
+    def test_worker_exports_filtered_financial_records(self, export_records):
+        export_records.return_value = {
+            "folder_id": "folder-2",
+            "file": {"id": "file-2", "name": "records.xlsx"},
+        }
+        filters = {"record_type": "income", "search": "Клиент"}
+        job = ExternalJob.objects.create(
+            kind=ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT,
+            payload={"filters": filters},
+            created_by=self.user,
+        )
+
+        self.assertTrue(process_next_external_job())
+
+        job.refresh_from_db()
+        self.assertEqual(job.status, ExternalJob.Status.SUCCEEDED)
+        self.assertEqual(job.result["file"]["id"], "file-2")
+        export_records.assert_called_once_with(user=self.user, filters=filters)

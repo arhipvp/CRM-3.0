@@ -6,7 +6,7 @@ ADMIN_ROLE_NAMES = {"Admin", "Администратор"}
 def is_admin_user(user) -> bool:
     if not user or not user.is_authenticated:
         return False
-    if getattr(user, "is_superuser", False):
+    if getattr(user, "is_superuser", False) or getattr(user, "is_staff", False):
         return True
     return UserRole.objects.filter(user=user, role__name__in=ADMIN_ROLE_NAMES).exists()
 

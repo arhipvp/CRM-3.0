@@ -1,7 +1,12 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook as renderHookBase } from '@testing-library/react';
+import type { ReactNode } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchFinancialRecordsWithPagination } from '../../../../../api';
+import {
+  fetchFinancialRecordsSummary,
+  fetchFinancialRecordsWithPagination,
+} from '../../../../../api';
 import { useAllRecordsController } from '../useAllRecordsController';
 
 vi.mock('../../../../../api', async () => {
@@ -9,10 +14,17 @@ vi.mock('../../../../../api', async () => {
   return {
     ...actual,
     fetchFinancialRecordsWithPagination: vi.fn(),
+    fetchFinancialRecordsSummary: vi.fn(),
   };
 });
 
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
+const mockedFetchFinancialRecordsSummary = vi.mocked(fetchFinancialRecordsSummary);
+const renderHook: typeof renderHookBase = (callback, options) =>
+  renderHookBase(callback, {
+    wrapper: ({ children }: { children: ReactNode }) => <MemoryRouter>{children}</MemoryRouter>,
+    ...options,
+  });
 
 const emptyPayload = {
   count: 0,
@@ -34,6 +46,16 @@ const deferred = <T,>() => {
 describe('useAllRecordsController', () => {
   beforeEach(() => {
     mockedFetchFinancialRecordsWithPagination.mockReset();
+    mockedFetchFinancialRecordsSummary.mockReset();
+    mockedFetchFinancialRecordsSummary.mockResolvedValue({
+      recordsCount: 0,
+      incomeTotal: 0,
+      expenseTotal: 0,
+      netTotal: 0,
+      unpaidRecordsCount: 0,
+      withoutStatementCount: 0,
+      paymentsPaidBalanceTotal: 0,
+    });
     window.history.replaceState(null, '', '/');
   });
 

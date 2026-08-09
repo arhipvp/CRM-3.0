@@ -6,7 +6,7 @@ import {
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
-  fetchFinanceStatements,
+  fetchFinanceStatementsWithPagination,
   fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
   fetchSalesChannels,
@@ -89,6 +89,10 @@ export const useAppData = () => {
   const [isSyncing, setIsSyncing] = useState(false);
   const [isCommissionsDataLoading, setIsCommissionsDataLoading] = useState(false);
   const [hasCommissionsSnapshotLoaded, setHasCommissionsSnapshotLoaded] = useState(false);
+  const [statementsPage, setStatementsPage] = useState(1);
+  const [statementsTotalCount, setStatementsTotalCount] = useState(0);
+  const [statementsHasMore, setStatementsHasMore] = useState(false);
+  const [isLoadingMoreStatements, setIsLoadingMoreStatements] = useState(false);
   const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
   const [hasFinanceSnapshotLoaded, setHasFinanceSnapshotLoaded] = useState(false);
   const [isTasksLoading, setIsTasksLoading] = useState(false);
@@ -236,6 +240,7 @@ export const useAppData = () => {
         payload = await fetchDealsWithPagination(
           {
             ...resolvedFilters,
+            include: 'client_active_deals_count',
             page: 1,
             page_size: pageSize,
           },
@@ -280,6 +285,7 @@ export const useAppData = () => {
       const payload = await fetchDealsWithPagination(
         {
           ...dealsFilters,
+          include: 'client_active_deals_count',
           page: dealsNextPage,
           page_size: DEALS_PAGE_SIZE,
         },
@@ -499,6 +505,12 @@ export const useAppData = () => {
     [updateAppData],
   );
 
+  const ensureSalesChannelsLoaded = useCallback(async () => {
+    if (dataStateRef.current.salesChannels.length) return;
+    const salesChannels = await fetchSalesChannels();
+    setAppData({ salesChannels });
+  }, [setAppData]);
+
   const loadData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -542,7 +554,7 @@ export const useAppData = () => {
         try {
           while (commissionsRequestRef.current === requestId) {
             const startedRevision = financeRevisionRef.current;
-            const statementsData = await fetchFinanceStatements();
+            const statementsPageData = await fetchFinanceStatementsWithPagination({ page: 1 });
             if (commissionsRequestRef.current !== requestId) {
               return;
             }
@@ -550,8 +562,11 @@ export const useAppData = () => {
               continue;
             }
             setAppData({
-              statements: statementsData,
+              statements: statementsPageData.results,
             });
+            setStatementsPage(1);
+            setStatementsTotalCount(statementsPageData.count);
+            setStatementsHasMore(Boolean(statementsPageData.next));
             commissionsDataLoadedRef.current = true;
             setHasCommissionsSnapshotLoaded(true);
             return;
@@ -573,6 +588,28 @@ export const useAppData = () => {
     },
     [setAppData, setError],
   );
+
+  const loadMoreStatements = useCallback(async () => {
+    if (!statementsHasMore || isLoadingMoreStatements) return;
+    setIsLoadingMoreStatements(true);
+    try {
+      const nextPage = statementsPage + 1;
+      const payload = await fetchFinanceStatementsWithPagination({ page: nextPage });
+      setAppData({
+        statements: [
+          ...dataStateRef.current.statements,
+          ...payload.results.filter(
+            (item) => !dataStateRef.current.statements.some((current) => current.id === item.id),
+          ),
+        ],
+      });
+      setStatementsPage(nextPage);
+      setStatementsTotalCount(payload.count);
+      setStatementsHasMore(Boolean(payload.next));
+    } finally {
+      setIsLoadingMoreStatements(false);
+    }
+  }, [isLoadingMoreStatements, setAppData, statementsHasMore, statementsPage]);
 
   const ensureFullFinanceSnapshotLoaded = useCallback(
     async (options?: { force?: boolean }) => {
@@ -719,6 +756,7 @@ export const useAppData = () => {
     dataState,
     loadData,
     ensureReferenceData,
+    ensureSalesChannelsLoaded,
     ensureClientLoaded,
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
@@ -751,6 +789,10 @@ export const useAppData = () => {
     isTasksLoading,
     tasksPage,
     tasksTotalCount,
+    statementsTotalCount,
+    statementsHasMore,
+    isLoadingMoreStatements,
+    loadMoreStatements,
     isSyncing,
     setIsSyncing,
     error,

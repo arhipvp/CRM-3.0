@@ -10,10 +10,11 @@ from apps.clients.models import Client
 from apps.common.drive import ensure_statement_folder
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, InsuranceCompany, InsuranceType, SalesChannel
+from apps.documents.models import ExternalJob
 from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.policies.models import Policy
 from apps.tasks.models import Task
-from apps.users.models import Role, UserRole
+from apps.users.models import AuditLog, Role, UserRole
 from django.contrib.auth.models import User
 from django.db import close_old_connections, connection
 from django.test import TransactionTestCase
@@ -115,6 +116,41 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             format="json",
         )
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_payment_and_initial_record_are_created_atomically(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "initial_record": {
+                    "amount": "0.00",
+                    "record_type": "income",
+                    "date": "2026-08-08",
+                    "description": "Initial",
+                },
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payment = Payment.objects.get(pk=response.data["id"])
+        self.assertEqual(payment.financial_records.count(), 1)
+
+    def test_invalid_initial_record_does_not_create_payment(self):
+        self.authenticate(self.seller)
+        count_before = Payment.objects.count()
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "initial_record": {"amount": "10.00", "record_type": "invalid"},
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Payment.objects.count(), count_before)
 
     def test_executor_can_create_payment(self):
         self.authenticate(self.executor)
@@ -434,7 +470,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
             {"amount": "25.00"},
             format="json",
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_executor_cannot_delete_financial_record(self):
         self.authenticate(self.executor)
@@ -448,7 +484,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         response = self.api_client.delete(
             f"/api/v1/financial_records/{self.fin_record.id}/"
         )
-        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
     def test_seller_can_delete_unpaid_payment(self):
         self.authenticate(self.seller)
@@ -805,6 +841,45 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.assertEqual(statement.paid_at, paid_at)
         self.assertEqual(self.income_record.date, paid_at)
 
+    def test_only_admin_can_reopen_paid_statement(self):
+        paid_at = timezone.now().date()
+        statement = Statement.objects.create(
+            name="Paid To Reopen",
+            statement_type="income",
+            paid_at=paid_at,
+            status=Statement.STATUS_PAID,
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.date = paid_at
+        self.income_record.save(update_fields=["statement", "date"])
+
+        self.authenticate(self.seller)
+        denied = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/reopen/", {}, format="json"
+        )
+        self.assertEqual(denied.status_code, status.HTTP_403_FORBIDDEN)
+
+        admin = User.objects.create_user(
+            username="finance-admin",
+            password="pass",  # pragma: allowlist secret
+            is_staff=True,
+        )
+        self.authenticate(admin)
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/reopen/", {}, format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        statement.refresh_from_db()
+        self.income_record.refresh_from_db()
+        self.assertIsNone(statement.paid_at)
+        self.assertIsNone(self.income_record.date)
+        self.assertTrue(
+            AuditLog.objects.filter(
+                object_type="statement", object_id=str(statement.id), action="reopen"
+            ).exists()
+        )
+
     def test_apply_amount_rub_updates_all_statement_records(self):
         self.authenticate(self.seller)
         statement = Statement.objects.create(
@@ -1136,65 +1211,10 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
                 format="json",
             )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        payload = response.json()
-        self.assertEqual(payload["folder_id"], "folder123")
-        self.assertEqual(payload["file"]["id"], "file123")
-
-        self.assertTrue(
-            uploaded["file_name"].startswith("Выплата Алиса_08_02_2026_12_34_56")
-        )
-        self.assertTrue(uploaded["file_name"].endswith(".xlsx"))
-
-        workbook = load_workbook(filename=BytesIO(uploaded["bytes"]))
-        ws = workbook.active
-        headers = [cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-        self.assertIn("Клиент / сделка", headers)
-        self.assertIn("Доходы / расходы", headers)
-        self.assertIn("Сумма, ₽", headers)
-        header_index = {value: index + 1 for index, value in enumerate(headers)}
-
-        operations_cell = ws.cell(row=2, column=header_index["Доходы / расходы"]).value
-        self.assertCountEqual(
-            operations_cell.splitlines(),
-            [
-                "Доход 150.00 ₽ · 08.02.2026",
-                "Расход 75.00 ₽ · 08.02.2026",
-            ],
-        )
-        self.assertEqual(
-            ws.cell(row=2, column=header_index["Сальдо, ₽"]).value,
-            75,
-        )
-        self.assertEqual(
-            ws.cell(row=2, column=header_index["Сумма, ₽"]).value,
-            150,
-        )
-        self.assertIn(
-            "₽",
-            ws.cell(row=2, column=header_index["Сальдо, ₽"]).number_format,
-        )
-        self.assertIn(
-            "₽",
-            ws.cell(row=2, column=header_index["Сумма, ₽"]).number_format,
-        )
-        self.assertNotIn(
-            "Доход",
-            str(ws.cell(row=2, column=header_index["Сальдо, ₽"]).value),
-        )
-        self.assertNotIn(
-            "08.02.2026",
-            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
-        )
-        self.assertNotIn(
-            "+",
-            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
-        )
-        self.assertNotIn(
-            "-",
-            str(ws.cell(row=2, column=header_index["Сумма, ₽"]).value),
-        )
-        workbook.close()
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        job = ExternalJob.objects.get(pk=response.json()["id"])
+        self.assertEqual(job.kind, ExternalJob.Kind.FINANCE_STATEMENT_EXPORT)
+        self.assertEqual(job.payload["statement_id"], str(statement.id))
 
     def test_statement_drive_folder_is_created_even_when_name_exists(self):
         with patch(
@@ -1726,25 +1746,16 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.policy_payment.save(update_fields=["scheduled_date", "updated_at"])
 
         self.authenticate(self.seller)
-        response = self.api_client.get(
+        response = self.api_client.post(
             "/api/v1/financial_records/export-xlsx/",
             {"sales_channel": str(channel.id)},
+            format="json",
         )
 
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
-        workbook = load_workbook(BytesIO(response.content))
-        sheet = workbook.active
-        headers = [cell.value for cell in sheet[1]]
-        self.assertIn("Дата платежа", headers)
-        scheduled_date_column = headers.index("Дата платежа") + 1
-        policy_number_column = headers.index("Номер полиса") + 1
-
-        rows = list(sheet.iter_rows(min_row=2, values_only=True))
-        policy_numbers = {row[policy_number_column - 1] for row in rows}
-        scheduled_dates = {row[scheduled_date_column - 1] for row in rows}
-        self.assertIn("FILTER-POLICY", policy_numbers)
-        self.assertNotIn("-", policy_numbers)
-        self.assertIn("15.03.2026", scheduled_dates)
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        job = ExternalJob.objects.get(pk=response.json()["id"])
+        self.assertEqual(job.kind, ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT)
+        self.assertEqual(job.payload["filters"]["sales_channel"], str(channel.id))
 
 
 class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
@@ -1844,6 +1855,59 @@ class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
         by_id = {item["id"]: item for item in results}
         self.assertEqual(by_id[str(paid_income.id)]["payment_paid_balance"], "150.00")
         self.assertEqual(by_id[str(unpaid_income.id)]["payment_paid_balance"], "150.00")
+
+        payment.refresh_from_db()
+        self.assertEqual(payment.paid_balance, Decimal("150.00"))
+
+        summary = self.api_client.get("/api/v1/financial_records/summary/")
+        self.assertEqual(summary.status_code, status.HTTP_200_OK)
+        self.assertEqual(Decimal(summary.data["income_total"]), Decimal("200.00"))
+        self.assertEqual(
+            Decimal(summary.data["payments_paid_balance_total"]), Decimal("150.00")
+        )
+
+        table = self.api_client.get(
+            "/api/v1/financial_records/", {"projection": "table"}
+        )
+        self.assertEqual(table.status_code, status.HTTP_200_OK)
+        self.assertIn(str(payment.id), table.data["payment_summaries"])
+        self.assertNotIn("payment_paid_entries", table.data["results"][0])
+
+    def test_export_workbook_uses_denormalized_non_zero_paid_balance(self):
+        from apps.finances.services.exports import (
+            _visible_records,
+            _write_records_workbook,
+        )
+
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("5000.00"),
+            description="Export balance",
+        )
+        exported_record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("250.00"),
+            date=timezone.now().date(),
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-75.00"),
+            date=timezone.now().date(),
+        )
+        payment.refresh_from_db()
+        self.assertEqual(payment.paid_balance, Decimal("175.00"))
+
+        workbook_bytes = _write_records_workbook(
+            _visible_records(self.seller).filter(pk=exported_record.pk),
+            "Финансовые записи",
+        )
+        workbook = load_workbook(workbook_bytes)
+        sheet = workbook.active
+        headers = [cell.value for cell in sheet[1]]
+        balance_column = headers.index("Сальдо, ₽") + 1
+        self.assertEqual(sheet.cell(row=2, column=balance_column).value, 175)
+        workbook.close()
 
 
 class FinanceStatementRemoveRecordsTests(AuthenticatedAPITestCase):

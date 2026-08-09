@@ -38,6 +38,7 @@ DRIVE_SCOPES = ("https://www.googleapis.com/auth/drive",)
 FOLDER_MIME_TYPE = "application/vnd.google-apps.folder"
 TRASH_FOLDER_NAME = "Корзина"
 STATEMENTS_ROOT_FOLDER_NAME = "Ведомости"
+FINANCE_EXPORTS_ROOT_FOLDER_NAME = "Финансовые выгрузки"
 DEFAULT_GOOGLE_OAUTH_TOKEN_URI = "https://oauth2.googleapis.com/token"
 DRIVE_AUTH_MODE_OAUTH = "oauth"
 DRIVE_UPLOAD_CHUNK_SIZE = 5 * 1024 * 1024
@@ -846,6 +847,14 @@ def ensure_statement_folder(statement) -> Optional[str]:
     folder_id = _make_folder(name, statements_root)
     _update_instance_folder(statement, folder_id)
     return folder_id
+
+
+def ensure_finance_exports_folder() -> Optional[str]:
+    """Ensure the shared folder used for filtered finance exports exists."""
+    root_folder = getattr(settings, "GOOGLE_DRIVE_ROOT_FOLDER_ID", "").strip()
+    if not root_folder:
+        raise DriveConfigurationError("GOOGLE_DRIVE_ROOT_FOLDER_ID is not configured.")
+    return _ensure_folder(FINANCE_EXPORTS_ROOT_FOLDER_NAME, root_folder)
 
 
 def ensure_trash_folder(parent_folder_id: str, name: str = TRASH_FOLDER_NAME) -> str:

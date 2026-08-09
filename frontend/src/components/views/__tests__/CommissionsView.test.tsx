@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   fetchFinancialRecordsWithPagination,
+  fetchFinancialRecordsSummary,
   fetchPolicy,
   fetchStatementFinancialRecordsWithPagination,
 } from '../../../api';
@@ -18,6 +19,7 @@ vi.mock('../../../api', async () => {
     ...actual,
     fetchStatementFinancialRecordsWithPagination: vi.fn(),
     fetchFinancialRecordsWithPagination: vi.fn(),
+    fetchFinancialRecordsSummary: vi.fn(),
     fetchPolicy: vi.fn(),
   };
 });
@@ -26,6 +28,7 @@ const mockedFetchStatementFinancialRecords = vi.mocked(
   fetchStatementFinancialRecordsWithPagination,
 );
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
+const mockedFetchFinancialRecordsSummary = vi.mocked(fetchFinancialRecordsSummary);
 const mockedFetchPolicy = vi.mocked(fetchPolicy);
 
 const buildPolicy = (overrides: Partial<Policy> = {}): Policy => ({
@@ -74,6 +77,15 @@ beforeEach(() => {
     next: null,
     previous: null,
     results: [],
+  });
+  mockedFetchFinancialRecordsSummary.mockResolvedValue({
+    recordsCount: 0,
+    incomeTotal: 0,
+    expenseTotal: 0,
+    netTotal: 0,
+    unpaidRecordsCount: 0,
+    withoutStatementCount: 0,
+    paymentsPaidBalanceTotal: 0,
   });
   mockedFetchPolicy.mockResolvedValue(buildPolicy());
 });
@@ -151,7 +163,7 @@ describe('CommissionsView', () => {
     expect(await screen.findAllByText('Клиент А')).toHaveLength(2);
     expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith(
       'statement-1',
-      expect.objectContaining({ page: 1, page_size: 100 }),
+      expect.objectContaining({ page: 1, page_size: 50 }),
       expect.any(Object),
     );
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
@@ -207,7 +219,7 @@ describe('CommissionsView', () => {
         updatedAt: '2026-03-06T10:00:00Z',
       },
     });
-    mockedFetchStatementFinancialRecords.mockResolvedValueOnce({
+    mockedFetchStatementFinancialRecords.mockResolvedValue({
       count: 2,
       next: null,
       previous: null,
@@ -295,16 +307,21 @@ describe('CommissionsView', () => {
     await user.click(screen.getAllByRole('button', { name: /Сортировать по сумме/i })[0]);
 
     const beforeToggle = screen.getAllByText(/^Клиент [АБ]$/);
-    expect(beforeToggle[0]).toHaveTextContent('Клиент Б');
-    expect(beforeToggle[1]).toHaveTextContent('Клиент А');
+    expect(beforeToggle[0]).toHaveTextContent('Клиент А');
+    expect(beforeToggle[1]).toHaveTextContent('Клиент Б');
+    expect(mockedFetchStatementFinancialRecords).toHaveBeenLastCalledWith(
+      'statement-1',
+      expect.objectContaining({ ordering: 'amount,-date' }),
+      expect.any(Object),
+    );
 
     await user.click(
       screen.getAllByRole('button', { name: 'Переключить ввод суммы на проценты' })[0],
     );
 
     const afterToggle = screen.getAllByText(/^Клиент [АБ]$/);
-    expect(afterToggle[0]).toHaveTextContent('Клиент Б');
-    expect(afterToggle[1]).toHaveTextContent('Клиент А');
+    expect(afterToggle[0]).toHaveTextContent('Клиент А');
+    expect(afterToggle[1]).toHaveTextContent('Клиент Б');
 
     await user.type(statementAmountInput, '10');
     await user.click(screen.getAllByRole('button', { name: 'Применить ко всей ведомости' })[0]);

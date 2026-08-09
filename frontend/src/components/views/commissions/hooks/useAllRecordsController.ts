@@ -1,8 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 
 import type { FilterParams } from '../../../../api';
-import { exportFinancialRecordsXlsx, fetchFinancialRecordsWithPagination } from '../../../../api';
-import type { FinancialRecord, Statement } from '../../../../types';
+import {
+  exportFinancialRecordsXlsx,
+  fetchFinancialRecordsSummary,
+  fetchFinancialRecordsWithPagination,
+} from '../../../../api';
+import type { FinancialRecordsSummary } from '../../../../api';
+import type { DriveFile, FinancialRecord, Statement } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import type { AllRecordsSortKey } from '../RecordsTable';
 
@@ -56,36 +62,6 @@ const readSortKeyParam = (params: URLSearchParams): AllRecordsSortKey => {
   return SORT_KEY_VALUES.has(value) ? (value as AllRecordsSortKey) : 'none';
 };
 
-const replaceAllRecordsQuery = (params: URLSearchParams) => {
-  if (typeof window === 'undefined') {
-    return;
-  }
-  const nextParams = new URLSearchParams(window.location.search);
-  QUERY_KEY_VALUES.forEach((key) => nextParams.delete(key));
-  params.forEach((value, key) => {
-    if (value) {
-      nextParams.set(key, value);
-    }
-  });
-  const nextSearch = nextParams.toString();
-  const nextUrl = `${window.location.pathname}${nextSearch ? `?${nextSearch}` : ''}${window.location.hash}`;
-  window.history.replaceState(window.history.state, '', nextUrl);
-};
-
-const saveBlob = (blob: Blob, filename: string) => {
-  if (typeof window === 'undefined' || typeof document === 'undefined') {
-    return;
-  }
-  const url = window.URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  window.URL.revokeObjectURL(url);
-};
-
 const buildFiltersCacheKey = (filters: FilterParams) =>
   JSON.stringify(
     Object.entries(filters)
@@ -97,6 +73,7 @@ export const useAllRecordsController = ({
   viewMode,
   statementsById,
 }: UseAllRecordsControllerArgs) => {
+  const [routerSearchParams, setRouterSearchParams] = useSearchParams();
   const initialQueryParamsRef = useRef(readQueryParams());
   const initialQueryParams = initialQueryParamsRef.current;
   const [allRecordsSearchInput, setAllRecordsSearchInput] = useState(
@@ -106,16 +83,16 @@ export const useAllRecordsController = ({
     () => initialQueryParams.get(QUERY_KEYS.search) ?? '',
   );
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showUnpaidPayments, false),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showUnpaidPayments, true),
   );
   const [showStatementRecords, setShowStatementRecords] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showStatementRecords, false),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showStatementRecords, true),
   );
   const [showPaidRecords, setShowPaidRecords] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showPaidRecords, false),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showPaidRecords, true),
   );
   const [showZeroSaldo, setShowZeroSaldo] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showZeroSaldo, false),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showZeroSaldo, true),
   );
   const [recordTypeFilter, setRecordTypeFilter] = useState<'all' | 'income' | 'expense'>(() =>
     readRecordTypeParam(initialQueryParams),
@@ -144,8 +121,10 @@ export const useAllRecordsController = ({
   const [isAllRecordsExporting, setIsAllRecordsExporting] = useState(false);
   const [allRecordsError, setAllRecordsError] = useState<string | null>(null);
   const [allRecordsExportError, setAllRecordsExportError] = useState<string | null>(null);
+  const [allRecordsExportFile, setAllRecordsExportFile] = useState<DriveFile | null>(null);
   const [allRecordsHasMore, setAllRecordsHasMore] = useState(false);
   const [allRecordsTotalCount, setAllRecordsTotalCount] = useState(0);
+  const [allRecordsSummary, setAllRecordsSummary] = useState<FinancialRecordsSummary | null>(null);
   const allRecordsPageRef = useRef(1);
   const allRecordsRequestRef = useRef(0);
   const allRecordsAbortControllerRef = useRef<AbortController | null>(null);
@@ -253,17 +232,17 @@ export const useAllRecordsController = ({
     if (allRecordsSearchApplied) {
       params.set(QUERY_KEYS.search, allRecordsSearchApplied);
     }
-    if (showUnpaidPayments) {
-      params.set(QUERY_KEYS.showUnpaidPayments, '1');
+    if (!showUnpaidPayments) {
+      params.set(QUERY_KEYS.showUnpaidPayments, '0');
     }
-    if (showStatementRecords) {
-      params.set(QUERY_KEYS.showStatementRecords, '1');
+    if (!showStatementRecords) {
+      params.set(QUERY_KEYS.showStatementRecords, '0');
     }
-    if (showPaidRecords) {
-      params.set(QUERY_KEYS.showPaidRecords, '1');
+    if (!showPaidRecords) {
+      params.set(QUERY_KEYS.showPaidRecords, '0');
     }
-    if (showZeroSaldo) {
-      params.set(QUERY_KEYS.showZeroSaldo, '1');
+    if (!showZeroSaldo) {
+      params.set(QUERY_KEYS.showZeroSaldo, '0');
     }
     if (recordTypeFilter !== 'all') {
       params.set(QUERY_KEYS.recordType, recordTypeFilter);
@@ -284,7 +263,12 @@ export const useAllRecordsController = ({
     if (paymentScheduledDateTo) {
       params.set(QUERY_KEYS.scheduledTo, paymentScheduledDateTo);
     }
-    replaceAllRecordsQuery(params);
+    const nextParams = new URLSearchParams(routerSearchParams);
+    QUERY_KEY_VALUES.forEach((key) => nextParams.delete(key));
+    params.forEach((value, key) => nextParams.set(key, value));
+    if (nextParams.toString() !== routerSearchParams.toString()) {
+      setRouterSearchParams(nextParams, { replace: true });
+    }
   }, [
     allRecordsSearchApplied,
     allRecordsSortDirection,
@@ -299,15 +283,35 @@ export const useAllRecordsController = ({
     showZeroSaldo,
     targetStatementId,
     viewMode,
+    routerSearchParams,
+    setRouterSearchParams,
   ]);
+
+  useLayoutEffect(() => {
+    const params = routerSearchParams;
+    const search = params.get(QUERY_KEYS.search) ?? '';
+    setAllRecordsSearchInput(search);
+    setAllRecordsSearchApplied(search);
+    setShowUnpaidPayments(readBooleanParam(params, QUERY_KEYS.showUnpaidPayments, true));
+    setShowStatementRecords(readBooleanParam(params, QUERY_KEYS.showStatementRecords, true));
+    setShowPaidRecords(readBooleanParam(params, QUERY_KEYS.showPaidRecords, true));
+    setShowZeroSaldo(readBooleanParam(params, QUERY_KEYS.showZeroSaldo, true));
+    setRecordTypeFilter(readRecordTypeParam(params));
+    setAllRecordsSortKey(readSortKeyParam(params));
+    setAllRecordsSortDirection(params.get(QUERY_KEYS.sortDirection) === 'desc' ? 'desc' : 'asc');
+    setTargetStatementId(params.get(QUERY_KEYS.targetStatement) ?? '');
+    setSalesChannelFilter(params.get(QUERY_KEYS.salesChannel) ?? '');
+    setPaymentScheduledDateFrom(params.get(QUERY_KEYS.scheduledFrom) ?? '');
+    setPaymentScheduledDateTo(params.get(QUERY_KEYS.scheduledTo) ?? '');
+  }, [routerSearchParams]);
 
   const activeAllRecordsFilterCount = useMemo(() => {
     return [
       Boolean(allRecordsSearchApplied),
-      showUnpaidPayments,
-      showStatementRecords,
-      showPaidRecords,
-      showZeroSaldo,
+      !showUnpaidPayments,
+      !showStatementRecords,
+      !showPaidRecords,
+      !showZeroSaldo,
       recordTypeFilter !== 'all',
       Boolean(targetStatementId),
       Boolean(salesChannelFilter),
@@ -366,10 +370,10 @@ export const useAllRecordsController = ({
   const resetAllRecordsFilters = useCallback(() => {
     setAllRecordsSearchInput('');
     setAllRecordsSearchApplied('');
-    setShowUnpaidPayments(false);
-    setShowStatementRecords(false);
-    setShowPaidRecords(false);
-    setShowZeroSaldo(false);
+    setShowUnpaidPayments(true);
+    setShowStatementRecords(true);
+    setShowPaidRecords(true);
+    setShowZeroSaldo(true);
     setRecordTypeFilter('all');
     setAllRecordsSortKey('none');
     setAllRecordsSortDirection('asc');
@@ -377,6 +381,14 @@ export const useAllRecordsController = ({
     setSalesChannelFilter('');
     setPaymentScheduledDateFrom('');
     setPaymentScheduledDateTo('');
+  }, []);
+
+  const applyProcessingPreset = useCallback(() => {
+    setShowUnpaidPayments(false);
+    setShowStatementRecords(false);
+    setShowPaidRecords(false);
+    setShowZeroSaldo(false);
+    setTargetStatementId('');
   }, []);
 
   const loadAllRecords = useCallback(
@@ -397,17 +409,20 @@ export const useAllRecordsController = ({
       }
 
       try {
-        const payload = await fetchFinancialRecordsWithPagination(
-          {
-            ...filters,
-            page: nextPage,
-          },
-          { signal: controller.signal },
-        );
+        const [payload, summary] = await Promise.all([
+          fetchFinancialRecordsWithPagination(
+            { ...filters, projection: 'table', page: nextPage },
+            { signal: controller.signal },
+          ),
+          mode === 'reset'
+            ? fetchFinancialRecordsSummary(filters, { signal: controller.signal })
+            : Promise.resolve(null),
+        ]);
         if (requestId !== allRecordsRequestRef.current) {
           return;
         }
         setAllRecordsTotalCount(payload.count || 0);
+        if (summary) setAllRecordsSummary(summary);
         setAllRecordsHasMore(Boolean(payload.next));
         allRecordsPageRef.current = nextPage;
         if (mode === 'reset') {
@@ -442,9 +457,9 @@ export const useAllRecordsController = ({
   const exportAllRecords = useCallback(async () => {
     setIsAllRecordsExporting(true);
     setAllRecordsExportError(null);
+    setAllRecordsExportFile(null);
     try {
-      const { blob, filename } = await exportFinancialRecordsXlsx(buildAllRecordsFilters());
-      saveBlob(blob, filename || 'financial_records.xlsx');
+      setAllRecordsExportFile(await exportFinancialRecordsXlsx(buildAllRecordsFilters()));
     } catch (error) {
       setAllRecordsExportError(
         formatErrorMessage(error, 'Не удалось выгрузить финансовые записи.'),
@@ -554,6 +569,7 @@ export const useAllRecordsController = ({
     activeAllRecordsFilterCount,
     canResetAllRecordsFilters,
     resetAllRecordsFilters,
+    applyProcessingPreset,
     isRecordTypeLocked,
     allRecords,
     isAllRecordsLoading,
@@ -561,8 +577,10 @@ export const useAllRecordsController = ({
     isAllRecordsExporting,
     allRecordsError,
     allRecordsExportError,
+    allRecordsExportFile,
     allRecordsHasMore,
     allRecordsTotalCount,
+    allRecordsSummary,
     allRecordsFilterKey,
     applyAttachedRecords,
     loadAllRecords,
