@@ -411,7 +411,9 @@ describe('FilesTab', () => {
     await waitFor(() => {
       expect(handleTrashDriveFile).toHaveBeenCalledWith(file);
     });
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
 
     objectUrlApi.restore();
   });
