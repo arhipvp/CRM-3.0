@@ -263,11 +263,70 @@ describe('PoliciesTab', () => {
     expect(paidRecordRow.className).toContain('bg-emerald-50');
     expect(unpaidRecordRow.className).toContain('bg-rose-50');
     expect(screen.getByTitle('Alpha, OSAGO, Перебоева')).toBeInTheDocument();
-    const companyMeta = screen.getByText('Alpha').closest('p');
+    const companyMeta = screen.getByTestId('policy-meta-policy-1');
     expect(companyMeta?.querySelector('span.rounded-full')).not.toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Сделка #1' }));
     expect(onDealSelect).toHaveBeenCalledWith('deal-1');
+  });
+
+  it('separates client and deal and keeps policy actions visible with semantic colors', async () => {
+    const onOpenClient = vi.fn().mockResolvedValue(undefined);
+    const onRequestEditPolicy = vi.fn();
+    const onDeletePolicy = vi.fn().mockResolvedValue(undefined);
+    const setEditingPaymentId = vi.fn();
+    const setCreatingPaymentPolicyId = vi.fn();
+    const longClientName = 'Кашубина Ольга Константиновна';
+    const dealTitle = 'Ипотека в Сбере';
+
+    setup({
+      onOpenClient,
+      onRequestEditPolicy,
+      onDeletePolicy,
+      onMovePolicy: vi.fn().mockResolvedValue(undefined),
+      setEditingPaymentId,
+      setCreatingPaymentPolicyId,
+      sortedPolicies: [
+        buildPolicy({
+          clientName: longClientName,
+          dealTitle,
+          note: '',
+          salesChannel: 'Сбер',
+        }),
+      ],
+    });
+
+    const clientRow = screen.getByTestId('policy-client-policy-1');
+    const dealRow = screen.getByTestId('policy-deal-policy-1');
+    expect(clientRow).toHaveTextContent(longClientName);
+    expect(clientRow).not.toHaveTextContent(dealTitle);
+    expect(dealRow).toHaveTextContent(`Сделка:${dealTitle}`);
+    expect(screen.getByText('Без примечания')).toBeInTheDocument();
+    expect(screen.getByText('Оплачено / план')).toBeInTheDocument();
+
+    const editButton = screen.getByRole('button', { name: 'Редактировать' });
+    const moveButton = screen.getByRole('button', { name: 'Перенести' });
+    const paymentButton = screen.getByRole('button', { name: '+ Платеж' });
+    const renewButton = screen.getByRole('button', { name: 'Отметить продлённым' });
+    const deleteButton = screen.getByRole('button', { name: 'Удалить' });
+    expect(editButton).toHaveClass('btn-primary');
+    expect(moveButton).toHaveClass('btn-quiet');
+    expect(paymentButton).toHaveClass('btn-success');
+    expect(renewButton).toHaveClass('bg-amber-50');
+    expect(deleteButton).toHaveClass('btn-danger');
+
+    fireEvent.click(screen.getByRole('button', { name: longClientName }));
+    await waitFor(() => {
+      expect(onOpenClient).toHaveBeenCalledWith('client-1');
+      expect(screen.getByRole('button', { name: longClientName })).toBeEnabled();
+    });
+    fireEvent.click(editButton);
+    expect(onRequestEditPolicy).toHaveBeenCalledWith(expect.objectContaining({ id: 'policy-1' }));
+    fireEvent.click(paymentButton);
+    expect(setEditingPaymentId).toHaveBeenCalledWith('new');
+    expect(setCreatingPaymentPolicyId).toHaveBeenCalledWith('policy-1');
+    fireEvent.click(deleteButton);
+    expect(onDeletePolicy).toHaveBeenCalledWith('policy-1');
   });
 
   it('renders deal title as plain text when no callbacks provided', () => {

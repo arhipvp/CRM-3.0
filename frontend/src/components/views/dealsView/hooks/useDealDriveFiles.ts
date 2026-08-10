@@ -65,6 +65,70 @@ const isRecognizablePolicyFile = (file: Pick<DriveFile, 'mimeType' | 'name'>): b
 const isRecognizableUploadFile = (file: File): boolean =>
   isRecognizablePolicyFile({ mimeType: file.type, name: file.name });
 
+const DRIVE_PREVIEW_CACHE_MAX_BYTES = 100 * 1024 * 1024;
+const DRIVE_PREVIEW_CACHE_MAX_FILE_BYTES = 15 * 1024 * 1024;
+
+interface DrivePreviewCacheEntry {
+  blob: Blob;
+  size: number;
+}
+
+const drivePreviewBlobCache = new Map<string, DrivePreviewCacheEntry>();
+const drivePreviewBlobRequests = new Map<string, Promise<Blob>>();
+let drivePreviewBlobCacheSize = 0;
+
+const getDrivePreviewCacheKey = (dealId: string, fileId: string): string => `${dealId}:${fileId}`;
+
+const getCachedDrivePreviewBlob = (key: string): Blob | null => {
+  const entry = drivePreviewBlobCache.get(key);
+  if (!entry) {
+    return null;
+  }
+  drivePreviewBlobCache.delete(key);
+  drivePreviewBlobCache.set(key, entry);
+  return entry.blob;
+};
+
+const removeCachedDrivePreviewBlob = (key: string): void => {
+  const entry = drivePreviewBlobCache.get(key);
+  if (!entry) {
+    return;
+  }
+  drivePreviewBlobCache.delete(key);
+  drivePreviewBlobCacheSize -= entry.size;
+};
+
+const cacheDrivePreviewBlob = (key: string, blob: Blob): void => {
+  const size = blob.size;
+  if (!size || size > DRIVE_PREVIEW_CACHE_MAX_FILE_BYTES) {
+    return;
+  }
+
+  removeCachedDrivePreviewBlob(key);
+  while (
+    drivePreviewBlobCache.size > 0 &&
+    drivePreviewBlobCacheSize + size > DRIVE_PREVIEW_CACHE_MAX_BYTES
+  ) {
+    const oldestKey = drivePreviewBlobCache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    removeCachedDrivePreviewBlob(oldestKey);
+  }
+
+  if (drivePreviewBlobCacheSize + size > DRIVE_PREVIEW_CACHE_MAX_BYTES) {
+    return;
+  }
+  drivePreviewBlobCache.set(key, { blob, size });
+  drivePreviewBlobCacheSize += size;
+};
+
+export const resetDrivePreviewBlobCacheForTests = (): void => {
+  drivePreviewBlobCache.clear();
+  drivePreviewBlobRequests.clear();
+  drivePreviewBlobCacheSize = 0;
+};
+
 export const useDealDriveFiles = ({
   selectedDeal,
   onDriveFolderCreated,
@@ -491,6 +555,9 @@ export const useDealDriveFiles = ({
       if (latestDealIdRef.current !== currentDealId) {
         return;
       }
+      selectedDriveFileIds.forEach((fileId) =>
+        removeCachedDrivePreviewBlob(getDrivePreviewCacheKey(currentDealId, fileId)),
+      );
       setSelectedDriveFileIds([]);
       await loadDriveFiles();
     } catch (error) {
@@ -529,6 +596,7 @@ export const useDealDriveFiles = ({
         if (latestDealIdRef.current !== currentDealId) {
           return;
         }
+        removeCachedDrivePreviewBlob(getDrivePreviewCacheKey(currentDealId, file.id));
         setSelectedDriveFileIds((prev) => prev.filter((id) => id !== file.id));
         await loadDriveFiles();
       } catch (error) {
@@ -552,10 +620,40 @@ export const useDealDriveFiles = ({
       if (!deal) {
         throw new Error('Сделка не выбрана.');
       }
-      const { blob } = await downloadDealDriveFiles(deal.id, [fileId], Boolean(deal.deletedAt));
-      return blob;
+
+      const key = getDrivePreviewCacheKey(deal.id, fileId);
+      const targetFile = sortedDriveFiles.find((file) => file.id === fileId);
+      const shouldCache = Boolean(
+        targetFile &&
+        !targetFile.isFolder &&
+        targetFile.mimeType.toLowerCase().startsWith('image/'),
+      );
+      if (shouldCache) {
+        const cached = getCachedDrivePreviewBlob(key);
+        if (cached) {
+          return cached;
+        }
+      }
+
+      const inFlightRequest = drivePreviewBlobRequests.get(key);
+      if (inFlightRequest) {
+        return inFlightRequest;
+      }
+
+      const request = downloadDealDriveFiles(deal.id, [fileId], Boolean(deal.deletedAt))
+        .then(({ blob }) => {
+          if (shouldCache) {
+            cacheDrivePreviewBlob(key, blob);
+          }
+          return blob;
+        })
+        .finally(() => {
+          drivePreviewBlobRequests.delete(key);
+        });
+      drivePreviewBlobRequests.set(key, request);
+      return request;
     },
-    [selectedDeal],
+    [selectedDeal, sortedDriveFiles],
   );
 
   const handleDownloadDriveFiles = useCallback(

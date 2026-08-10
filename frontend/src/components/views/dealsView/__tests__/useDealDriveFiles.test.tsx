@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-import { useDealDriveFiles } from '../hooks/useDealDriveFiles';
+import { resetDrivePreviewBlobCacheForTests, useDealDriveFiles } from '../hooks/useDealDriveFiles';
 import type { Deal } from '../../../../types';
 
 vi.mock('../../../../api', () => ({
@@ -82,6 +82,7 @@ const renderDriveHook = (
 describe('useDealDriveFiles', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    resetDrivePreviewBlobCacheForTests();
   });
 
   it('loads files and reports new folders', async () => {
@@ -475,5 +476,73 @@ describe('useDealDriveFiles', () => {
 
     expect(downloadDealDriveFilesMock).toHaveBeenCalledWith(deal.id, ['image-1'], false);
     expect(receivedBlob).toBe(blob);
+  });
+
+  it('deduplicates and caches image preview downloads for the current browser session', async () => {
+    const deal = createDeal();
+    const image = {
+      id: 'image-1',
+      name: 'photo.png',
+      mimeType: 'image/png',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: null,
+      isFolder: false,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [image], folderId: null });
+    const blob = new Blob(['image-bytes'], { type: 'image/png' });
+    let resolveDownload: ((value: { blob: Blob; filename: string | null }) => void) | undefined;
+    downloadDealDriveFilesMock.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolveDownload = resolve;
+        }),
+    );
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+
+    const firstRequest = resultRef.current!.getDriveFileBlob(image.id);
+    const secondRequest = resultRef.current!.getDriveFileBlob(image.id);
+    expect(downloadDealDriveFilesMock).toHaveBeenCalledTimes(1);
+
+    resolveDownload?.({ blob, filename: image.name });
+    await expect(firstRequest).resolves.toBe(blob);
+    await expect(secondRequest).resolves.toBe(blob);
+    await expect(resultRef.current!.getDriveFileBlob(image.id)).resolves.toBe(blob);
+    expect(downloadDealDriveFilesMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not retain preview images larger than the memory cache limit per file', async () => {
+    const deal = createDeal();
+    const image = {
+      id: 'image-1',
+      name: 'large-photo.png',
+      mimeType: 'image/png',
+      size: 16 * 1024 * 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: null,
+      isFolder: false,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [image], folderId: null });
+    const oversizedBlob = { size: 16 * 1024 * 1024, type: 'image/png' } as Blob;
+    downloadDealDriveFilesMock.mockResolvedValue({ blob: oversizedBlob, filename: image.name });
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    await act(async () => {
+      await resultRef.current!.getDriveFileBlob(image.id);
+      await resultRef.current!.getDriveFileBlob(image.id);
+    });
+
+    expect(downloadDealDriveFilesMock).toHaveBeenCalledTimes(2);
   });
 });

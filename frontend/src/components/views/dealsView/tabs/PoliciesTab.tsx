@@ -23,8 +23,19 @@ import {
   POLICY_LEDGER_STATE_CLASS,
   POLICY_STATUS_TONE_CLASS,
 } from '../../../policies/policyTableHelpers';
-import { BTN_PRIMARY, BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
+import {
+  BTN_PRIMARY,
+  BTN_SM_DANGER,
+  BTN_SM_PRIMARY,
+  BTN_SM_QUIET,
+  BTN_SM_SECONDARY,
+} from '../../../common/buttonStyles';
 import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
+import {
+  TABLE_CELL_CLASS_COMPACT,
+  TABLE_ROW_CLASS,
+  TABLE_THEAD_CLASS,
+} from '../../../common/tableStyles';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { FileUploadManager } from '../../../FileUploadManager';
 import { PolicyMoveDialog } from '../../../policies/PolicyMoveDialog';
@@ -41,6 +52,12 @@ const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
   endDate: 'Окончание',
   transport: 'Авто',
 };
+
+const POLICY_ACTION_CLASS = 'h-8 whitespace-nowrap px-3 text-[11px]';
+const POLICY_PAYMENT_ACTION_CLASS =
+  'btn btn-success btn-sm rounded-xl h-8 whitespace-nowrap px-3 text-[11px]';
+const POLICY_RENEW_ACTION_CLASS =
+  'btn btn-sm rounded-xl h-8 whitespace-nowrap border border-amber-200 bg-amber-50 px-3 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 focus-visible:ring-amber-500';
 
 interface PoliciesTabProps {
   selectedDeal: Deal | null;
@@ -408,9 +425,11 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
             aria-label="Полисы сделки"
           >
-            <thead className="bg-slate-50 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500">
+            <thead
+              className={`${TABLE_THEAD_CLASS} text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-500`}
+            >
               <tr>
-                <th className="w-[13%] border border-slate-300 px-3 py-2">
+                <th className="w-[14%] border border-slate-200 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('number')}
@@ -419,8 +438,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Номер полиса
                   </button>
                 </th>
-                <th className="w-[25%] border border-slate-300 px-3 py-2">Основные данные</th>
-                <th className="w-[8%] border border-slate-300 px-3 py-2">
+                <th className="w-[31%] border border-slate-200 px-3 py-2">Основные данные</th>
+                <th className="w-[8%] border border-slate-200 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('startDate')}
@@ -429,7 +448,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Начало
                   </button>
                 </th>
-                <th className="w-[8%] border border-slate-300 px-3 py-2">
+                <th className="w-[8%] border border-slate-200 px-3 py-2">
                   <button
                     type="button"
                     onClick={() => handleSortChange('endDate')}
@@ -438,8 +457,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                     Конец
                   </button>
                 </th>
-                <th className="w-[20%] border border-slate-300 px-3 py-2">Платеж</th>
-                <th className="w-[26%] border border-slate-300 px-3 py-2">Финансовые записи</th>
+                <th className="w-[17%] border border-slate-200 px-3 py-2">Платеж</th>
+                <th className="w-[22%] border border-slate-200 px-3 py-2">Финансовые записи</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -455,9 +474,9 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                 const notePreview = getPolicyNotePreview(policy.note);
                 const rowSpan = Math.max(ledgerRows.length, 1);
                 const firstLedgerRow = ledgerRows[0];
-                const insuranceCompany = (model.insuranceCompany ?? '').trim();
-                const insuranceType = (model.insuranceType ?? '').trim();
-                const salesChannel = (model.salesChannel ?? '').trim();
+                const insuranceCompany = (policy.insuranceCompany ?? '').trim();
+                const insuranceType = (policy.insuranceType ?? '').trim();
+                const salesChannel = (policy.salesChannelName ?? policy.salesChannel ?? '').trim();
                 const metaTitle = [insuranceCompany, insuranceType, salesChannel]
                   .filter(Boolean)
                   .join(', ');
@@ -468,78 +487,119 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
 
                 return (
                   <Fragment key={policy.id}>
-                    <tr key={`${policy.id}-head`} className="hover:bg-slate-50 transition-colors">
-                      <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
-                        <p className="text-xl font-bold text-slate-900 leading-tight">
-                          {model.number}
-                        </p>
-                        <PolicyDocumentsList
-                          state={policyDocuments}
-                          onLoad={() => void loadPolicyDocuments(policy)}
-                        />
-                      </td>
-                      <td rowSpan={rowSpan} className="px-3 py-2 border border-slate-300 align-top">
-                        <div className="space-y-1.5">
-                          {model.clientId ? (
-                            <button
-                              type="button"
-                              className="text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
-                              disabled={openingClientId === model.clientId}
-                              onClick={() => {
-                                setOpeningClientId(model.clientId);
-                                void onOpenClient(model.clientId!)
-                                  .catch(() => undefined)
-                                  .finally(() => {
-                                    setOpeningClientId((current) =>
-                                      current === model.clientId ? null : current,
-                                    );
-                                  });
-                              }}
-                            >
-                              {model.client}
-                            </button>
-                          ) : (
-                            <p className="text-sm font-semibold text-slate-900">{model.client}</p>
-                          )}
-                          {policy.dealId ? (
-                            canOpenDeal ? (
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDeal(policy.dealId)}
-                                className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
-                              >
-                                {dealTitle}
-                              </button>
-                            ) : (
-                              <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
-                            )
-                          ) : null}
-                          {hasMeta ? (
-                            <p className="text-sm text-slate-700 truncate" title={metaTitle}>
-                              {insuranceCompany ? (
-                                <>
-                                  <ColoredLabel
-                                    value={insuranceCompany}
-                                    showDot
-                                    className="text-sm"
-                                  />
-                                  {(insuranceType || salesChannel) && ', '}
-                                </>
-                              ) : null}
-                              {insuranceType}
-                              {insuranceType && salesChannel ? ', ' : null}
-                              {salesChannel}
+                    <tr key={`${policy.id}-head`} className={TABLE_ROW_CLASS}>
+                      <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
+                        <div className="space-y-3">
+                          <div>
+                            <p className="app-label">Полис</p>
+                            <p className="mt-1 whitespace-nowrap text-base font-bold leading-tight text-slate-900">
+                              {model.number}
                             </p>
+                          </div>
+                          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-2">
+                            <PolicyDocumentsList
+                              state={policyDocuments}
+                              onLoad={() => void loadPolicyDocuments(policy)}
+                            />
+                          </div>
+                        </div>
+                      </td>
+                      <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
+                        <div className="space-y-3" data-testid={`policy-primary-data-${policy.id}`}>
+                          <div className="space-y-1.5 border-b border-slate-100 pb-2.5">
+                            <div className="min-w-0" data-testid={`policy-client-${policy.id}`}>
+                              {model.clientId ? (
+                                <button
+                                  type="button"
+                                  className="block max-w-full truncate text-left text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 transition hover:text-sky-700 disabled:cursor-wait"
+                                  disabled={openingClientId === model.clientId}
+                                  title={model.client}
+                                  onClick={() => {
+                                    setOpeningClientId(model.clientId);
+                                    void onOpenClient(model.clientId!)
+                                      .catch(() => undefined)
+                                      .finally(() => {
+                                        setOpeningClientId((current) =>
+                                          current === model.clientId ? null : current,
+                                        );
+                                      });
+                                  }}
+                                >
+                                  {model.client}
+                                </button>
+                              ) : (
+                                <p className="truncate text-sm font-semibold text-slate-900">
+                                  {model.client}
+                                </p>
+                              )}
+                            </div>
+                            {policy.dealId ? (
+                              <div
+                                className="flex min-w-0 items-baseline gap-2"
+                                data-testid={`policy-deal-${policy.id}`}
+                              >
+                                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                                  Сделка:
+                                </span>
+                                {canOpenDeal ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenDeal(policy.dealId)}
+                                    className="link-action min-w-0 truncate text-left text-xs"
+                                    title={dealTitle}
+                                  >
+                                    {dealTitle}
+                                  </button>
+                                ) : (
+                                  <span className="min-w-0 truncate text-xs font-semibold text-slate-600">
+                                    {dealTitle}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
+                          </div>
+
+                          {hasMeta ? (
+                            <div
+                              className="flex flex-wrap items-center gap-1.5"
+                              title={metaTitle}
+                              data-testid={`policy-meta-${policy.id}`}
+                            >
+                              {insuranceCompany ? (
+                                <ColoredLabel
+                                  value={insuranceCompany}
+                                  showDot
+                                  className="max-w-full truncate text-xs font-semibold text-slate-800"
+                                />
+                              ) : null}
+                              {insuranceType ? (
+                                <span className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                                  {insuranceType}
+                                </span>
+                              ) : null}
+                              {salesChannel ? (
+                                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                  {salesChannel}
+                                </span>
+                              ) : null}
+                            </div>
                           ) : (
-                            <p className="text-sm text-slate-700">—</p>
+                            <p className="text-xs text-slate-400">Страховые данные не указаны</p>
                           )}
-                          <p
-                            className="text-xs text-slate-700 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
+
+                          <div
+                            className="rounded-lg bg-slate-50 px-2.5 py-2"
                             title={notePreview.fullText}
                           >
-                            {notePreview.preview}
-                          </p>
-                          <div className="flex flex-wrap gap-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                              Примечание
+                            </p>
+                            <p className="mt-0.5 overflow-hidden text-xs text-slate-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                              {notePreview.preview}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
                             {computedStatusBadge && (
                               <span
                                 className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
@@ -568,12 +628,21 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                               </span>
                             )}
                           </div>
-                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                          <div className="flex flex-wrap gap-1 pt-1">
+
+                          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
+                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                              Оплачено / план
+                            </span>
+                            <span className="whitespace-nowrap text-sm font-semibold text-slate-900">
+                              {model.sum}
+                            </span>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5">
                             <button
                               type="button"
                               onClick={() => onRequestEditPolicy(policy)}
-                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              className={`${BTN_SM_PRIMARY} ${POLICY_ACTION_CLASS}`}
                             >
                               Редактировать
                             </button>
@@ -581,7 +650,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setPolicyToMove(policy)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                className={`${BTN_SM_QUIET} ${POLICY_ACTION_CLASS}`}
                               >
                                 Перенести
                               </button>
@@ -592,7 +661,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                 setEditingPaymentId('new');
                                 setCreatingPaymentPolicyId(policy.id);
                               }}
-                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              className={POLICY_PAYMENT_ACTION_CLASS}
                             >
                               + Платеж
                             </button>
@@ -603,14 +672,18 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                   () => undefined,
                                 )
                               }
-                              className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                              className={
+                                policy.isRenewed
+                                  ? `${BTN_SM_PRIMARY} ${POLICY_ACTION_CLASS}`
+                                  : POLICY_RENEW_ACTION_CLASS
+                              }
                             >
                               {policy.isRenewed ? 'Вернуть в активные' : 'Отметить продлённым'}
                             </button>
                             <button
                               type="button"
                               onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                              className="btn btn-danger btn-sm rounded-xl h-7 px-2 text-[11px]"
+                              className={`${BTN_SM_DANGER} ${POLICY_ACTION_CLASS}`}
                             >
                               Удалить
                             </button>
@@ -618,18 +691,18 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                         </div>
                       </td>
                       <td
-                        className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
+                        className={`${TABLE_CELL_CLASS_COMPACT} align-top whitespace-nowrap text-xs font-semibold text-slate-700`}
                         rowSpan={rowSpan}
                       >
                         {model.startDate}
                       </td>
                       <td
-                        className="px-3 py-2 border border-slate-300 text-xs font-semibold text-slate-800 align-top whitespace-nowrap"
+                        className={`${TABLE_CELL_CLASS_COMPACT} align-top whitespace-nowrap text-xs font-semibold text-slate-700`}
                         rowSpan={rowSpan}
                       >
                         {model.endDate}
                       </td>
-                      <td className="px-3 py-2 border border-slate-300 align-top">
+                      <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         {firstLedgerRow ? (
                           <div className="space-y-1">
                             <div
@@ -670,7 +743,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           </div>
                         ) : null}
                       </td>
-                      <td className="px-3 py-2 border border-slate-300 align-top">
+                      <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         {firstLedgerRow?.records.length ? (
                           <div className="space-y-1">
                             {firstLedgerRow.records.map((recordRow) => (
@@ -719,11 +792,8 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                       </td>
                     </tr>
                     {ledgerRows.slice(1).map((ledgerRow) => (
-                      <tr
-                        key={`${policy.id}-${ledgerRow.payment.id}`}
-                        className="hover:bg-slate-50 transition-colors"
-                      >
-                        <td className="px-3 py-2 border border-slate-300 align-top">
+                      <tr key={`${policy.id}-${ledgerRow.payment.id}`} className={TABLE_ROW_CLASS}>
+                        <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                           <div className="space-y-1">
                             <div
                               className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
@@ -762,7 +832,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             </div>
                           </div>
                         </td>
-                        <td className="px-3 py-2 border border-slate-300 align-top">
+                        <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                           {ledgerRow.records.length ? (
                             <div className="space-y-1">
                               {ledgerRow.records.map((recordRow) => (

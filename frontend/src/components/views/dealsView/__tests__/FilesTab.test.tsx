@@ -239,6 +239,42 @@ describe('FilesTab', () => {
     objectUrlApi.restore();
   });
 
+  it('preloads every other image sequentially after opening an image preview', async () => {
+    const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
+    const objectUrlApi = mockObjectUrlApi(['blob:preview-photo']);
+    renderWithProviders({
+      getDriveFileBlob,
+      sortedDriveFiles: [
+        driveFile({ id: 'image-1', name: 'photo-1.png', mimeType: 'image/png' }),
+        driveFile({ id: 'pdf-1', name: 'policy.pdf', mimeType: 'application/pdf' }),
+        driveFile({ id: 'image-2', name: 'photo-2.jpg', mimeType: 'image/jpeg' }),
+        driveFile({
+          id: 'document-1',
+          name: 'contract.docx',
+          mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        }),
+        driveFile({
+          id: 'folder-1',
+          name: 'Folder',
+          mimeType: 'application/vnd.google-apps.folder',
+          isFolder: true,
+        }),
+        driveFile({ id: 'image-3', name: 'photo-3.webp', mimeType: 'image/webp' }),
+      ],
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Просмотреть' })[0]);
+
+    await waitFor(() => {
+      expect(getDriveFileBlob).toHaveBeenNthCalledWith(1, 'image-1');
+      expect(getDriveFileBlob).toHaveBeenNthCalledWith(2, 'image-2');
+      expect(getDriveFileBlob).toHaveBeenNthCalledWith(3, 'image-3');
+    });
+    expect(getDriveFileBlob).toHaveBeenCalledTimes(3);
+
+    objectUrlApi.restore();
+  });
+
   it('navigates previewable files with buttons and keyboard without looping', async () => {
     const getDriveFileBlob = vi.fn().mockResolvedValue(new Blob(['img'], { type: 'image/png' }));
     const objectUrlApi = mockObjectUrlApi(['blob:1', 'blob:2']);

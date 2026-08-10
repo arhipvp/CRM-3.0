@@ -466,6 +466,35 @@ export function FilesTab({
   }, [closeFilePreview, filePreview, previewableFiles]);
 
   useEffect(() => {
+    if (!filePreview || filePreview.kind !== 'image') {
+      return;
+    }
+
+    let cancelled = false;
+    const imageFilesToPreload = previewableFiles.filter(
+      (file) => file.id !== filePreview.file.id && isImageFile(file),
+    );
+
+    const preloadImages = async () => {
+      for (const file of imageFilesToPreload) {
+        if (cancelled) {
+          return;
+        }
+        try {
+          await getDriveFileBlob(file.id);
+        } catch {
+          // Фоновая предзагрузка не должна мешать ручному просмотру файла.
+        }
+      }
+    };
+
+    void preloadImages();
+    return () => {
+      cancelled = true;
+    };
+  }, [filePreview, getDriveFileBlob, isImageFile, previewableFiles]);
+
+  useEffect(() => {
     if (!filePreview) {
       return;
     }
