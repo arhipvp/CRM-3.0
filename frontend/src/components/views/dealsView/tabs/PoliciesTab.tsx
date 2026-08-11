@@ -489,19 +489,17 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                   <Fragment key={policy.id}>
                     <tr key={`${policy.id}-head`} className={TABLE_ROW_CLASS}>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
-                        <div className="space-y-3">
+                        <div>
                           <div>
                             <p className="app-label">Полис</p>
                             <p className="mt-1 whitespace-nowrap text-base font-bold leading-tight text-slate-900">
                               {model.number}
                             </p>
                           </div>
-                          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-2.5 py-2">
-                            <PolicyDocumentsList
-                              state={policyDocuments}
-                              onLoad={() => void loadPolicyDocuments(policy)}
-                            />
-                          </div>
+                          <PolicyDocumentsList
+                            state={policyDocuments}
+                            onLoad={() => void loadPolicyDocuments(policy)}
+                          />
                         </div>
                       </td>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>

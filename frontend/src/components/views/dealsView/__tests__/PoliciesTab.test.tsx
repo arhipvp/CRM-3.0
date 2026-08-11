@@ -101,11 +101,12 @@ describe('PoliciesTab', () => {
   });
 
   it('renders policy files and folders as safe Drive links', async () => {
+    const longFileName = 'Полис страхования с приложениями и дополнительными условиями.pdf';
     mockedFetchPolicyDriveFiles.mockResolvedValue({
       files: [
         {
           id: 'file-1',
-          name: 'policy.pdf',
+          name: longFileName,
           mimeType: 'application/pdf',
           isFolder: false,
           webViewLink: 'https://drive.google.com/file/d/file-1/view',
@@ -125,15 +126,19 @@ describe('PoliciesTab', () => {
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Показать документы' }));
-    const fileLink = await screen.findByRole('link', { name: 'policy.pdf' });
+    const fileLink = await screen.findByRole('link', { name: longFileName });
     expect(fileLink).toHaveAttribute('href', 'https://drive.google.com/file/d/file-1/view');
     expect(fileLink).toHaveAttribute('target', '_blank');
     expect(fileLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(fileLink).toHaveAttribute('title', longFileName);
+    expect(fileLink).toHaveClass('inline-flex', 'max-w-[8.5rem]', 'rounded-md');
+    expect(screen.getByTestId('policy-documents-list')).toHaveClass('flex', 'flex-wrap', 'gap-1');
 
     const folderLink = screen.getByRole('link', { name: /Приложения/ });
     expect(folderLink).toHaveAttribute('href', 'https://drive.google.com/drive/folders/folder-1');
     expect(folderLink).toHaveAttribute('target', '_blank');
     expect(folderLink).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(folderLink).toHaveAttribute('title', 'Приложения');
   });
 
   it('shows empty and error document states for a policy', async () => {
