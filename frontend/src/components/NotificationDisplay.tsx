@@ -1,4 +1,5 @@
 import { useNotification } from '../contexts/NotificationContext';
+import { IconButton } from './common/Button';
 
 const TYPE_STYLES: Record<
   string,
@@ -50,7 +51,7 @@ export function NotificationDisplay({
 
   return (
     <div
-      className={`fixed left-4 z-50 w-[min(460px,calc(100vw-1.5rem))] space-y-3 ${bottomOffsetClassName}`}
+      className={`fixed left-4 z-50 w-[min(420px,calc(100vw-1.5rem))] space-y-2 ${bottomOffsetClassName}`}
       aria-live="polite"
     >
       {notifications.map((notification) => {
@@ -61,18 +62,17 @@ export function NotificationDisplay({
             key={notification.id}
             role="status"
             aria-live={styles.live}
-            className={`rounded-2xl border border-slate-200 border-l-4 shadow-md ${styles.accent} ${styles.surface} ${styles.text}`}
+            className={`rounded-[var(--app-radius-md)] border border-[var(--app-border)] border-l-4 shadow-[var(--app-shadow)] ${styles.accent} ${styles.surface} ${styles.text}`}
           >
-            <div className="flex items-start justify-between gap-3 p-4">
+            <div className="flex items-start justify-between gap-3 px-3 py-2.5">
               <p className="text-sm leading-relaxed">{notification.message}</p>
-              <button
-                type="button"
+              <IconButton
+                icon="close"
+                label="Закрыть уведомление"
+                size="sm"
                 onClick={() => removeNotification(notification.id)}
-                className="inline-flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-current/70 transition hover:bg-white/50 hover:text-current focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
-                aria-label="Закрыть уведомление"
-              >
-                ×
-              </button>
+                className="flex-shrink-0 border-transparent bg-transparent text-current shadow-none hover:bg-white/60"
+              />
             </div>
           </div>
         );

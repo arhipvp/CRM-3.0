@@ -3,7 +3,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { AppIcon } from '../AppIcon';
 import { Button, IconButton } from '../Button';
-import { Panel, SegmentedControl, StatusBadge } from '../layoutPrimitives';
+import { PageHeader, Panel, SegmentedControl, StatusBadge, Toolbar } from '../layoutPrimitives';
+import { Tabs } from '../Tabs';
 
 describe('ui primitives', () => {
   it('renders buttons with icons and accessible labels', () => {
@@ -28,6 +29,18 @@ describe('ui primitives', () => {
     expect(screen.getByTitle('Настройки')).toBeInTheDocument();
   });
 
+  it('exposes a busy state and prevents repeated button submission', () => {
+    render(
+      <Button isLoading loadingLabel="Сохраняем…">
+        Сохранить
+      </Button>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Сохраняем…' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('renders layout primitives and segmented changes', () => {
     const onChange = vi.fn();
     render(
@@ -47,6 +60,31 @@ describe('ui primitives', () => {
 
     expect(screen.getByText('Готово')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Второй' }));
+    expect(onChange).toHaveBeenCalledWith('second');
+  });
+
+  it('renders the standard page hierarchy and keyboard-navigable tabs', () => {
+    const onChange = vi.fn();
+    render(
+      <div>
+        <PageHeader title="Сделки" description="Рабочая область" />
+        <Toolbar leading="Фильтры" trailing="Действия" />
+        <Tabs
+          idPrefix="test-tab"
+          ariaLabel="Разделы"
+          value="first"
+          onChange={onChange}
+          options={[
+            { value: 'first', label: 'Первый' },
+            { value: 'second', label: 'Второй' },
+          ]}
+        />
+      </div>,
+    );
+
+    expect(screen.getByRole('heading', { level: 1, name: 'Сделки' })).toBeInTheDocument();
+    expect(screen.getByText('Фильтры')).toBeInTheDocument();
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Первый' }), { key: 'ArrowRight' });
     expect(onChange).toHaveBeenCalledWith('second');
   });
 });

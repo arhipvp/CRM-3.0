@@ -1,6 +1,64 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 
 const emptyPage = { count: 0, next: null, previous: null, results: [] };
+
+const authenticate = async (page: Page) => {
+  await page.addInitScript(() => {
+    const token = 'header.eyJleHAiOjQxMDI0NDQ4MDB9.signature';
+    localStorage.setItem('jwt_access_token', token);
+    localStorage.setItem('jwt_refresh_token', token);
+  });
+};
+
+const mockEmptyWorkspace = async (page: Page) => {
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/auth/me/')) {
+      await route.fulfill({
+        json: {
+          id: '00000000-0000-0000-0000-000000000001',
+          username: 'seller',
+          is_authenticated: true,
+          roles: ['Продавец'],
+          capabilities: [
+            'settings.profile',
+            'settings.notifications',
+            'settings.integrations',
+            'settings.mail',
+          ],
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: emptyPage });
+  });
+};
+
+test('primary routes keep the standardized desktop page shell without global overflow', async ({
+  page,
+}) => {
+  await authenticate(page);
+  await mockEmptyWorkspace(page);
+
+  const routes = [
+    ['/seller-dashboard', 'Продажи по дате начала полиса'],
+    ['/deals', 'Сделки'],
+    ['/clients', 'Клиенты'],
+    ['/policies', 'Полисы'],
+    ['/commissions', 'Доходы и расходы'],
+    ['/tasks', 'Задачи'],
+    ['/settings', 'Настройки'],
+  ] as const;
+
+  for (const [route, heading] of routes) {
+    await page.goto(route);
+    await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
+    const hasGlobalOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
+    );
+    expect(hasGlobalOverflow, `${route} should not overflow the desktop viewport`).toBe(false);
+  }
+});
 
 test('desktop seller workspace exposes five primary deal sections', async ({ page }) => {
   await page.addInitScript(() => {

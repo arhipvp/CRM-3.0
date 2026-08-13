@@ -30,8 +30,8 @@ export function FilterBar({
   searchPlaceholder = 'Поиск...',
   sortOptions = [],
   customFilters = [],
-  density = 'default',
-  layout = 'flow',
+  density = 'compact',
+  layout = 'inline-wrap',
 }: FilterBarProps) {
   const idPrefix = useId();
   const initialSearch = (initialFilters?.search as string | undefined) ?? '';
@@ -123,7 +123,7 @@ export function FilterBar({
   const compactCheckboxClassName = isCompact ? 'px-2.5 py-1.5 text-[11px]' : 'px-3 py-2 text-xs';
 
   return (
-    <Panel padding={isCompact ? 'sm' : 'md'} className="mb-4">
+    <Panel variant="flat" padding={isCompact ? 'sm' : 'md'} className="mb-4 shadow-sm">
       <div className={rootGapClassName}>
         <div className={controlsClassName}>
           <div className={inputWidthClassName}>
@@ -139,7 +139,7 @@ export function FilterBar({
               value={search}
               onChange={(event) => handleSearchChange(event.target.value)}
               placeholder={searchPlaceholder}
-              className={`field field-input ${isCompact ? 'h-9 text-xs' : ''}`}
+              className={`field field-input ${isCompact ? 'text-xs' : ''}`}
             />
           </div>
 
@@ -156,7 +156,7 @@ export function FilterBar({
                 value={ordering}
                 onChange={(event) => handleOrderingChange(event.target.value)}
                 className={`field field-select ${layout === 'inline-wrap' ? 'w-full' : 'w-full md:w-auto'} ${
-                  isCompact ? 'h-9 text-[11px]' : ''
+                  isCompact ? 'text-xs' : ''
                 }`}
               >
                 <option value="">Выбрать направление</option>
@@ -213,7 +213,7 @@ export function FilterBar({
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       placeholder={filter.label}
                       className={`field field-input ${layout === 'inline-wrap' ? 'w-56' : 'w-full md:w-auto'} ${
-                        isCompact ? 'h-9 text-xs' : ''
+                        isCompact ? 'text-xs' : ''
                       }`}
                     />
                   ) : (
@@ -222,7 +222,7 @@ export function FilterBar({
                       value={customFilterValues[filter.key] || ''}
                       onChange={(event) => handleCustomFilterChange(filter.key, event.target.value)}
                       className={`field field-select ${layout === 'inline-wrap' ? 'w-56' : 'w-full md:w-auto'} ${
-                        isCompact ? 'h-9 text-[11px]' : ''
+                        isCompact ? 'text-xs' : ''
                       }`}
                     >
                       <option value="">Не важно</option>

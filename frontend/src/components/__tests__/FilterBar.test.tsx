@@ -20,8 +20,10 @@ describe('FilterBar', () => {
     const searchInput = screen.getByLabelText('Поиск');
     const sortSelect = screen.getByLabelText('Сортировка');
 
-    expect(searchInput.className).toContain('h-9');
-    expect(sortSelect.className).toContain('h-9');
+    expect(searchInput.className).toContain('field-input');
+    expect(searchInput.className).toContain('text-xs');
+    expect(sortSelect.className).toContain('field-select');
+    expect(sortSelect.className).toContain('text-xs');
   });
 
   it('keeps filter behavior with new props', () => {

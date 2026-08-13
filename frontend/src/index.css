@@ -1,24 +1,42 @@
 @import 'tailwindcss';
 
 :root {
-  --app-bg: #edf1f8;
+  color-scheme: light;
+  --app-brand-50: #eff6ff;
+  --app-brand-100: #dbeafe;
+  --app-brand-600: #1872d9;
+  --app-brand-700: #155fb5;
+  --app-bg: #f1f5f9;
   --app-surface: #ffffff;
-  --app-surface-muted: rgba(248, 251, 255, 0.88);
-  --app-border: #d6e1ef;
+  --app-surface-muted: #f8fafc;
+  --app-surface-raised: #ffffff;
+  --app-border: #dbe3ee;
+  --app-border-strong: #c7d2e0;
   --app-text: #0f172a;
+  --app-text-secondary: #475569;
   --app-text-muted: #64748b;
   --app-primary: #1872d9;
+  --app-primary-hover: #155fb5;
   --app-danger: #e11d48;
   --app-success: #059669;
   --app-warning: #d97706;
-  --app-radius-sm: 0.75rem;
-  --app-radius-md: 1rem;
-  --app-radius-lg: 1.25rem;
+  --app-info: #0284c7;
+  --app-space-1: 0.25rem;
+  --app-space-2: 0.5rem;
+  --app-space-3: 0.75rem;
+  --app-space-4: 1rem;
+  --app-space-6: 1.5rem;
+  --app-space-8: 2rem;
+  --app-radius-sm: 0.5rem;
+  --app-radius-md: 0.75rem;
+  --app-radius-lg: 1rem;
   --app-control-height-sm: 2rem;
-  --app-control-height-md: 2.5rem;
-  --app-focus-ring: 0 0 0 3px rgba(14, 165, 233, 0.18);
-  --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 18px 36px rgba(15, 23, 42, 0.08);
-  --app-sidebar-bg: #f8fbff;
+  --app-control-height-md: 2.25rem;
+  --app-focus-ring: 0 0 0 3px rgba(24, 114, 217, 0.18);
+  --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --app-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --app-shadow-overlay: 0 18px 50px rgba(15, 23, 42, 0.2);
+  --app-sidebar-bg: #f8fafc;
 }
 
 :root {
@@ -30,7 +48,7 @@
     BlinkMacSystemFont,
     'Helvetica Neue',
     sans-serif;
-  color: #0f172a;
+  color: var(--app-text);
   background-color: var(--app-bg);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -50,24 +68,56 @@ body {
   line-height: 1.45;
 }
 
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+::selection {
+  background: var(--app-brand-100);
+  color: var(--app-text);
+}
+
 #root {
   min-height: 100vh;
 }
 
 @layer components {
   .app-panel {
-    @apply rounded-2xl border bg-white shadow-md;
+    @apply border bg-white;
+    border-radius: var(--app-radius-lg);
     border-color: var(--app-border);
     box-shadow: var(--app-shadow);
   }
 
   .app-panel-muted {
-    @apply rounded-2xl border bg-slate-50/80;
+    @apply border;
+    border-radius: var(--app-radius-md);
+    background: var(--app-surface-muted);
     border-color: var(--app-border);
   }
 
+  .app-page {
+    @apply min-w-0 space-y-4;
+  }
+
+  .app-page-header {
+    @apply flex min-w-0 flex-wrap items-start justify-between gap-4 border-b pb-4;
+    border-color: var(--app-border);
+  }
+
+  .app-toolbar {
+    @apply flex min-w-0 flex-wrap items-center justify-between gap-3 border bg-white px-4 py-3;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+  }
+
   .app-label {
-    @apply text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500;
+    @apply text-[11px] font-semibold text-slate-600;
+    letter-spacing: 0.01em;
   }
 
   .app-counter {
@@ -75,7 +125,8 @@ body {
   }
 
   .app-alert {
-    @apply rounded-2xl border px-4 py-3 text-sm;
+    @apply border px-3 py-2.5 text-sm;
+    border-radius: var(--app-radius-md);
   }
 
   .app-alert-danger {
@@ -87,8 +138,19 @@ body {
   }
 
   .field {
-    @apply w-full rounded-xl border bg-white px-3 text-sm text-slate-700 shadow-sm focus:outline-none;
+    @apply w-full border bg-white px-3 text-sm text-slate-800 focus:outline-none;
+    min-height: var(--app-control-height-md);
+    border-radius: var(--app-radius-sm);
     border-color: var(--app-border);
+    box-shadow: var(--app-shadow-sm);
+    transition:
+      border-color 150ms ease,
+      box-shadow 150ms ease,
+      background-color 150ms ease;
+  }
+
+  .field:hover:not(:disabled) {
+    border-color: var(--app-border-strong);
   }
 
   .field:focus-visible {
@@ -97,15 +159,25 @@ body {
   }
 
   .field-input {
-    @apply h-10 py-2;
+    height: var(--app-control-height-md);
+    @apply py-1.5;
   }
 
   .field-select {
-    @apply h-9 text-xs font-semibold;
+    height: var(--app-control-height-md);
+    @apply text-sm;
   }
 
   .field-textarea {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 shadow-inner focus:border-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-100;
+    @apply w-full border bg-white px-3 py-2 text-sm leading-relaxed text-slate-900 focus:outline-none;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-sm);
+    box-shadow: var(--app-shadow-sm);
+  }
+
+  .field-textarea:focus-visible {
+    border-color: color-mix(in srgb, var(--app-primary) 75%, white);
+    box-shadow: var(--app-focus-ring);
   }
 
   .check {
@@ -113,48 +185,64 @@ body {
   }
 
   .icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full border bg-white text-slate-600 shadow-sm transition hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500;
+    @apply inline-flex items-center justify-center border bg-white text-slate-600 transition hover:bg-slate-50 focus-visible:outline-none;
+    height: var(--app-control-height-md);
+    width: var(--app-control-height-md);
+    border-radius: var(--app-radius-sm);
     border-color: var(--app-border);
+    box-shadow: var(--app-shadow-sm);
+  }
+
+  .icon-btn:focus-visible {
+    box-shadow: var(--app-focus-ring);
   }
 
   .btn {
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 border border-transparent px-3 text-sm font-semibold transition focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+    min-height: var(--app-control-height-md);
+    border-radius: var(--app-radius-sm);
   }
 
   .btn-sm {
-    @apply px-3 py-1.5 text-xs;
+    min-height: var(--app-control-height-sm);
+    @apply px-2.5 text-xs;
+  }
+
+  .btn:focus-visible {
+    box-shadow: var(--app-focus-ring);
   }
 
   .btn-primary {
-    @apply text-white shadow-sm focus-visible:ring-sky-500;
+    @apply text-white;
     background-color: var(--app-primary);
+    box-shadow: var(--app-shadow-sm);
   }
 
   .btn-primary:hover {
-    background-color: color-mix(in srgb, var(--app-primary) 88%, #0f172a);
+    background-color: var(--app-primary-hover);
   }
 
   .btn-secondary {
-    @apply border bg-white text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:ring-sky-500;
+    @apply border bg-white text-slate-700 hover:bg-slate-50;
     border-color: var(--app-border);
+    box-shadow: var(--app-shadow-sm);
   }
 
   .btn-danger {
-    @apply border bg-white text-rose-700 shadow-sm hover:bg-rose-50 focus-visible:ring-rose-500;
+    @apply border bg-white text-rose-700 hover:bg-rose-50;
     border-color: #fecdd3;
   }
 
   .btn-success {
-    @apply bg-emerald-600 text-white shadow-sm hover:bg-emerald-700 focus-visible:ring-emerald-500;
+    @apply bg-emerald-600 text-white hover:bg-emerald-700;
   }
 
   .btn-quiet {
-    @apply border bg-slate-50 text-slate-700 hover:bg-slate-100 focus-visible:ring-sky-500;
-    border-color: var(--app-border);
+    @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
   }
 
   .btn-outline {
-    @apply border border-dashed bg-transparent text-slate-700 hover:bg-white/70 focus-visible:ring-sky-500;
+    @apply border border-dashed bg-transparent text-slate-700 hover:bg-white;
     border-color: var(--app-border);
   }
 
@@ -167,12 +255,19 @@ body {
   }
 
   .app-segmented-control {
-    @apply flex w-full flex-nowrap gap-1 overflow-x-auto rounded-2xl border bg-slate-50 p-1;
+    @apply flex w-full flex-nowrap gap-1 overflow-x-auto border bg-slate-100 p-1;
+    border-radius: var(--app-radius-md);
     border-color: var(--app-border);
   }
 
   .app-segmented-control-button {
-    @apply min-h-9 flex-shrink-0 rounded-xl px-4 py-2 text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex-shrink-0 px-3 text-sm transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50;
+    min-height: var(--app-control-height-sm);
+    border-radius: var(--app-radius-sm);
+  }
+
+  .app-segmented-control-button:focus-visible {
+    box-shadow: var(--app-focus-ring);
   }
 }
 

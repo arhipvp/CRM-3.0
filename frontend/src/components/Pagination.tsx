@@ -1,4 +1,4 @@
-import { BTN_PRIMARY, BTN_SECONDARY } from './common/buttonStyles';
+import { Button } from './common/Button';
 
 interface PaginationProps {
   currentPage: number;
@@ -54,22 +54,22 @@ export function Pagination({ currentPage, totalItems, pageSize, onPageChange }: 
   };
 
   return (
-    <div className="flex items-center justify-between mt-6 px-5 py-4 border-t border-slate-200">
-      <div className="text-sm text-slate-600">
+    <div className="mt-4 flex items-center justify-between border-t border-[var(--app-border)] px-4 py-3">
+      <div className="text-xs text-slate-600">
         Показаны элементы {(currentPage - 1) * pageSize + 1}-
         {Math.min(currentPage * pageSize, totalItems)} из {totalItems}
       </div>
 
       <nav className="flex items-center gap-2" aria-label="Пагинация">
-        <button
-          type="button"
+        <Button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className={`${BTN_SECONDARY} btn-sm`}
+          variant="secondary"
+          size="sm"
           aria-label="Предыдущая страница"
         >
           Назад
-        </button>
+        </Button>
 
         <div className="flex items-center gap-1">
           {getPageNumbers().map((page, idx) => (
@@ -79,29 +79,29 @@ export function Pagination({ currentPage, totalItems, pageSize, onPageChange }: 
                   ...
                 </span>
               ) : (
-                <button
-                  type="button"
+                <Button
                   onClick={() => onPageChange(page as number)}
                   aria-current={currentPage === page ? 'page' : undefined}
                   aria-label={`Страница ${page}`}
-                  className={`${currentPage === page ? BTN_PRIMARY : BTN_SECONDARY} btn-sm`}
+                  variant={currentPage === page ? 'primary' : 'secondary'}
+                  size="sm"
                 >
                   {page}
-                </button>
+                </Button>
               )}
             </div>
           ))}
         </div>
 
-        <button
-          type="button"
+        <Button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className={`${BTN_SECONDARY} btn-sm`}
+          variant="secondary"
+          size="sm"
           aria-label="Следующая страница"
         >
           Вперёд
-        </button>
+        </Button>
       </nav>
     </div>
   );

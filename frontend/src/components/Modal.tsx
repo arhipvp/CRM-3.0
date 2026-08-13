@@ -137,7 +137,7 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden bg-black/40 p-2 sm:p-4"
+      className="fixed inset-0 z-40 flex items-center justify-center overflow-x-hidden bg-slate-950/45 p-2 backdrop-blur-[2px] sm:p-4"
       style={{ zIndex }}
       onClick={() => {
         if (closeOnOverlayClick) {
@@ -147,21 +147,21 @@ export function Modal({
     >
       <div
         ref={dialogRef}
-        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-2xl border border-[var(--app-border)] bg-white shadow-2xl sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
+        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-white shadow-[var(--app-shadow-overlay)] sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
       >
-        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 sm:px-5 sm:py-4">
-          <h2 id={titleId} className="min-w-0 break-words text-lg font-semibold text-slate-900">
+        <div className="flex shrink-0 items-center justify-between gap-3 border-b border-[var(--app-border)] bg-[var(--app-surface-muted)] px-4 py-3">
+          <h2 id={titleId} className="min-w-0 break-words text-base font-semibold text-slate-900">
             {title}
           </h2>
           {!hideCloseButton && <IconButton icon="close" label="Закрыть" onClick={onClose} />}
         </div>
         <div
-          className={`min-h-0 min-w-0 flex-1 p-4 sm:p-5 ${
+          className={`min-h-0 min-w-0 flex-1 p-4 ${
             bodyScrollable ? 'overflow-y-auto' : 'overflow-hidden'
           } ${bodyClassName}`}
         >

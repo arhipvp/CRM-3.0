@@ -1,7 +1,7 @@
 import React from 'react';
 
-type TableHeadCellPadding = 'sm' | 'md' | 'lg';
-type TableHeadCellAlign = 'left' | 'center' | 'right';
+export type TableHeadCellPadding = 'sm' | 'md' | 'lg';
+export type TableHeadCellAlign = 'left' | 'center' | 'right';
 
 type TableHeadCellProps = Omit<React.ThHTMLAttributes<HTMLTableCellElement>, 'scope'> & {
   padding?: TableHeadCellPadding;
@@ -11,8 +11,8 @@ type TableHeadCellProps = Omit<React.ThHTMLAttributes<HTMLTableCellElement>, 'sc
 
 const paddingClassNameBySize: Record<TableHeadCellPadding, string> = {
   sm: 'px-3 py-2',
-  md: 'px-4 py-3',
-  lg: 'px-6 py-3',
+  md: 'px-3 py-2.5',
+  lg: 'px-4 py-2.5',
 };
 
 const alignClassNameByAlign: Record<TableHeadCellAlign, string> = {
@@ -31,12 +31,12 @@ export const TableHeadCell: React.FC<TableHeadCellProps> = ({
 }) => {
   const classes = [
     'border',
-    'border-slate-200',
+    'border-[var(--app-border)]',
     paddingClassNameBySize[padding],
     'text-[11px]',
-    'uppercase',
-    'tracking-[0.3em]',
-    'text-slate-900',
+    'font-semibold',
+    'tracking-wide',
+    'text-slate-600',
     alignClassNameByAlign[align],
     className,
   ]

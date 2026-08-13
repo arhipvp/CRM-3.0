@@ -30,8 +30,8 @@ describe('MainLayout', () => {
   it('renders the expanded desktop sidebar by default', () => {
     renderLayout();
 
-    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-60');
-    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-60', 'min-w-0');
+    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-56');
+    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-56', 'min-w-0');
     expect(screen.getByRole('button', { name: 'Свернуть боковую панель' })).toHaveAttribute(
       'aria-expanded',
       'true',
@@ -43,8 +43,8 @@ describe('MainLayout', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Свернуть боковую панель' }));
 
-    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-20');
-    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-20');
+    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-16');
+    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-16');
     expect(screen.getByText('Сделки')).toHaveClass('lg:sr-only');
     expect(localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY)).toBe('true');
     expect(screen.getByRole('button', { name: 'Развернуть боковую панель' })).toHaveAttribute(
@@ -58,8 +58,8 @@ describe('MainLayout', () => {
 
     renderLayout(true);
 
-    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-20');
-    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-20');
+    expect(screen.getByTestId('main-sidebar')).toHaveClass('lg:w-16');
+    expect(screen.getByTestId('main-content')).toHaveClass('lg:ml-16');
     expect(screen.getByLabelText('Пользователь: operator')).toHaveTextContent('o');
   });
 });

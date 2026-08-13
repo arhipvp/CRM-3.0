@@ -5,8 +5,9 @@ import type {
   SellerDashboardTasksByExecutor,
 } from '../../types';
 import { formatCurrencyRu, formatDateRu, RU_LOCALE } from '../../utils/formatting';
-import { BTN_SM_PRIMARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { DateInput } from '../common/forms/DateInput';
+import { PageHeader } from '../common/layoutPrimitives';
 import {
   useSellerDashboardController,
   type SellerDashboardFinancialSort,
@@ -899,21 +900,20 @@ export const SellerDashboardView: React.FC = () => {
     financialMatrix.rows.length > 0 && (financialMatrix.types.length > 0 || !showOnlyWithData);
 
   return (
-    <section aria-labelledby="sellerDashboardHeading" className="space-y-6 pb-2">
-      <div className="app-panel space-y-4 p-6 shadow-none">
+    <section aria-labelledby="sellerDashboardHeading" className="app-page pb-2">
+      <PageHeader
+        titleId="sellerDashboardHeading"
+        eyebrow="Дашборд продавца"
+        title="Продажи по дате начала полиса"
+        description={periodLabel}
+      />
+      <div className="app-panel space-y-4 p-4 shadow-none">
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-xs uppercase tracking-wide text-slate-400">Дашборд продавца</p>
-            <h1 id="sellerDashboardHeading" className="text-2xl font-semibold text-slate-900">
-              Продажи по дате начала полиса
-            </h1>
-            <p className="text-sm text-slate-600">{periodLabel}</p>
-          </div>
           <div className="grid gap-3 sm:grid-cols-3">
             <a
               href={policyDrilldownHref}
               aria-label="Открыть полисы выбранного периода"
-              className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-right transition hover:border-blue-300 hover:shadow-sm"
+              className="rounded-[var(--app-radius-md)] border border-blue-100 bg-blue-50 px-4 py-3 text-right transition hover:border-blue-300 hover:shadow-sm"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-sky-600">
                 Сумма оплаченных платежей
@@ -925,7 +925,7 @@ export const SellerDashboardView: React.FC = () => {
             <a
               href="/tasks?only_my_tasks=true"
               aria-label="Открыть текущие задачи"
-              className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm transition hover:border-sky-300"
+              className="rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-white px-4 py-3 text-right shadow-sm transition hover:border-blue-300"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Текущие задачи
@@ -935,7 +935,7 @@ export const SellerDashboardView: React.FC = () => {
             <a
               href="/tasks?only_my_tasks=true&show_completed=true"
               aria-label="Открыть задачи, включая завершённые"
-              className="rounded-2xl border border-slate-200/80 bg-white px-4 py-3 text-right shadow-sm transition hover:border-sky-300"
+              className="rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-white px-4 py-3 text-right shadow-sm transition hover:border-blue-300"
             >
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
                 Завершено задач
@@ -967,14 +967,9 @@ export const SellerDashboardView: React.FC = () => {
               className="field field-input"
             />
           </div>
-          <button
-            type="button"
-            onClick={handleApply}
-            className={BTN_SM_PRIMARY}
-            disabled={isLoading}
-          >
+          <Button onClick={handleApply} variant="primary" size="sm" disabled={isLoading}>
             Показать
-          </button>
+          </Button>
         </div>
         <p className="text-sm text-slate-600">
           Учитываются только полисы с датой начала в выбранном диапазоне и только оплаченные

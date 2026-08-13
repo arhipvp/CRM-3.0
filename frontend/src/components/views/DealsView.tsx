@@ -24,6 +24,7 @@ import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
 import { useSelectedDeal } from '../../hooks/useSelectedDeal';
 import { isDealTabId, type DealTabId } from './dealsView/helpers';
+import { PageHeader, PageShell } from '../common/layoutPrimitives';
 
 interface DealsViewProps {
   deals: Deal[];
@@ -285,9 +286,18 @@ export const DealsView: React.FC<DealsViewProps> = ({
   );
 
   return (
-    <div className="flex h-full flex-col gap-6">
-      <section className="app-panel overflow-hidden border-none">
-        <div className="divide-y divide-slate-200">
+    <PageShell>
+      <PageHeader
+        title="Сделки"
+        description="Воронка продаж и рабочая карточка выбранной сделки"
+        meta={
+          <span>
+            Загружено: {sortedDeals.length} из {dealsTotalCount}
+          </span>
+        }
+      />
+      <section className="app-panel overflow-hidden shadow-none">
+        <div className="divide-y divide-[var(--app-border)]">
           <DealsList
             sortedDeals={sortedDeals}
             selectedDeal={selectedDeal}
@@ -402,6 +412,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
           />
         </div>
       </section>
-    </div>
+    </PageShell>
   );
 };

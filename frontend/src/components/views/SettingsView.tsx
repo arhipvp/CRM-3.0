@@ -23,7 +23,13 @@ import { Button } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { FORM_INPUT_DISABLED } from '../common/forms/formClassNames';
 import { InlineAlert } from '../common/InlineAlert';
-import { Panel, SectionHeader, StatusBadge } from '../common/layoutPrimitives';
+import {
+  PageHeader,
+  PageShell,
+  Panel,
+  SectionHeader,
+  StatusBadge,
+} from '../common/layoutPrimitives';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { useConfirm } from '../../hooks/useConfirm';
 
@@ -467,10 +473,10 @@ export const SettingsView: React.FC = () => {
   };
 
   return (
-    <Panel padding="lg" className="space-y-6">
-      <SectionHeader
+    <PageShell>
+      <PageHeader
         title="Настройки"
-        description="Обновите пароль для доступа в систему. Используйте надежную комбинацию и не повторяйте старые пароли."
+        description="Профиль, уведомления и подключения внешних сервисов"
       />
       <nav aria-label="Разделы настроек" className="flex flex-wrap gap-2 text-sm">
         {(
@@ -1010,6 +1016,6 @@ export const SettingsView: React.FC = () => {
         </div>
       </form>
       <ConfirmDialogRenderer />
-    </Panel>
+    </PageShell>
   );
 };

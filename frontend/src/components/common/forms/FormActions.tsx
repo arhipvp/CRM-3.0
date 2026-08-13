@@ -2,7 +2,7 @@ import React from 'react';
 
 import { Button } from '../Button';
 
-interface FormActionsProps {
+export interface FormActionsProps {
   onCancel?: () => void;
   cancelLabel?: string;
   submitLabel: string;
@@ -27,8 +27,8 @@ export const FormActions: React.FC<FormActionsProps> = ({
 }) => {
   const containerClassName =
     align === 'between'
-      ? 'flex items-center justify-between gap-3 pt-2'
-      : 'flex items-center justify-end gap-3 pt-2';
+      ? 'flex items-center justify-between gap-2 border-t border-[var(--app-border)] pt-4'
+      : 'flex items-center justify-end gap-2 border-t border-[var(--app-border)] pt-4';
 
   return (
     <div className={containerClassName}>
@@ -37,7 +37,7 @@ export const FormActions: React.FC<FormActionsProps> = ({
           onClick={onCancel}
           disabled={isSubmitting}
           variant="secondary"
-          className={cancelClassName || 'btn btn-secondary'}
+          className={cancelClassName}
         >
           {cancelLabel}
         </Button>
@@ -46,9 +46,11 @@ export const FormActions: React.FC<FormActionsProps> = ({
         type="submit"
         disabled={isSubmitting || isSubmitDisabled}
         variant="primary"
-        className={submitClassName || 'btn btn-primary'}
+        isLoading={isSubmitting}
+        loadingLabel={submittingLabel}
+        className={submitClassName}
       >
-        {isSubmitting ? submittingLabel : submitLabel}
+        {submitLabel}
       </Button>
     </div>
   );

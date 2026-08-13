@@ -1,14 +1,15 @@
-export const TABLE_THEAD_CLASS = 'bg-white/90 backdrop-blur border-b border-slate-200';
+export const TABLE_THEAD_CLASS =
+  'border-b border-[var(--app-border)] bg-[var(--app-surface-muted)]';
 
-export const TABLE_CELL_CLASS_LG = 'border border-slate-200 px-6 py-3';
+export const TABLE_CELL_CLASS_LG = 'border border-[var(--app-border)] px-4 py-2.5';
 
-export const TABLE_CELL_CLASS_MD = 'border border-slate-200 px-4 py-3';
+export const TABLE_CELL_CLASS_MD = 'border border-[var(--app-border)] px-3 py-2.5';
 
-export const TABLE_CELL_CLASS_SM = 'border border-slate-200 px-3 py-2';
-export const TABLE_CELL_CLASS_COMPACT = 'border border-slate-200 px-3 py-2';
+export const TABLE_CELL_CLASS_SM = 'border border-[var(--app-border)] px-3 py-2';
+export const TABLE_CELL_CLASS_COMPACT = 'border border-[var(--app-border)] px-2.5 py-1.5';
 
 export const TABLE_ROW_CLASS =
-  'transition-colors even:bg-slate-50/40 border-l-4 border-transparent hover:bg-slate-50/80 hover:border-sky-500';
+  'border-l-2 border-transparent transition-colors even:bg-slate-50/40 hover:border-[var(--app-primary)] hover:bg-blue-50/40';
 
 export const TABLE_ROW_CLASS_PLAIN = 'transition-colors even:bg-slate-50/40 hover:bg-slate-50/80';
 

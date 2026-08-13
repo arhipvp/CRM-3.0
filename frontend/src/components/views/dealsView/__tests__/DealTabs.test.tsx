@@ -61,7 +61,7 @@ describe('DealTabs', () => {
 
     rerender(<DealTabs activeTab="tasks" onChange={vi.fn()} />);
     expect(screen.getByTestId('deal-subtabs')).toHaveClass('min-h-8');
-    expect(screen.getByRole('button', { name: 'Задачи' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Расчёты' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Задачи' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Расчёты' })).toBeInTheDocument();
   });
 });

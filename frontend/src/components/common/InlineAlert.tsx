@@ -1,6 +1,6 @@
 import React from 'react';
 
-type InlineAlertTone = 'danger' | 'success' | 'info';
+export type InlineAlertTone = 'danger' | 'success' | 'warning' | 'info';
 type InlineAlertTag = 'div' | 'p';
 
 interface InlineAlertProps {
@@ -13,7 +13,8 @@ interface InlineAlertProps {
 const TONE_CLASS: Record<InlineAlertTone, string> = {
   danger: 'app-alert app-alert-danger',
   success: 'app-alert app-alert-success',
-  info: 'app-alert border-slate-200 bg-slate-50 text-slate-700',
+  warning: 'app-alert border-amber-200 bg-amber-50 text-amber-900',
+  info: 'app-alert border-sky-200 bg-sky-50 text-sky-900',
 };
 
 export const InlineAlert: React.FC<InlineAlertProps> = ({

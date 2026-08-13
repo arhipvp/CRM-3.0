@@ -38,7 +38,7 @@ npm run test:e2e     # Playwright desktop smoke (Vite запускается а�
 
 - `npm run lint` проверяет правила ESLint + React hooks.
 - `npm run test` запускает Vitest (настройка в `setupTests.ts`) и выполняет юнит-тесты в `frontend/__tests__/` и `src/__tests__/` (включая mock API и событие в DOM).
-- `npm run test:e2e` проверяет основные desktop-сценарии в viewport 1440×900; перед первым локальным запуском установите Chromium командой `npx playwright install chromium`.
+- `npm run test:e2e` проверяет основные desktop-сценарии в viewport 1280×800 и 1440×900; перед первым локальным запуском установите Chromium командой `npx playwright install chromium`.
 - Рабочий контекст списков хранится в URL. Для карточки сделки поддерживаются `dealId` и конечный `tab`; preview сделки использует `previewDeal`.
 - Базовые UI-примитивы проверяются `jest-axe`; новые модальные окна, вкладки и combobox должны сохранять клавиатурную навигацию и управление фокусом.
 - `tsconfig.app.json`, `tsconfig.node.json` и `tsconfig.json` обеспечивают строгую типизацию и поддержку библиотеки React.
@@ -56,7 +56,8 @@ npm run test:e2e     # Playwright desktop smoke (Vite запускается а�
 - Confirm-диалоги: используйте `src/hooks/useConfirm.ts` и словарь `src/constants/confirmTexts.ts`; прямой `window.confirm` не использовать.
 - Prompt-потоки: вместо `window.prompt` используйте `src/components/common/modal/PromptDialog.tsx`.
 - Кнопки и иконки: для нового UI используйте `Button`, `IconButton` и `AppIcon` из `src/components/common/*`; `buttonStyles.ts` оставлен как compatibility layer для старых участков.
-- Панели, вкладки и статусы: используйте `Panel`, `SectionHeader`, `StatusBadge`, `SegmentedControl` и `EmptyState` из `src/components/common/*`, чтобы не плодить локальные варианты `rounded-*`, `shadow-*` и tab-классов.
+- Структура страниц: используйте `PageShell`, `PageHeader`, `Toolbar`, `Panel` и `SectionHeader`; правила и токены описаны в [docs/design-system.md](docs/design-system.md).
+- Панели, вкладки и статусы: используйте `Tabs`, `SegmentedControl`, `StatusBadge` и `EmptyState` из `src/components/common/*`, чтобы не плодить локальные варианты `rounded-*`, `shadow-*` и tab-классов.
 - Form input классы: используйте `FORM_INPUT_DISABLED` и `FORM_TEXTAREA_DISABLED` из `src/components/common/forms/formClassNames.ts`.
 - Date-поля: используйте `src/components/common/forms/DateInput.tsx`, чтобы вставка дат из буфера работала одинаково во всех формах.
 - Частые UI-классы: используйте `src/components/common/uiClassNames.ts` (`LINK_ACTION_XS`, `PANEL_MUTED_TEXT`, `STATUS_*`) вместо локальных строковых дублей.
@@ -65,10 +66,10 @@ npm run test:e2e     # Playwright desktop smoke (Vite запускается а�
 
 ## Адаптивный layout
 
-- На desktop боковая панель имеет ширину 240 px и сворачивается до 80 px кнопкой в шапке панели.
+- На desktop боковая панель имеет ширину 224 px и сворачивается до 64 px кнопкой в шапке панели.
 - Выбранное состояние сохраняется в `localStorage` под ключом `crm.sidebar.collapsed`.
 - На мобильных ширинах используется горизонтальная навигация с полными подписями независимо от desktop-настройки.
-- Основные таблицы рассчитаны на рабочее разрешение 1920×1200; на меньших экранах локальная горизонтальная прокрутка остаётся защитным поведением.
+- Основные таблицы проверяются начиная с 1280×800; на меньших экранах локальная горизонтальная прокрутка остаётся защитным поведением.
 
 ## Docker и CI
 

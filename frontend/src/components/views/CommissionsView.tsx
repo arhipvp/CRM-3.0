@@ -15,7 +15,8 @@ import type { AttachFinanceStatementRecordsResult } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
 import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
-import { handleTabKeyboardNavigation } from '../common/tabs';
+import { Tabs } from '../common/Tabs';
+import { handleTabKeyboardNavigation } from '../common/tabKeyboard';
 import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
@@ -34,8 +35,8 @@ import { useStatementDriveManager } from './commissions/hooks/useStatementDriveM
 import { useStatementRecordsController } from './commissions/hooks/useStatementRecordsController';
 import { useStatementRecordsSelection } from './commissions/hooks/useStatementRecordsSelection';
 import { useStatementsManager } from './commissions/hooks/useStatementsManager';
+import { PageHeader } from '../common/layoutPrimitives';
 
-const FINANCE_TAB_IDS = ['statements', 'all'] as const;
 const STATEMENT_TAB_IDS = ['records', 'files'] as const;
 
 interface CommissionsViewProps {
@@ -586,76 +587,39 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
   );
   if (isLoading) {
     return (
-      <section aria-labelledby="commissionsViewHeading" className="app-panel p-6 shadow-none">
-        <h1 id="commissionsViewHeading" className="sr-only">
-          Доходы и расходы
-        </h1>
+      <section aria-labelledby="commissionsViewHeading" className="app-page">
+        <PageHeader titleId="commissionsViewHeading" title="Доходы и расходы" />
         <PanelMessage>Загружаем финансовые данные...</PanelMessage>
       </section>
     );
   }
 
   return (
-    <section aria-labelledby="commissionsViewHeading" className="flex h-full flex-col gap-6">
-      <h1 id="commissionsViewHeading" className="sr-only">
-        Доходы и расходы
-      </h1>
-      <div
-        role="tablist"
-        aria-label="Разделы доходов и расходов"
-        className="app-segmented-control scrollbar-none"
-      >
-        <button
-          id="financial-tab-statements"
-          role="tab"
-          type="button"
-          aria-selected={viewMode === 'statements'}
-          aria-controls="financial-tabpanel-statements"
-          tabIndex={viewMode === 'statements' ? 0 : -1}
-          onClick={() => setViewMode('statements')}
-          onKeyDown={(event) =>
-            handleTabKeyboardNavigation({
-              event,
-              tabs: FINANCE_TAB_IDS,
-              activeTab: viewMode,
-              onChange: setViewMode,
-              getTabElementId: (tabId) => `financial-tab-${tabId}`,
-            })
-          }
-          className={`app-segmented-control-button min-w-[200px] ${
-            viewMode === 'statements'
-              ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
-              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
-          }`}
-        >
-          Ведомости
-        </button>
-        <button
-          id="financial-tab-all"
-          role="tab"
-          type="button"
-          aria-selected={viewMode === 'all'}
-          aria-controls="financial-tabpanel-all"
-          tabIndex={viewMode === 'all' ? 0 : -1}
-          onClick={() => setViewMode('all')}
-          onKeyDown={(event) =>
-            handleTabKeyboardNavigation({
-              event,
-              tabs: FINANCE_TAB_IDS,
-              activeTab: viewMode,
-              onChange: setViewMode,
-              getTabElementId: (tabId) => `financial-tab-${tabId}`,
-            })
-          }
-          className={`app-segmented-control-button min-w-[240px] ${
-            viewMode === 'all'
-              ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
-              : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
-          }`}
-        >
-          Все финансовые записи
-        </button>
-      </div>
+    <section aria-labelledby="commissionsViewHeading" className="app-page">
+      <PageHeader
+        titleId="commissionsViewHeading"
+        title="Доходы и расходы"
+        description="Финансовые ведомости, выплаты и связанные документы"
+      />
+      <Tabs
+        idPrefix="financial-tab"
+        ariaLabel="Разделы доходов и расходов"
+        value={viewMode}
+        onChange={setViewMode}
+        className="[&>button]:min-w-[220px]"
+        options={[
+          {
+            value: 'statements',
+            label: 'Ведомости',
+            controls: 'financial-tabpanel-statements',
+          },
+          {
+            value: 'all',
+            label: 'Все финансовые записи',
+            controls: 'financial-tabpanel-all',
+          },
+        ]}
+      />
 
       <div className="app-panel overflow-hidden">
         <div

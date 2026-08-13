@@ -1,24 +1,42 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
-type PanelProps = HTMLAttributes<HTMLElement> & {
+export type PanelProps = HTMLAttributes<HTMLElement> & {
   as?: 'div' | 'section' | 'article';
   variant?: 'default' | 'muted' | 'flat';
   padding?: 'none' | 'sm' | 'md' | 'lg';
   children: ReactNode;
 };
 
-type SectionHeaderProps = {
+export type SectionHeaderProps = {
   title: string;
   eyebrow?: string;
   description?: ReactNode;
   actions?: ReactNode;
   titleId?: string;
+  size?: 'sm' | 'md';
   className?: string;
 };
 
-type StatusBadgeProps = {
+export type PageHeaderProps = {
+  title: string;
+  description?: ReactNode;
+  eyebrow?: string;
+  actions?: ReactNode;
+  meta?: ReactNode;
+  titleId?: string;
+  className?: string;
+};
+
+export type ToolbarProps = HTMLAttributes<HTMLDivElement> & {
+  leading?: ReactNode;
+  trailing?: ReactNode;
+  children?: ReactNode;
+};
+
+export type StatusBadgeProps = {
   children: ReactNode;
   tone?: 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
+  dot?: boolean;
   className?: string;
 };
 
@@ -33,7 +51,7 @@ type SegmentedControlProps<T extends string> = {
 const panelVariantClassName: Record<NonNullable<PanelProps['variant']>, string> = {
   default: 'app-panel shadow-none',
   muted: 'app-panel-muted',
-  flat: 'rounded-2xl border border-[var(--app-border)] bg-white',
+  flat: 'rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-white',
 };
 
 const panelPaddingClassName: Record<NonNullable<PanelProps['padding']>, string> = {
@@ -75,19 +93,68 @@ export function Panel({
   );
 }
 
+export function PageShell({ className = '', ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={['app-page', className].filter(Boolean).join(' ')} {...props} />;
+}
+
+export function PageHeader({
+  title,
+  description,
+  eyebrow,
+  actions,
+  meta,
+  titleId,
+  className = '',
+}: PageHeaderProps) {
+  return (
+    <header className={['app-page-header', className].filter(Boolean).join(' ')}>
+      <div className="min-w-0 space-y-1">
+        {eyebrow && <p className="app-label text-[var(--app-primary)]">{eyebrow}</p>}
+        <h1 id={titleId} className="text-2xl font-semibold tracking-tight text-[var(--app-text)]">
+          {title}
+        </h1>
+        {description && <div className="text-sm text-[var(--app-text-muted)]">{description}</div>}
+        {meta && (
+          <div className="flex flex-wrap items-center gap-2 pt-1 text-xs text-slate-500">
+            {meta}
+          </div>
+        )}
+      </div>
+      {actions && <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>}
+    </header>
+  );
+}
+
+export function Toolbar({ leading, trailing, children, className = '', ...props }: ToolbarProps) {
+  return (
+    <div className={['app-toolbar', className].filter(Boolean).join(' ')} {...props}>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">{leading ?? children}</div>
+      {trailing && <div className="flex flex-wrap items-center justify-end gap-2">{trailing}</div>}
+    </div>
+  );
+}
+
 export function SectionHeader({
   title,
   eyebrow,
   description,
   actions,
   titleId,
+  size = 'md',
   className = '',
 }: SectionHeaderProps) {
   return (
     <div className={['flex flex-wrap items-start justify-between gap-3', className].join(' ')}>
       <div className="min-w-0 space-y-1">
         {eyebrow && <p className="app-label">{eyebrow}</p>}
-        <h2 id={titleId} className="text-xl font-semibold text-slate-900">
+        <h2
+          id={titleId}
+          className={
+            size === 'sm'
+              ? 'text-base font-semibold text-slate-900'
+              : 'text-xl font-semibold text-slate-900'
+          }
+        >
           {title}
         </h2>
         {description && <p className="text-sm text-slate-500">{description}</p>}
@@ -97,17 +164,23 @@ export function SectionHeader({
   );
 }
 
-export function StatusBadge({ children, tone = 'neutral', className = '' }: StatusBadgeProps) {
+export function StatusBadge({
+  children,
+  tone = 'neutral',
+  dot = false,
+  className = '',
+}: StatusBadgeProps) {
   return (
     <span
       className={[
-        'inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold',
+        'inline-flex min-h-6 items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-semibold',
         badgeToneClassName[tone],
         className,
       ]
         .filter(Boolean)
         .join(' ')}
     >
+      {dot && <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />}
       {children}
     </span>
   );
@@ -137,7 +210,7 @@ export function SegmentedControl<T extends string>({
             onClick={() => onChange(option.value)}
             className={`app-segmented-control-button ${
               isSelected
-                ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
+                ? 'border border-[var(--app-border)] bg-white font-semibold text-[var(--app-primary)] shadow-sm'
                 : 'text-slate-500 hover:bg-white/70 hover:text-slate-800'
             }`}
           >

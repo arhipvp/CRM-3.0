@@ -38,6 +38,7 @@ import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
 import { getPolicyDocumentsState, usePolicyDocuments } from './policies/usePolicyDocuments';
 import { PolicyDocumentsList } from './policies/PolicyDocumentsList';
 import { DateInput } from '../common/forms/DateInput';
+import { PageHeader } from '../common/layoutPrimitives';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -486,30 +487,28 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   };
 
   return (
-    <section aria-labelledby="policiesViewHeading" className="app-panel p-3 shadow-none space-y-2">
-      <h1 id="policiesViewHeading" className="sr-only">
-        Полисы
-      </h1>
+    <section aria-labelledby="policiesViewHeading" className="app-page">
+      <PageHeader
+        titleId="policiesViewHeading"
+        title="Полисы"
+        description="Статусы, сроки, платежи и финансовые записи"
+      />
       <div className="flex flex-col gap-2">
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Всего</p>
+          <div className="rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-white px-3 py-2">
+            <p className="app-label">Всего</p>
             <p className="text-lg font-semibold text-slate-900">{kpi.total}</p>
           </div>
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-rose-600">
-              Есть неоплаченные записи
-            </p>
+            <p className="app-label text-rose-600">Есть неоплаченные записи</p>
             <p className="text-lg font-semibold text-rose-700">{kpi.problemCount}</p>
           </div>
           <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-orange-700">К оплате</p>
+            <p className="app-label text-orange-700">К оплате</p>
             <p className="text-lg font-semibold text-orange-700">{kpi.dueCount}</p>
           </div>
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
-            <p className="text-[11px] uppercase tracking-[0.2em] text-sky-700">
-              Скоро истекают ({kpi.expiringDays} дн.)
-            </p>
+            <p className="app-label text-sky-700">Скоро истекают ({kpi.expiringDays} дн.)</p>
             <p className="text-lg font-semibold text-sky-700">{kpi.expiringSoonCount}</p>
           </div>
         </div>

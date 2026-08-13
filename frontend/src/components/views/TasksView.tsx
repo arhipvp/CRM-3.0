@@ -8,6 +8,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { BTN_SM_SECONDARY } from '../common/buttonStyles';
 import { PRIORITY_LABELS, STATUS_LABELS } from '../tasks/constants';
 import { TaskTable } from '../tasks/TaskTable';
+import { PageHeader } from '../common/layoutPrimitives';
 
 type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenCreatedAt';
 
@@ -305,10 +306,13 @@ export const TasksView: React.FC<TasksViewProps> = ({
   }
 
   return (
-    <section aria-labelledby="tasksViewHeading" className="app-panel p-6 shadow-none space-y-4">
-      <h1 id="tasksViewHeading" className="sr-only">
-        Задачи
-      </h1>
+    <section aria-labelledby="tasksViewHeading" className="app-page">
+      <PageHeader
+        titleId="tasksViewHeading"
+        title="Задачи"
+        description="Текущая работа, сроки и приоритеты команды"
+        meta={<span>Всего: {totalCount}</span>}
+      />
       <FilterBar
         onFilterChange={handleFilterChange}
         initialFilters={initialFilters}

@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from 'react';
 
 import { login } from '../api';
-import { BTN_BLOCK_PRIMARY } from './common/buttonStyles';
+import { Button } from './common/Button';
 import { FORM_INPUT_DISABLED } from './common/forms/formClassNames';
+import { FormField } from './common/forms/FormField';
 import { InlineAlert } from './common/InlineAlert';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 
@@ -32,18 +33,16 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-sky-900 px-4 py-10">
-      <div className="app-panel w-full max-w-md p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] px-4 py-10">
+      <div className="app-panel w-full max-w-sm border-t-4 border-t-[var(--app-primary)] p-6">
         <div className="space-y-1 text-center">
-          <h1 className="text-2xl font-bold text-slate-900">CRM 3.0</h1>
-          <p className="text-sm text-slate-600">Управление сделками и клиентами</p>
+          <p className="app-label text-[var(--app-primary)]">CRM 3.0</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">Insure Desk</h1>
+          <p className="text-sm text-slate-500">Рабочее пространство страхового брокера</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-8 space-y-5">
-          <div className="space-y-2">
-            <label htmlFor="username" className="app-label">
-              Имя пользователя
-            </label>
+        <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+          <FormField label="Имя пользователя" htmlFor="username">
             <input
               id="username"
               type="text"
@@ -53,12 +52,9 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               disabled={isLoading}
               className={FORM_INPUT_DISABLED}
             />
-          </div>
+          </FormField>
 
-          <div className="space-y-2">
-            <label htmlFor="password" className="app-label">
-              Пароль
-            </label>
+          <FormField label="Пароль" htmlFor="password">
             <input
               id="password"
               type="password"
@@ -68,17 +64,19 @@ export function LoginPage({ onLoginSuccess }: LoginPageProps) {
               disabled={isLoading}
               className={FORM_INPUT_DISABLED}
             />
-          </div>
+          </FormField>
 
           {error && <InlineAlert as="p">{error}</InlineAlert>}
 
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
-            className={`${BTN_BLOCK_PRIMARY} justify-center`}
+            variant="primary"
+            size="block"
+            isLoading={isLoading}
+            loadingLabel="Входим…"
           >
-            {isLoading ? 'Входим...' : 'Войти'}
-          </button>
+            Войти
+          </Button>
         </form>
       </div>
     </div>

@@ -30,12 +30,13 @@ const HIDDEN_NAV_PATHS = new Set(['/knowledge', '/library']);
 const SIDEBAR_COLLAPSED_STORAGE_KEY = 'crm.sidebar.collapsed';
 
 const NAV_LINK_BASE_CLASS =
-  'relative flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors before:absolute before:inset-y-1.5 before:left-1 before:w-1 before:rounded-full before:bg-blue-500 before:opacity-0 before:transition-opacity';
-const NAV_LINK_ACTIVE_CLASS = 'bg-blue-50 text-blue-900 before:opacity-100';
+  'relative flex min-h-9 items-center gap-2.5 rounded-[var(--app-radius-sm)] px-2.5 py-2 text-sm font-medium transition-colors before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-[var(--app-primary)] before:opacity-0 before:transition-opacity';
+const NAV_LINK_ACTIVE_CLASS =
+  'bg-[var(--app-brand-50)] text-[var(--app-primary-hover)] before:opacity-100';
 const NAV_LINK_IDLE_CLASS = 'text-slate-700 hover:bg-slate-100';
-const NAV_ICON_CLASS =
-  'inline-flex h-6 w-6 items-center justify-center rounded-md border border-[var(--app-border)] bg-white text-slate-500';
-const TOP_SLOT_CLASS = 'rounded-2xl border border-blue-100 bg-blue-50/80 px-4 py-3 shadow-sm';
+const NAV_ICON_CLASS = 'inline-flex h-5 w-5 items-center justify-center text-slate-500';
+const TOP_SLOT_CLASS =
+  'rounded-[var(--app-radius-md)] border border-blue-100 bg-[var(--app-brand-50)] px-4 py-2.5 shadow-sm';
 
 const getNavLinkClassName = (isActive: boolean) =>
   `${NAV_LINK_BASE_CLASS} ${isActive ? NAV_LINK_ACTIVE_CLASS : NAV_LINK_IDLE_CLASS}`;
@@ -69,23 +70,25 @@ export function MainLayout({
     });
   };
 
-  const desktopSidebarWidthClassName = isSidebarCollapsed ? 'lg:w-20' : 'lg:w-60';
-  const desktopMainOffsetClassName = isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-60';
+  const desktopSidebarWidthClassName = isSidebarCollapsed ? 'lg:w-16' : 'lg:w-56';
+  const desktopMainOffsetClassName = isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-56';
   const desktopLabelClassName = isSidebarCollapsed ? 'lg:sr-only' : '';
 
   return (
     <div className="min-h-screen min-w-0 bg-[var(--app-bg)] text-slate-900 lg:flex">
       <aside
-        className={`border-b border-[var(--app-border)] bg-[var(--app-sidebar-bg)]/95 backdrop-blur transition-[width] duration-200 lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col lg:border-b-0 lg:border-r ${desktopSidebarWidthClassName}`}
+        className={`z-20 border-b border-[var(--app-border)] bg-[var(--app-sidebar-bg)]/95 backdrop-blur transition-[width] duration-200 lg:fixed lg:inset-y-0 lg:left-0 lg:flex lg:flex-col lg:border-b-0 lg:border-r ${desktopSidebarWidthClassName}`}
         data-testid="main-sidebar"
       >
         <div
-          className={`space-y-3 border-b border-[var(--app-border)] px-5 py-4 ${isSidebarCollapsed ? 'lg:px-3' : ''}`}
+          className={`space-y-3 border-b border-[var(--app-border)] px-4 py-3 ${isSidebarCollapsed ? 'lg:px-2.5' : ''}`}
         >
           <div className="flex items-end justify-between gap-3">
             <div className={desktopLabelClassName}>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-slate-400">CRM 3.0</p>
-              <p className="text-2xl font-bold text-blue-700">Insure Desk</p>
+              <p className="app-label text-slate-400">CRM 3.0</p>
+              <p className="text-lg font-semibold tracking-tight text-[var(--app-primary)]">
+                Insure Desk
+              </p>
             </div>
             <IconButton
               onClick={toggleSidebar}
@@ -108,7 +111,7 @@ export function MainLayout({
           </Button>
         </div>
 
-        <nav className="flex-1 overflow-x-auto overflow-y-visible px-3 py-3 lg:overflow-y-auto">
+        <nav className="flex-1 overflow-x-auto overflow-y-visible px-2 py-2.5 lg:overflow-y-auto">
           <ul className="flex min-w-max gap-1 lg:min-w-0 lg:flex-col">
             {NAV_ITEMS.filter((item) => !HIDDEN_NAV_PATHS.has(item.path)).map((item) => (
               <li key={item.path}>
@@ -131,7 +134,7 @@ export function MainLayout({
         </nav>
 
         <div
-          className={`space-y-3 border-t border-[var(--app-border)] bg-white/70 p-4 ${isSidebarCollapsed ? 'lg:px-3' : ''}`}
+          className={`space-y-2 border-t border-[var(--app-border)] bg-white/70 p-3 ${isSidebarCollapsed ? 'lg:px-2.5' : ''}`}
         >
           <Button
             onClick={onAddDeal}
@@ -167,7 +170,7 @@ export function MainLayout({
                 />
                 {isSidebarCollapsed && (
                   <span
-                    className="hidden h-8 w-8 items-center justify-center rounded-full border border-[var(--app-border)] bg-white text-xs font-bold uppercase text-slate-600 lg:inline-flex"
+                    className="hidden h-8 w-8 items-center justify-center rounded-[var(--app-radius-sm)] border border-[var(--app-border)] bg-white text-xs font-bold uppercase text-slate-600 lg:inline-flex"
                     aria-label={`Пользователь: ${currentUser.username}`}
                     title={currentUser.username}
                   >
@@ -201,7 +204,7 @@ export function MainLayout({
       </aside>
 
       <main
-        className={`min-h-screen min-w-0 flex-1 px-3 py-4 transition-[margin] duration-200 sm:px-5 lg:px-5 lg:py-5 ${desktopMainOffsetClassName}`}
+        className={`min-h-screen min-w-0 flex-1 px-3 py-4 transition-[margin] duration-200 sm:px-5 lg:px-6 lg:py-5 ${desktopMainOffsetClassName}`}
         data-testid="main-content"
       >
         <div className="w-full space-y-4">
