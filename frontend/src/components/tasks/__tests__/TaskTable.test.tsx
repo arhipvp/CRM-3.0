@@ -66,6 +66,23 @@ describe('TaskTable', () => {
     expect(screen.getByText('Срочная задача')).toHaveClass('line-through');
   });
 
+  it('keeps a disabled completion button for a completed task', () => {
+    render(
+      <TaskTable
+        tasks={[
+          buildTask({
+            status: 'done',
+            completedAt: '2026-04-01T11:00:00Z',
+          }),
+        ]}
+        showActions
+        onMarkTaskDone={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Выполнено' })).toBeDisabled();
+  });
+
   it('renders completion comment in blue for completed task', () => {
     render(
       <TaskTable

@@ -299,22 +299,32 @@ export function TaskTable({
                   {hasActions && (
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-right text-xs`}>
                       <div className={TABLE_ACTIONS_CLASS_ROW_SM}>
-                        {onMarkTaskDone && task.status !== 'done' && (
-                          <Button
-                            type="button"
-                            onClick={() => openCompletionPrompt(task.id)}
-                            disabled={completingTaskIds.includes(task.id)}
-                            className="icon-btn h-8 w-8 text-emerald-700 hover:bg-emerald-50"
-                            aria-label="Отметить выполненной"
-                            title="Отметить выполненной"
-                          >
-                            {completingTaskIds.includes(task.id) ? (
-                              <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
-                            ) : (
-                              <AppIcon name="check" size={16} />
-                            )}
-                          </Button>
-                        )}
+                        {onMarkTaskDone &&
+                          (isDone ? (
+                            <IconButton
+                              icon="check"
+                              label="Выполнено"
+                              tone="success"
+                              size="sm"
+                              disabled
+                              className="h-8 w-8"
+                            />
+                          ) : (
+                            <Button
+                              type="button"
+                              onClick={() => openCompletionPrompt(task.id)}
+                              disabled={completingTaskIds.includes(task.id)}
+                              className="icon-btn h-8 w-8 text-emerald-700 hover:bg-emerald-50"
+                              aria-label="Отметить выполненной"
+                              title="Отметить выполненной"
+                            >
+                              {completingTaskIds.includes(task.id) ? (
+                                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-emerald-200 border-t-emerald-700" />
+                              ) : (
+                                <AppIcon name="check" size={16} />
+                              )}
+                            </Button>
+                          ))}
                         {onEditTask && (
                           <IconButton
                             onClick={() => onEditTask(task.id)}
