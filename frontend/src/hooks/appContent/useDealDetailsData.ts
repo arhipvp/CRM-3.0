@@ -425,6 +425,10 @@ export const useDealDetailsData = ({
         }
         return dealsData;
       }
+      if (filters?.search?.trim()) {
+        clearSelectedDealFocus();
+        return dealsData;
+      }
       if (deepLinkedDealIdRef.current === currentSelectedDealId) {
         const preservedDeepLinkedDeal = preservedDeepLinkedDealRef.current;
         if (preservedDeepLinkedDeal?.id === currentSelectedDealId) {

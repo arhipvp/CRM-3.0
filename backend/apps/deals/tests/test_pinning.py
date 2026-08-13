@@ -80,8 +80,54 @@ class DealPinningTests(AuthenticatedAPITestCase):
         self.assertEqual(second_response.status_code, status.HTTP_200_OK)
         first_ids = set(self._result_ids(first_response))
         second_ids = self._result_ids(second_response)
+        self.assertEqual(first_response.data["count"], 65)
+        self.assertEqual(second_response.data["count"], 65)
         self.assertEqual(len(second_ids), 20)
         self.assertTrue(set(second_ids).isdisjoint(first_ids))
         self.assertTrue(
             set(second_ids).isdisjoint({str(deal.id) for deal in pinned_deals})
         )
+
+    def test_search_only_includes_matching_pinned_deals(self):
+        matching_pinned, unrelated_pinned, matching_regular = self._create_deals(3)
+        matching_pinned.title = "Needle pinned deal"
+        matching_pinned.save(update_fields=["title"])
+        unrelated_pinned.title = "Unrelated pinned deal"
+        unrelated_pinned.save(update_fields=["title"])
+        matching_regular.title = "Needle regular deal"
+        matching_regular.save(update_fields=["title"])
+        DealPin.objects.bulk_create(
+            [
+                DealPin(user=self.seller, deal=matching_pinned),
+                DealPin(user=self.seller, deal=unrelated_pinned),
+            ]
+        )
+
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"page": 1, "page_size": 20, "search": "Needle"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        result_ids = self._result_ids(response)
+        self.assertEqual(result_ids[0], str(matching_pinned.id))
+        self.assertEqual(
+            set(result_ids),
+            {str(matching_pinned.id), str(matching_regular.id)},
+        )
+        self.assertEqual(response.data["count"], 2)
+
+    def test_search_without_matches_excludes_pinned_deals_from_count(self):
+        pinned_deal = self._create_deals(1)[0]
+        DealPin.objects.create(user=self.seller, deal=pinned_deal)
+
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"page": 1, "page_size": 20, "search": "missing search value"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"], [])
+        self.assertEqual(response.data["count"], 0)

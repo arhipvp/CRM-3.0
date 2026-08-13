@@ -465,13 +465,26 @@ class DealViewSet(
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
         pinned_ids = self._pinned_ids(request.user)
+        search_term = str(request.query_params.get("search") or "").strip()
+        matching_pinned_queryset = (
+            queryset.filter(id__in=pinned_ids) if search_term and pinned_ids else None
+        )
+        pinned_count = (
+            matching_pinned_queryset.count()
+            if matching_pinned_queryset is not None
+            else len(pinned_ids)
+        )
         if pinned_ids:
             queryset = queryset.exclude(id__in=pinned_ids)
 
         page = self.paginate_queryset(queryset)
         if page is not None:
             pinned_queryset = (
-                self._pinned_queryset(request.user, pinned_ids)
+                (
+                    matching_pinned_queryset
+                    if matching_pinned_queryset is not None
+                    else self._pinned_queryset(request.user, pinned_ids)
+                )
                 if str(request.query_params.get("page") or "1") in {"1", ""}
                 else Deal.objects.none()
             )
@@ -484,7 +497,7 @@ class DealViewSet(
             )
             return Response(
                 {
-                    "count": base_count + len(pinned_ids),
+                    "count": base_count + pinned_count,
                     "next": paginator.get_next_link(),
                     "previous": paginator.get_previous_link(),
                     "results": pinned_data + page_data,
