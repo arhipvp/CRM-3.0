@@ -11,7 +11,7 @@ type AppShellProps = {
   currentUser?: User | null;
   onAddDeal: () => void;
   onAddClient: () => void;
-  onOpenCommandPalette: () => void;
+  onAddTask: () => void;
   onLogout: () => void;
   error: string | null;
   onClearError: () => void;
@@ -23,7 +23,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   currentUser,
   onAddDeal,
   onAddClient,
-  onOpenCommandPalette,
+  onAddTask,
   onLogout,
   error,
   onClearError,
@@ -31,7 +31,7 @@ export const AppShell: React.FC<AppShellProps> = ({
   <MainLayout
     onAddDeal={onAddDeal}
     onAddClient={onAddClient}
-    onOpenCommandPalette={onOpenCommandPalette}
+    onAddTask={onAddTask}
     currentUser={currentUser ?? undefined}
     onLogout={onLogout}
     topSlot={topSlot}

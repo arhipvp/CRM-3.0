@@ -26,7 +26,7 @@ from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
 
-from .models import Deal, DealPin, DealTimeTick, DealViewer, Quote
+from .models import Deal, DealPin, DealViewer, Quote
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
@@ -454,12 +454,6 @@ class DealMergeService:
                 "user_id", flat=True
             )
         )
-        merged_time_seconds = (
-            DealTimeTick.objects.filter(deal_id__in=self._all_merge_ids)
-            .values_list("seconds", flat=True)
-            .iterator()
-        )
-
         warnings: list[str] = []
         if not self.target_deal.drive_folder_id:
             warnings.append(
@@ -514,7 +508,6 @@ class DealMergeService:
             "service_rules_preview": {
                 "pin_will_be_set": bool(merged_pinned_user_ids),
                 "visible_users_count_after": len(merged_viewer_ids),
-                "time_ticks_seconds_after": sum(merged_time_seconds),
             },
         }
 
@@ -598,10 +591,6 @@ class DealMergeService:
                 ignore_conflicts=True,
             )
             moved_counts["deal_viewers"] = len(normalized_viewer_ids)
-
-            moved_counts["time_ticks"] = DealTimeTick.objects.filter(
-                deal_id__in=self._all_merge_ids
-            ).update(deal=result_deal)
 
             for deal in [self.target_deal, *self.source_deals]:
                 if self.actor:

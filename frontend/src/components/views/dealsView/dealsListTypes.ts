@@ -26,7 +26,6 @@ export interface DealsListProps {
   onPinDeal: (dealId: string) => Promise<void>;
   onUnpinDeal: (dealId: string) => Promise<void>;
   currentUser: User | null;
-  isDealSelectionBlocked?: boolean;
   clients?: Client[];
   clientDuplicateHints?: Record<string, ClientDuplicateHint>;
   onClientFindSimilar?: (client: Client) => void;

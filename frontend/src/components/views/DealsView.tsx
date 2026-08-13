@@ -143,7 +143,6 @@ interface DealsViewProps {
   onDealShowClosedChange: (value: boolean) => void;
   dealOrdering?: string;
   onDealOrderingChange: (value: string | undefined) => void;
-  onDealSelectionBlockedChange?: (blocked: boolean) => void;
 }
 
 export const DealsView: React.FC<DealsViewProps> = ({
@@ -232,12 +231,10 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onDealShowClosedChange,
   dealOrdering,
   onDealOrderingChange,
-  onDealSelectionBlockedChange,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const requestedTabValue = searchParams.get('tab');
   const requestedTab: DealTabId = isDealTabId(requestedTabValue) ? requestedTabValue : 'overview';
-  const [isDealSelectionBlocked, setDealSelectionBlocked] = React.useState(false);
   const { sortedDeals, selectedDeal, selectedClient, sellerUser, executorUser } = useSelectedDeal({
     deals,
     clients,
@@ -245,18 +242,8 @@ export const DealsView: React.FC<DealsViewProps> = ({
     selectedDealId,
     isDealFocusCleared,
   });
-  const handleDealSelectionBlockedChange = React.useCallback(
-    (blocked: boolean) => {
-      setDealSelectionBlocked(blocked);
-      onDealSelectionBlockedChange?.(blocked);
-    },
-    [onDealSelectionBlockedChange],
-  );
   const handleSelectDeal = React.useCallback(
     (dealId: string) => {
-      if (isDealSelectionBlocked) {
-        return;
-      }
       onSelectDeal(dealId);
       setSearchParams((current) => {
         const next = new URLSearchParams(current);
@@ -265,7 +252,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
         return next;
       });
     },
-    [isDealSelectionBlocked, onSelectDeal, setSearchParams],
+    [onSelectDeal, setSearchParams],
   );
   const handleTabChange = React.useCallback(
     (tab: DealTabId) => {
@@ -327,7 +314,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onPinDeal={onPinDeal}
             onUnpinDeal={onUnpinDeal}
             currentUser={currentUser}
-            isDealSelectionBlocked={isDealSelectionBlocked}
             clients={clients}
             clientDuplicateHints={clientDuplicateHints}
             onClientFindSimilar={onClientFindSimilar}
@@ -401,7 +387,6 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onDeleteTask={onDeleteTask}
             onDeleteDeal={onDeleteDeal}
             onRestoreDeal={onRestoreDeal}
-            onDealSelectionBlockedChange={handleDealSelectionBlockedChange}
             onClearDealFocus={onClearDealFocus}
             accessMessage={dealAccessMessage}
             onClearAccessMessage={onClearDealAccessMessage}

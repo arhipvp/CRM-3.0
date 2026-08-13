@@ -124,7 +124,6 @@ export interface AppRouteDealsActions {
     fileName?: string | null,
     fileId?: string | null,
   ) => void;
-  onDealSelectionBlockedChange?: (blocked: boolean) => void;
 }
 
 export interface AppRouteFinanceActions {

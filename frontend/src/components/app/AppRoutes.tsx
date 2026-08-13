@@ -156,7 +156,6 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               onDealShowClosedChange={filters.onDealShowClosedChange}
               dealOrdering={filters.dealOrdering}
               onDealOrderingChange={filters.onDealOrderingChange}
-              onDealSelectionBlockedChange={dealsActions.onDealSelectionBlockedChange}
               onRequestAddClient={dealsActions.onRequestAddClient}
               onPolicyDraftReady={dealsActions.onPolicyDraftReady}
               onRefreshPolicies={dealsActions.onRefreshPolicies}

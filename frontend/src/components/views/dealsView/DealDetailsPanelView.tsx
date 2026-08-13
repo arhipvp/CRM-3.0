@@ -39,7 +39,6 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
     closeSimilarModal,
     completingTaskIds,
     continueFromSimilarToMerge,
-    continueTracking,
     currentUser,
     dealEventsError,
     dealRefreshError,
@@ -138,7 +137,6 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
     isSimilarLoading,
     isSimilarModalOpen,
     isTasksLoading,
-    isTimeTrackingConfirmModalOpen,
     isTrashing,
     loadChatMessages,
     loadDriveFiles,
@@ -155,7 +153,6 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
     mergeSearch,
     mergeSources,
     mergeStep,
-    myTotalLabel,
     nextContactInputValue,
     noteAttachments,
     noteAttachmentsUploading,
@@ -287,7 +284,6 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
                 clientPhone={selectedClient?.phone}
                 sellerDisplayName={sellerDisplayName}
                 executorDisplayName={executorDisplayName}
-                myTrackedTimeLabel={myTotalLabel}
                 onClientEdit={onClientEdit}
                 onClientFindSimilar={onClientFindSimilar}
                 onClientNormalizeName={onClientNormalizeName}
@@ -652,26 +648,6 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
         </form>
       </FormModal>
       <ConfirmDialogRenderer />
-      <FormModal
-        isOpen={isTimeTrackingConfirmModalOpen}
-        title="Продолжить учет времени по сделке?"
-        onClose={() => undefined}
-        size="sm"
-        closeOnOverlayClick={false}
-        closeOnEscape={false}
-        hideCloseButton
-        zIndex={80}
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-slate-700">
-            Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение
-            учета времени.
-          </p>
-          <Button type="button" onClick={continueTracking} variant="primary" className="w-full">
-            Продолжить
-          </Button>
-        </div>
-      </FormModal>
     </>
   );
 }

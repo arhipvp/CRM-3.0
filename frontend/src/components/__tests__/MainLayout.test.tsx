@@ -12,7 +12,7 @@ const renderLayout = (withUser = false) =>
       <MainLayout
         onAddDeal={vi.fn()}
         onAddClient={vi.fn()}
-        onOpenCommandPalette={vi.fn()}
+        onAddTask={vi.fn()}
         currentUser={
           withUser ? { id: 'user-1', username: 'operator', roles: ['manager'] } : undefined
         }
@@ -25,6 +25,13 @@ const renderLayout = (withUser = false) =>
 describe('MainLayout', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  it('does not render the removed commands button', () => {
+    renderLayout();
+
+    expect(screen.queryByRole('button', { name: 'Команды' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Добавить задачу' })).toBeInTheDocument();
   });
 
   it('renders the expanded desktop sidebar by default', () => {

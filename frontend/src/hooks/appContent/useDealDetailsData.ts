@@ -25,7 +25,6 @@ interface UseDealDetailsDataParams {
   isDealsRoute: boolean;
   effectiveSelectedDealId: string | null;
   previewDealId: string | null;
-  isDealSelectionBlocked: boolean;
   dealFilters: FilterParams;
   refreshDeals: RefreshDeals;
   invalidateDealsCache: InvalidateDealsCache;
@@ -46,7 +45,6 @@ export const useDealDetailsData = ({
   isDealsRoute,
   effectiveSelectedDealId,
   previewDealId,
-  isDealSelectionBlocked,
   dealFilters,
   refreshDeals,
   invalidateDealsCache,
@@ -551,9 +549,6 @@ export const useDealDetailsData = ({
 
   const handleSelectDeal = useCallback(
     (dealId: string) => {
-      if (isDealSelectionBlocked) {
-        return;
-      }
       setDealAccessMessage(null);
       selectDealById(dealId);
       if (!dealId || dealsById.has(dealId)) {
@@ -575,14 +570,7 @@ export const useDealDetailsData = ({
         setError(formatErrorMessage(err, 'Не удалось загрузить сделку'));
       });
     },
-    [
-      clearSelectedDealFocus,
-      dealsById,
-      isDealSelectionBlocked,
-      selectDealById,
-      setError,
-      syncDealsByIds,
-    ],
+    [clearSelectedDealFocus, dealsById, selectDealById, setError, syncDealsByIds],
   );
 
   const handleOpenDealPreview = useCallback(

@@ -32,7 +32,6 @@ export type AppIconName =
   | 'arrowRight'
   | 'sortAsc'
   | 'sortDesc'
-  | 'commands'
   | 'whatsapp'
   | 'telegram';
 
@@ -233,15 +232,6 @@ const iconPaths: Record<AppIconName, ReactElement> = {
       <path d="M15 8h3" />
       <path d="M15 12h4" />
       <path d="M15 16h5" />
-    </>
-  ),
-  commands: (
-    <>
-      <path d="M9 6a3 3 0 1 0-3 3h3V6Z" />
-      <path d="M15 9h3a3 3 0 1 0-3-3v3Z" />
-      <path d="M9 15H6a3 3 0 1 0 3 3v-3Z" />
-      <path d="M15 15v3a3 3 0 1 0 3-3h-3Z" />
-      <path d="M9 9h6v6H9z" />
     </>
   ),
   whatsapp: (

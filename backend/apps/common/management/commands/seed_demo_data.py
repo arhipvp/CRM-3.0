@@ -10,7 +10,6 @@ from apps.clients.models import Client
 from apps.deals.models import (
     Deal,
     DealPin,
-    DealTimeTick,
     DealViewer,
     InsuranceCompany,
     InsuranceType,
@@ -133,7 +132,6 @@ class Command(BaseCommand):
         ):
             session.hard_delete()
         Quote.objects.filter(comments__startswith=f"{DEMO_TAG} Quote ").delete()
-        DealTimeTick.objects.filter(source="demo_seed").delete()
         DealViewer.objects.filter(deal_id__in=demo_deal_ids).delete()
         DealPin.objects.filter(deal_id__in=demo_deal_ids).delete()
         Deal.objects.filter(id__in=demo_deal_ids).delete()
@@ -180,7 +178,6 @@ class Command(BaseCommand):
             )
             deal_pins = self._ensure_deal_pins(users, deals)
             deal_viewers = self._ensure_deal_viewers(users, deals, creator)
-            time_ticks = self._ensure_deal_time_ticks(users, deals, now)
             quotes = self._ensure_quotes(
                 deals=deals,
                 users=users,
@@ -237,7 +234,6 @@ class Command(BaseCommand):
             SeedSummary("deals", len(deals)),
             SeedSummary("deal_pins", len(deal_pins)),
             SeedSummary("deal_viewers", len(deal_viewers)),
-            SeedSummary("deal_time_ticks", len(time_ticks)),
             SeedSummary("quotes", len(quotes)),
             SeedSummary("policies", len(policies)),
             SeedSummary("policy_issuance_executions", len(issuance_executions)),
@@ -422,26 +418,6 @@ class Command(BaseCommand):
                 deal=deal,
                 user=user,
                 defaults={"added_by": creator or users[index]},
-            )
-            items.append(item)
-        return items
-
-    def _ensure_deal_time_ticks(
-        self, users: list[User], deals: list[Deal], now
-    ) -> list[DealTimeTick]:
-        items: list[DealTimeTick] = []
-        for index, (user, deal) in enumerate(zip(users, deals), start=1):
-            bucket = (now - timedelta(hours=index)).replace(
-                minute=0, second=0, microsecond=0
-            )
-            item, _ = DealTimeTick.objects.update_or_create(
-                user=user,
-                bucket_start=bucket,
-                defaults={
-                    "deal": deal,
-                    "seconds": 10 + (index % 5) * 5,
-                    "source": "demo_seed",
-                },
             )
             items.append(item)
         return items

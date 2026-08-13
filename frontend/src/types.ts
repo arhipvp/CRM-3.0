@@ -305,24 +305,6 @@ export interface OsagoRecognitionResponse {
   }>;
 }
 
-export interface DealTimeTrackingSummary {
-  enabled: boolean;
-  tickSeconds: number;
-  confirmIntervalSeconds: number;
-  myTotalSeconds: number;
-  myTotalHuman: string;
-}
-
-export interface DealTimeTrackingTickResponse {
-  enabled: boolean;
-  tickSeconds: number;
-  confirmIntervalSeconds: number;
-  counted: boolean;
-  bucketStart?: string | null;
-  myTotalSeconds: number;
-  reason?: string;
-}
-
 export interface DealMergeResponse {
   resultDeal: Deal;
   mergedDealIds: string[];

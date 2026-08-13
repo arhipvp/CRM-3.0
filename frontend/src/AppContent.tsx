@@ -2,7 +2,7 @@ import React, { Suspense, lazy } from 'react';
 
 import { AppRoutes } from './components/app/AppRoutes';
 import { AppShell } from './components/app/AppShell';
-import { AppShortcutsController } from './components/app/AppShortcutsController';
+import { CommandPalette } from './components/common/modal/CommandPalette';
 import { AppOverlayShell } from './features/app/overlay-shell/AppOverlayShell';
 import { useAppContentController } from './hooks/appContent/useAppContentController';
 
@@ -47,7 +47,16 @@ const AppContent: React.FC = () => {
         filters={controller.routeBindings.routeFilters}
         loading={controller.routeBindings.routeLoading}
       />
-      <AppShortcutsController {...controller.shortcutsProps} />
+      <CommandPalette
+        isOpen={controller.taskDealPickerProps.isOpen}
+        title="Выберите сделку для задачи"
+        placeholder="Поиск сделки или клиента..."
+        emptyMessage="Не найдено подходящих сделок для создания задачи."
+        items={controller.taskDealPickerProps.items}
+        isLoading={controller.taskDealPickerProps.isLoading}
+        onQueryChange={controller.taskDealPickerProps.setQuery}
+        onClose={controller.taskDealPickerProps.close}
+      />
       <AppOverlayShell
         {...controller.overlayProps}
         confirmDialogRenderer={<ConfirmDialogRenderer />}

@@ -13,15 +13,6 @@ const { driveFilesState } = vi.hoisted(() => ({
   },
 }));
 
-const { dealTimeTrackingState } = vi.hoisted(() => ({
-  dealTimeTrackingState: {
-    myTotalSeconds: 0,
-    myTotalLabel: '00:00:00',
-    isConfirmModalOpen: false,
-    isPausedForConfirm: false,
-    continueTracking: vi.fn(),
-  },
-}));
 const { policiesTabPropsSpy } = vi.hoisted(() => ({
   policiesTabPropsSpy: vi.fn(),
 }));
@@ -207,10 +198,6 @@ vi.mock('../hooks/useDealCommunication', () => ({
     handleChatSendMessage: vi.fn(),
     handleChatDelete: vi.fn(),
   }),
-}));
-
-vi.mock('../hooks/useDealTimeTracking', () => ({
-  useDealTimeTracking: () => dealTimeTrackingState,
 }));
 
 vi.mock('../DealHeader', () => ({
@@ -399,11 +386,6 @@ describe('DealDetailsPanel', () => {
     reloadNotesMock.mockResolvedValue(undefined);
     loadDriveFilesMock.mockResolvedValue(undefined);
     driveFilesState.isDriveLoading = false;
-    dealTimeTrackingState.myTotalSeconds = 0;
-    dealTimeTrackingState.myTotalLabel = '00:00:00';
-    dealTimeTrackingState.isConfirmModalOpen = false;
-    dealTimeTrackingState.isPausedForConfirm = false;
-    dealTimeTrackingState.continueTracking = vi.fn();
     dealCommunicationState.dealTimelineEvents = [];
     updateDealDatesMock.mockReset();
     updateDealDatesMock.mockResolvedValue(undefined);
@@ -500,71 +482,6 @@ describe('DealDetailsPanel', () => {
     expect(
       screen.getByText('Почта проверена: обработано 2, пропущено 1, ошибок 0, удалено 3.'),
     ).toBeInTheDocument();
-  });
-
-  it('blocks deal selection when time tracking confirmation is required', async () => {
-    dealTimeTrackingState.isConfirmModalOpen = true;
-    const onDealSelectionBlockedChange = vi.fn();
-
-    render(
-      <DealDetailsPanel
-        deals={[selectedDeal]}
-        clients={[]}
-        policies={[]}
-        payments={[]}
-        financialRecords={[]}
-        tasks={[]}
-        users={[currentUser]}
-        currentUser={currentUser}
-        sortedDeals={[selectedDeal]}
-        selectedDeal={selectedDeal}
-        selectedClient={null}
-        onSelectDeal={vi.fn()}
-        onCloseDeal={vi.fn().mockResolvedValue(undefined)}
-        onReopenDeal={vi.fn().mockResolvedValue(undefined)}
-        onUpdateDeal={vi.fn().mockResolvedValue(undefined)}
-        onMergeDeals={vi.fn().mockResolvedValue(undefined)}
-        onRequestAddQuote={vi.fn()}
-        onRequestEditQuote={vi.fn()}
-        onRequestAddPolicy={vi.fn()}
-        onRequestEditPolicy={vi.fn()}
-        onRequestAddClient={vi.fn()}
-        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
-        onDeletePolicy={vi.fn().mockResolvedValue(undefined)}
-        onAddPayment={vi.fn().mockResolvedValue(undefined)}
-        onUpdatePayment={vi.fn().mockResolvedValue(undefined)}
-        onDeletePayment={vi.fn().mockResolvedValue(undefined)}
-        onAddFinancialRecord={vi.fn().mockResolvedValue(undefined)}
-        onUpdateFinancialRecord={vi.fn().mockResolvedValue(undefined)}
-        onDeleteFinancialRecord={vi.fn().mockResolvedValue(undefined)}
-        onDriveFolderCreated={vi.fn()}
-        onCreateDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal })}
-        onCheckDealMailbox={vi.fn().mockResolvedValue({ deal: selectedDeal, mailboxSync: {} })}
-        onFetchChatMessages={vi.fn().mockResolvedValue([])}
-        onSendChatMessage={vi.fn().mockResolvedValue({} as never)}
-        onDeleteChatMessage={vi.fn().mockResolvedValue(undefined)}
-        onFetchDealHistory={vi.fn().mockResolvedValue([])}
-        onFetchDealEvents={vi.fn().mockResolvedValue([])}
-        onCreateTask={vi.fn().mockResolvedValue(undefined)}
-        onUpdateTask={vi.fn().mockResolvedValue(undefined)}
-        onDeleteTask={vi.fn().mockResolvedValue(undefined)}
-        onDeleteDeal={vi.fn().mockResolvedValue(undefined)}
-        onRestoreDeal={vi.fn().mockResolvedValue(undefined)}
-        onDealSelectionBlockedChange={onDealSelectionBlockedChange}
-      />,
-    );
-
-    await waitFor(() => {
-      expect(onDealSelectionBlockedChange).toHaveBeenCalledWith(true);
-    });
-    const dialog = screen.getByRole('dialog');
-    expect(within(dialog).getByText('Продолжить учет времени по сделке?')).toBeInTheDocument();
-    expect(
-      within(dialog).getByText(
-        'Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение учета времени.',
-      ),
-    ).toBeInTheDocument();
-    expect(within(dialog).getByRole('button', { name: 'Продолжить' })).toBeInTheDocument();
   });
 
   it('clears selected deal focus by close button', async () => {

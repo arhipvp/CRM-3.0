@@ -27,7 +27,6 @@ const createParams = (overrides: Partial<Params> = {}): Params => {
     isDealsRoute: true,
     effectiveSelectedDealId: selectedDeal.id,
     previewDealId: null,
-    isDealSelectionBlocked: false,
     dealFilters: {},
     refreshDeals: vi.fn().mockResolvedValue([]) as Params['refreshDeals'],
     invalidateDealsCache: vi.fn(),

@@ -43,7 +43,6 @@ export const DealsList: React.FC<DealsListProps> = ({
   onPinDeal,
   onUnpinDeal,
   currentUser,
-  isDealSelectionBlocked = false,
   clients = [],
   clientDuplicateHints = {},
   onClientFindSimilar,
@@ -98,7 +97,6 @@ export const DealsList: React.FC<DealsListProps> = ({
         showClosed={dealShowClosed}
         onShowClosedChange={onDealShowClosedChange}
         users={users}
-        isSelectionBlocked={isDealSelectionBlocked}
       />
 
       <DataTableShell>
@@ -181,7 +179,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                       'border-sky-500',
                       'hover:bg-slate-50/80 hover:border-sky-500',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white',
-                      isDealSelectionBlocked ? 'cursor-not-allowed opacity-80' : '',
                       isSelected
                         ? 'bg-blue-100/80 border-blue-600 shadow-sm ring-2 ring-blue-400/60 ring-inset'
                         : '',
@@ -193,21 +190,13 @@ export const DealsList: React.FC<DealsListProps> = ({
                     return (
                       <tr
                         key={deal.id}
-                        onClick={() => {
-                          if (isDealSelectionBlocked) {
-                            return;
-                          }
-                          onSelectDeal(deal.id);
-                        }}
+                        onClick={() => onSelectDeal(deal.id)}
                         onKeyDown={(event) => {
                           if (event.target !== event.currentTarget) {
                             return;
                           }
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
-                            if (isDealSelectionBlocked) {
-                              return;
-                            }
                             onSelectDeal(deal.id);
                           }
                         }}
@@ -227,9 +216,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
-                                  if (isDealSelectionBlocked) {
-                                    return;
-                                  }
                                   if (isPinned) {
                                     void onUnpinDeal(deal.id);
                                   } else {
@@ -239,7 +225,6 @@ export const DealsList: React.FC<DealsListProps> = ({
                                 icon={isPinned ? 'pinOff' : 'pin'}
                                 label={isPinned ? 'Открепить сделку' : 'Закрепить сделку'}
                                 title={isPinned ? 'Открепить' : 'Закрепить'}
-                                disabled={isDealSelectionBlocked}
                                 tone={isPinned ? 'danger' : 'neutral'}
                                 size="sm"
                                 className={
@@ -380,12 +365,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                   <Button
                     key={deal.id}
                     type="button"
-                    onClick={() => {
-                      if (!isDealSelectionBlocked) {
-                        onSelectDeal(deal.id);
-                      }
-                    }}
-                    disabled={isDealSelectionBlocked}
+                    onClick={() => onSelectDeal(deal.id)}
                     aria-label={`Открыть сделку ${deal.title}`}
                     className={`block w-full border-l-4 px-4 py-4 text-left transition ${
                       isSelected

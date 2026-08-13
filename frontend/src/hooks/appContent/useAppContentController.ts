@@ -21,7 +21,7 @@ import type {
 import type { ModalType } from '../../components/app/types';
 import { useNotification } from '../../contexts/NotificationContext';
 import { useAppBootstrapShell } from '../../features/app/bootstrap-shell/useAppBootstrapShell';
-import { useAppInteractionShell } from '../../features/app/interaction-shell/useAppInteractionShell';
+import { useTaskDealPicker } from '../../features/app/interaction-shell/useTaskDealPicker';
 import { useDealPreviewController } from '../../features/app/interaction-shell/useDealPreviewController';
 import { useAppRouteShell } from '../../features/app/route-shell/useAppRouteShell';
 import { useAppData } from '../useAppData';
@@ -49,7 +49,6 @@ export const useAppContentController = () => {
   const [paymentModal, setPaymentModal] = useState<PaymentModalState | null>(null);
   const [financialRecordModal, setFinancialRecordModal] =
     useState<FinancialRecordModalState | null>(null);
-  const [isDealSelectionBlocked, setDealSelectionBlocked] = useState(false);
   const [quickTaskDealId, setQuickTaskDealId] = useState<string | null>(null);
   const [isRefreshingDealsList, setIsRefreshingDealsList] = useState(false);
   const [dealEventsRefreshTokens, setDealEventsRefreshTokens] = useState<Record<string, number>>(
@@ -194,14 +193,7 @@ export const useAppContentController = () => {
     }
   }, [isAuthenticated, location.pathname]);
 
-  const {
-    deepLinkedDealId,
-    isClientsRoute,
-    isDealsRoute,
-    isPoliciesRoute,
-    isTasksRoute,
-    pendingPostLoginRedirect,
-  } = useAppBootstrapShell({
+  const { deepLinkedDealId, isDealsRoute, pendingPostLoginRedirect } = useAppBootstrapShell({
     ensureCommissionsDataLoaded,
     ensureFinanceDataLoaded,
     ensureReferenceData,
@@ -287,7 +279,6 @@ export const useAppContentController = () => {
     isDealsRoute,
     effectiveSelectedDealId,
     previewDealId: dealPreview.previewDealId,
-    isDealSelectionBlocked,
     dealFilters,
     refreshDeals,
     invalidateDealsCache,
@@ -543,10 +534,6 @@ export const useAppContentController = () => {
     handleCreateTask,
     handleUpdateTask,
     handleDeleteTask,
-    cycleSelectedDeal,
-    openSelectedDealPreview,
-    deleteSelectedDeal,
-    restoreSelectedDeal,
   } = useDealActions({
     deals,
     dealsById,
@@ -578,37 +565,10 @@ export const useAppContentController = () => {
     openDealPreview: handleOpenDealPreview,
   });
 
-  const {
-    paletteMode,
-    openCommandsPalette,
-    closePalette,
-    commandItems,
-    taskDealItems,
-    taskDealLoading,
-    setTaskDealQuery,
-  } = useAppInteractionShell({
-    clients,
-    clientsById,
+  const taskDealPicker = useTaskDealPicker({
     deals,
-    isClientsRoute,
-    isDealsRoute,
-    isPoliciesRoute,
-    isTasksRoute,
-    navigate: (path) => navigate(path),
-    policiesList,
+    selectDealById: dealPreview.selectDealById,
     setQuickTaskDealId,
-    tasks,
-    handleClientDeleteRequest,
-    handleClientEditRequest,
-    handleRequestEditPolicy,
-    handleUpdateTask,
-    cycleSelectedDeal,
-    dealPreview,
-    deleteSelectedDeal,
-    openClientCreateModal,
-    openDealCreateModal,
-    openSelectedDealPreview,
-    restoreSelectedDeal,
   });
 
   const handleLogout = useCallback(() => {
@@ -717,7 +677,6 @@ export const useAppContentController = () => {
       onRestoreDeal: handleRestoreDeal,
       onMergeDeals: handleMergeDeals,
       onPolicyDraftReady: handlePolicyDraftReady,
-      onDealSelectionBlockedChange: setDealSelectionBlocked,
     }),
     [
       dealPreview.clearSelectedDealFocus,
@@ -768,7 +727,6 @@ export const useAppContentController = () => {
       openClientModal,
       pendingDealClientId,
       refreshPoliciesList,
-      setDealSelectionBlocked,
     ],
   );
 
@@ -1010,7 +968,6 @@ export const useAppContentController = () => {
       onDeleteTask: handleDeleteTask,
       onDeleteDeal: handleDeleteDeal,
       onRestoreDeal: handleRestoreDeal,
-      onDealSelectionBlockedChange: setDealSelectionBlocked,
       isTasksLoading: isPreviewDealTasksLoading,
       isQuotesLoading: isPreviewDealQuotesLoading,
     },
@@ -1024,21 +981,14 @@ export const useAppContentController = () => {
     shellProps: {
       onAddDeal: openDealCreateModal,
       onAddClient: openClientCreateModal,
-      onOpenCommandPalette: openCommandsPalette,
+      onAddTask: taskDealPicker.open,
       currentUser,
       onLogout: handleLogout,
       error,
       onClearError: () => setError(null),
     },
     routeBindings,
-    shortcutsProps: {
-      paletteMode,
-      commandItems,
-      taskDealItems,
-      taskDealLoading,
-      onTaskDealQueryChange: setTaskDealQuery,
-      onClose: closePalette,
-    },
+    taskDealPickerProps: taskDealPicker,
     ConfirmDialogRenderer,
     overlayProps: {
       appModalsProps,

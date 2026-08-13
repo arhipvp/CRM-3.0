@@ -61,7 +61,6 @@ const renderDealsList = (params?: {
   onPinDeal?: (dealId: string) => Promise<void>;
   onUnpinDeal?: (dealId: string) => Promise<void>;
   currentUser?: User | null;
-  isDealSelectionBlocked?: boolean;
 }) => {
   const selectedDeal = params?.selectedDeal ?? createDeal();
   const sortedDeals = params?.sortedDeals ?? [selectedDeal];
@@ -93,7 +92,6 @@ const renderDealsList = (params?: {
       onPinDeal={params?.onPinDeal ?? vi.fn().mockResolvedValue(undefined)}
       onUnpinDeal={params?.onUnpinDeal ?? vi.fn().mockResolvedValue(undefined)}
       currentUser={params?.currentUser ?? null}
-      isDealSelectionBlocked={params?.isDealSelectionBlocked ?? false}
     />,
   );
 };
@@ -183,7 +181,6 @@ describe('DealsList dealRowFocusRequest', () => {
         onPinDeal={vi.fn().mockResolvedValue(undefined)}
         onUnpinDeal={vi.fn().mockResolvedValue(undefined)}
         currentUser={null}
-        isDealSelectionBlocked={false}
       />,
     );
 
@@ -304,25 +301,6 @@ describe('DealsList dealRowFocusRequest', () => {
     });
 
     expect(screen.queryByRole('button', { name: 'Закрепить сделку' })).not.toBeInTheDocument();
-  });
-
-  it('disables pin controls while deal selection is blocked', () => {
-    const onPinDeal = vi.fn().mockResolvedValue(undefined);
-    const currentUser = { id: 'seller-1', username: 'seller', roles: [] };
-    const deal = createDeal({ seller: currentUser.id });
-
-    renderDealsList({
-      selectedDeal: deal,
-      sortedDeals: [deal],
-      currentUser,
-      onPinDeal,
-      isDealSelectionBlocked: true,
-    });
-
-    const pinButton = screen.getByRole('button', { name: 'Закрепить сделку' });
-    expect(pinButton).toBeDisabled();
-    fireEvent.click(pinButton);
-    expect(onPinDeal).not.toHaveBeenCalled();
   });
 
   it('clears search via clear button', () => {

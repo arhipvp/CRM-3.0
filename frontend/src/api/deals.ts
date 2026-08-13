@@ -10,8 +10,6 @@ import type {
   DealMergePreviewResponse,
   DealSimilarityCandidate,
   DealSimilarityResponse,
-  DealTimeTrackingSummary,
-  DealTimeTrackingTickResponse,
   OsagoCalculationData,
   OsagoRecognitionResponse,
   Quote,
@@ -684,43 +682,5 @@ export async function checkDealMailbox(dealId: string): Promise<DealMailboxSyncR
       failed: Number(rawSync.failed ?? 0),
       deleted: Number(rawSync.deleted ?? 0),
     },
-  };
-}
-
-export async function fetchDealTimeTrackingSummary(
-  dealId: string,
-): Promise<DealTimeTrackingSummary> {
-  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/time-track/summary/`);
-  return {
-    enabled: Boolean(payload.enabled ?? true),
-    tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
-    confirmIntervalSeconds: Number(
-      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 600,
-    ),
-    myTotalSeconds: Number(payload.my_total_seconds ?? payload.myTotalSeconds ?? 0),
-    myTotalHuman: String(payload.my_total_human ?? payload.myTotalHuman ?? '00:00:00'),
-  };
-}
-
-export async function sendDealTimeTrackingTick(
-  dealId: string,
-): Promise<DealTimeTrackingTickResponse> {
-  const payload = await request<Record<string, unknown>>(`/deals/${dealId}/time-track/tick/`, {
-    method: 'POST',
-    body: JSON.stringify({}),
-  });
-  return {
-    enabled: Boolean(payload.enabled ?? true),
-    tickSeconds: Number(payload.tick_seconds ?? payload.tickSeconds ?? 10),
-    confirmIntervalSeconds: Number(
-      payload.confirm_interval_seconds ?? payload.confirmIntervalSeconds ?? 600,
-    ),
-    counted: Boolean(payload.counted ?? false),
-    bucketStart:
-      payload.bucket_start === undefined && payload.bucketStart === undefined
-        ? null
-        : String(payload.bucket_start ?? payload.bucketStart ?? ''),
-    myTotalSeconds: Number(payload.my_total_seconds ?? payload.myTotalSeconds ?? 0),
-    reason: payload.reason === undefined ? undefined : String(payload.reason),
   };
 }

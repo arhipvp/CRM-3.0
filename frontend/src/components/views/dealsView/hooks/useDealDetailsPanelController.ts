@@ -42,7 +42,6 @@ import { useDealDriveFiles } from './useDealDriveFiles';
 import { useDealInlineDates } from './useDealInlineDates';
 import { useDealMerge } from './useDealMerge';
 import { useDealNotes } from './useDealNotes';
-import { useDealTimeTracking } from './useDealTimeTracking';
 
 export interface DealDetailsPanelProps {
   deals: Deal[];
@@ -143,7 +142,6 @@ export interface DealDetailsPanelProps {
   onDeleteTask: (taskId: string) => Promise<void>;
   onDeleteDeal: (dealId: string) => Promise<void>;
   onRestoreDeal: (dealId: string) => Promise<void>;
-  onDealSelectionBlockedChange?: (blocked: boolean) => void;
   onClearDealFocus?: () => void;
   accessMessage?: string | null;
   onClearAccessMessage?: () => void;
@@ -225,7 +223,6 @@ export function useDealDetailsPanelController({
   onDeleteTask,
   onDeleteDeal,
   onRestoreDeal,
-  onDealSelectionBlockedChange,
   onClearDealFocus,
   accessMessage,
   onClearAccessMessage,
@@ -541,12 +538,6 @@ export function useDealDetailsPanelController({
   }, [loadDealEvents]);
 
   const {
-    myTotalLabel,
-    isConfirmModalOpen: isTimeTrackingConfirmModalOpen,
-    continueTracking,
-  } = useDealTimeTracking(selectedDeal?.id);
-
-  const {
     isOpen: isFinancialRecordModalOpen,
     paymentId: financialRecordPaymentId,
     defaultRecordType: financialRecordDefaultRecordType,
@@ -601,11 +592,6 @@ export function useDealDetailsPanelController({
       await loadDealEvents();
     }
   }, [activeTab, handleRefreshDeal, loadActivityLogs, loadChatMessages, loadDealEvents]);
-
-  useEffect(() => {
-    onDealSelectionBlockedChange?.(isTimeTrackingConfirmModalOpen);
-    return () => onDealSelectionBlockedChange?.(false);
-  }, [isTimeTrackingConfirmModalOpen, onDealSelectionBlockedChange]);
 
   useEffect(() => {
     resetDriveState();
@@ -768,7 +754,6 @@ export function useDealDetailsPanelController({
     closeSimilarModal,
     completingTaskIds,
     continueFromSimilarToMerge,
-    continueTracking,
     currentUser,
     dealEventsError,
     dealRefreshError,
@@ -867,7 +852,6 @@ export function useDealDetailsPanelController({
     isSimilarLoading,
     isSimilarModalOpen,
     isTasksLoading,
-    isTimeTrackingConfirmModalOpen,
     isTrashing,
     loadChatMessages,
     loadDriveFiles,
@@ -884,7 +868,6 @@ export function useDealDetailsPanelController({
     mergeSearch,
     mergeSources,
     mergeStep,
-    myTotalLabel,
     nextContactInputValue,
     noteAttachments,
     noteAttachmentsUploading,

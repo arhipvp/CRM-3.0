@@ -9,7 +9,7 @@ import { UserBadge } from './common/UserBadge';
 interface MainLayoutProps {
   onAddDeal: () => void;
   onAddClient: () => void;
-  onOpenCommandPalette: () => void;
+  onAddTask: () => void;
   currentUser?: User;
   onLogout?: () => void;
   topSlot?: ReactNode;
@@ -47,7 +47,7 @@ const getNavLinkClassName = (isActive: boolean) =>
 export function MainLayout({
   onAddDeal,
   onAddClient,
-  onOpenCommandPalette,
+  onAddTask,
   currentUser,
   onLogout,
   topSlot,
@@ -101,17 +101,6 @@ export function MainLayout({
               aria-expanded={!isSidebarCollapsed}
             />
           </div>
-          <Button
-            onClick={onOpenCommandPalette}
-            variant="quiet"
-            size="block"
-            icon="commands"
-            className={isSidebarCollapsed ? 'lg:px-0' : ''}
-            aria-label="Команды"
-            title={isSidebarCollapsed ? 'Команды' : undefined}
-          >
-            <span className={desktopLabelClassName}>Команды</span>
-          </Button>
         </div>
 
         <nav className="flex-1 overflow-x-auto overflow-y-visible px-2 py-2.5 lg:overflow-y-auto">
@@ -160,6 +149,17 @@ export function MainLayout({
             title={isSidebarCollapsed ? 'Добавить клиента' : undefined}
           >
             <span className={desktopLabelClassName}>Добавить клиента</span>
+          </Button>
+          <Button
+            onClick={onAddTask}
+            variant="secondary"
+            size="block"
+            icon="plus"
+            className={isSidebarCollapsed ? 'lg:px-0' : ''}
+            aria-label="Добавить задачу"
+            title={isSidebarCollapsed ? 'Добавить задачу' : undefined}
+          >
+            <span className={desktopLabelClassName}>Добавить задачу</span>
           </Button>
 
           {currentUser && (

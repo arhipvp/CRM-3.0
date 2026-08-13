@@ -277,23 +277,14 @@ vi.mock('../hooks/appContent/useDealActions', () => ({
   }),
 }));
 
-vi.mock('../features/app/interaction-shell/useAppInteractionShell', () => ({
-  useAppInteractionShell: () => ({
-    paletteMode: null,
-    openCommandsPalette: vi.fn(),
-    closePalette: vi.fn(),
-    commandItems: [],
-    taskDealItems: [],
-    shortcutContext: {
-      deleteSelectedClient: vi.fn(),
-      markSelectedTaskDone: vi.fn(),
-      openSelectedClient: vi.fn(),
-      openSelectedPolicy: vi.fn(),
-      openSelectedTaskDealPreview: vi.fn(),
-      selectedClientShortcut: null,
-      selectedPolicyShortcut: null,
-      selectedTaskShortcut: null,
-    },
+vi.mock('../features/app/interaction-shell/useTaskDealPicker', () => ({
+  useTaskDealPicker: () => ({
+    close: vi.fn(),
+    isLoading: false,
+    isOpen: false,
+    items: [],
+    open: vi.fn(),
+    setQuery: vi.fn(),
   }),
 }));
 
@@ -309,10 +300,6 @@ vi.mock('../components/app/AppShell', () => ({
 
 vi.mock('../components/app/AppRoutes', () => ({
   AppRoutes: () => <div data-testid="app-routes" />,
-}));
-
-vi.mock('../components/app/AppShortcutsController', () => ({
-  AppShortcutsController: () => <div data-testid="app-shortcuts" />,
 }));
 
 vi.mock('../features/app/overlay-shell/AppOverlayShell', () => ({
@@ -376,7 +363,6 @@ describe('AppContent composition', () => {
 
     expect(screen.getByTestId('app-shell')).toBeInTheDocument();
     expect(screen.getByTestId('app-routes')).toBeInTheDocument();
-    expect(screen.getByTestId('app-shortcuts')).toBeInTheDocument();
     expect(screen.getByTestId('app-overlay')).toBeInTheDocument();
   });
 });

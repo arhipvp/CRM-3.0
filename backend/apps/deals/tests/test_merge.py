@@ -103,7 +103,6 @@ class DealMergeServiceTestCase(TestCase):
                 "chat_messages": 1,
                 "deal_pins": 0,
                 "deal_viewers": 0,
-                "time_ticks": 0,
             },
         )
         self.assertEqual(result["warnings"], [])

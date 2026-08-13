@@ -72,10 +72,6 @@ from .serializers import (
     QuoteSerializer,
     SalesChannelSerializer,
 )
-from .time_tracking_service import (
-    build_time_tracking_summary,
-    record_time_tracking_tick,
-)
 from .view_mixins import (
     DealDocumentRecognitionMixin,
     DealDriveMixin,
@@ -343,16 +339,6 @@ class DealViewSet(
             return queryset
 
         return queryset.filter(build_deal_visibility_q(user)).distinct()
-
-    @action(detail=True, methods=["get"], url_path="time-track/summary")
-    def time_track_summary(self, request, pk=None):
-        deal = self.get_object()
-        return Response(build_time_tracking_summary(request.user, deal))
-
-    @action(detail=True, methods=["post"], url_path="time-track/tick")
-    def time_track_tick(self, request, pk=None):
-        deal = self.get_object()
-        return Response(record_time_tracking_tick(request.user, deal))
 
     @action(detail=True, methods=["get", "post"], url_path="events")
     def events(self, request, pk=None):

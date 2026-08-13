@@ -15,7 +15,6 @@ interface DealHeaderProps {
   clientPhone?: string;
   sellerDisplayName: string;
   executorDisplayName: string;
-  myTrackedTimeLabel?: string;
   onClientEdit?: (client: Client) => void;
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
@@ -29,7 +28,6 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
   clientPhone,
   sellerDisplayName,
   executorDisplayName,
-  myTrackedTimeLabel,
   onClientEdit,
   onClientFindSimilar,
   onClientNormalizeName,
@@ -144,11 +142,6 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
             showDot={false}
             className="font-semibold text-slate-900"
           />
-          <span className="text-slate-400">•</span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Моё время
-          </span>
-          <span className="font-semibold text-slate-900">{myTrackedTimeLabel ?? '00:00:00'}</span>
         </div>
 
         {deal.closingReason && (

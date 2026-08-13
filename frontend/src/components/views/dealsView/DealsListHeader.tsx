@@ -17,7 +17,6 @@ interface DealsListHeaderProps {
   showClosed: boolean;
   onShowClosedChange: (value: boolean) => void;
   users: User[];
-  isSelectionBlocked: boolean;
 }
 
 export function DealsListHeader({
@@ -35,7 +34,6 @@ export function DealsListHeader({
   showClosed,
   onShowClosedChange,
   users,
-  isSelectionBlocked,
 }: DealsListHeaderProps) {
   return (
     <>
@@ -140,11 +138,6 @@ export function DealsListHeader({
             </select>
           </div>
         </div>
-        {isSelectionBlocked && (
-          <p className="mt-3 text-xs font-semibold text-rose-700">
-            Подтвердите продолжение учета времени, чтобы переключиться на другую сделку.
-          </p>
-        )}
       </div>
     </>
   );

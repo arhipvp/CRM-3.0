@@ -81,7 +81,6 @@ const iconNames = [
   'arrowRight',
   'sortAsc',
   'sortDesc',
-  'commands',
   'whatsapp',
   'telegram',
 ] as const satisfies readonly AppIconName[];

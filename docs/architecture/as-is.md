@@ -22,7 +22,7 @@
 - `frontend/src/App.tsx`, `frontend/src/AppContent.tsx`: тонкий root-composition, guards и сборка shell-слоя.
 - `frontend/src/features/app/bootstrap-shell/`: auth bootstrap, route-aware preloading, post-login redirect.
 - `frontend/src/features/app/route-shell/`: сборка route bindings для `AppRoutes`.
-- `frontend/src/features/app/interaction-shell/`: deal preview selection, shortcuts, command palette.
+- `frontend/src/features/app/interaction-shell/`: выбор сделки для создания задачи.
 - `frontend/src/features/app/overlay-shell/`: preview/modal layer и локальные overlay-потоки.
 - `frontend/src/components/app/`: маршруты и UI-компоненты shell-уровня.
 - `frontend/src/components/views/`: страницы (Deals, Clients, Policies, Commissions, Tasks, Knowledge, Settings, SellerDashboard).
