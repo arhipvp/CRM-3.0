@@ -267,3 +267,29 @@ export const policyHasUnpaidRecords = (
   const policyPayments = paymentsByPolicyMap.get(policyId) ?? [];
   return policyPayments.some((payment) => hasUnpaidRecord(payment, allFinancialRecords));
 };
+
+export const getDealDeadlineBadge = (value?: string | null) => {
+  if (!value)
+    return { label: 'Нет срока', className: 'bg-slate-100 text-slate-600 border-slate-200' };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const deadline = new Date(value);
+  deadline.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) {
+    return {
+      label: `Просрочено: ${formatDate(value)}`,
+      className: 'bg-rose-50 text-rose-700 border-rose-200',
+    };
+  }
+  if (diffDays <= 3) {
+    return {
+      label: `Скоро: ${formatDate(value)}`,
+      className: 'bg-orange-50 text-orange-700 border-orange-200',
+    };
+  }
+  return {
+    label: formatDate(value),
+    className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  };
+};

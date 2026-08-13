@@ -1,44 +1,19 @@
 ﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Client, ClientDuplicateHint, Deal, Payment, PoliciesKPI, Policy } from '../../types';
+import { Client, Payment, Policy } from '../../types';
 import { fetchPoliciesKPI, FilterParams } from '../../api';
 import { useRef } from 'react';
 import { confirmTexts } from '../../constants/confirmTexts';
-import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
-import { FilterBar } from '../FilterBar';
-import { PromptDialog } from '../common/modal/PromptDialog';
-import { TableHeadCell } from '../common/TableHeadCell';
-import {
-  TABLE_CELL_CLASS_COMPACT,
-  TABLE_ROW_CLASS,
-  TABLE_THEAD_CLASS,
-} from '../common/tableStyles';
-import { buildPolicyCardModel } from '../policies/policyCardModel';
 import { POLICY_TEXT } from '../policies/text';
-import {
-  getPolicyComputedStatusBadge,
-  getPolicyExpiryBadge,
-  getPolicyRenewalBadge,
-} from '../policies/policyIndicators';
-import {
-  buildPolicyLedgerRows,
-  getPolicyExpiryToneClass,
-  getPolicyNotePreview,
-  POLICY_LEDGER_STATE_CLASS,
-  POLICY_STATUS_TONE_CLASS,
-} from '../policies/policyTableHelpers';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useConfirm } from '../../hooks/useConfirm';
-import { PolicyNumberButton } from '../policies/PolicyNumberButton';
-import { DataTableShell } from '../common/table/DataTableShell';
-import { Button } from '../common/Button';
-import { ColoredLabel } from '../common/ColoredLabel';
-import { ClientNameIndicators } from '../clients/ClientNameIndicators';
-import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
-import { getPolicyDocumentsState, usePolicyDocuments } from './policies/usePolicyDocuments';
-import { PolicyDocumentsList } from './policies/PolicyDocumentsList';
-import { DateInput } from '../common/forms/DateInput';
+import { usePolicyDocuments } from './policies/usePolicyDocuments';
+import { PoliciesTable } from './policies/PoliciesTable';
+import { PoliciesViewDialogs } from './policies/PoliciesViewDialogs';
 import { PageHeader } from '../common/layoutPrimitives';
+import { PoliciesFiltersPanel } from './policies/PoliciesFiltersPanel';
+import type { PoliciesViewProps, PolicyFilterPreset } from './policies/policiesViewTypes';
+export type { PolicyFilterPreset } from './policies/policiesViewTypes';
 
 const POLICIES_PRESETS_STORAGE_KEY = 'crm.policies.filterPresets.v1';
 const POLICY_STATUS_OPTIONS = [
@@ -47,56 +22,6 @@ const POLICY_STATUS_OPTIONS = [
   { value: 'expired', label: 'Просроченные' },
   { value: 'active', label: 'Активные' },
 ];
-
-type PolicyFilterPreset = {
-  id: string;
-  name: string;
-  filters: FilterParams;
-  createdAt: string;
-  updatedAt: string;
-};
-
-const POLICY_SORT_OPTIONS = [
-  { value: '-start_date', label: 'Начало (убывание)' },
-  { value: 'start_date', label: 'Начало (возрастание)' },
-  { value: '-end_date', label: 'Окончание (убывание)' },
-  { value: 'end_date', label: 'Окончание (возрастание)' },
-  { value: '-number', label: 'Номер (Z -> A)' },
-  { value: 'number', label: 'Номер (A -> Z)' },
-  { value: '-client', label: 'Клиент (Z -> A)' },
-  { value: 'client', label: 'Клиент (A -> Z)' },
-];
-
-interface PoliciesViewProps {
-  policies: Policy[];
-  deals?: Deal[];
-  payments: Payment[];
-  clients?: Client[];
-  clientDuplicateHints?: Record<string, ClientDuplicateHint>;
-  onDealSelect?: (dealId: string) => void;
-  onDealPreview?: (dealId: string) => void;
-  onClientEdit?: (client: Client) => void;
-  onClientOpenById?: (clientId: string) => Promise<void>;
-  onClientFindSimilar?: (client: Client) => void;
-  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
-  onRequestEditPolicy?: (policy: Policy) => void;
-  onMovePolicy?: (policyId: string, targetDealId: string) => Promise<void>;
-  onLoadMorePolicies?: () => Promise<void>;
-  policiesHasMore?: boolean;
-  isLoadingMorePolicies?: boolean;
-  isPoliciesLoading?: boolean;
-  policiesError?: string | null;
-  onRefreshPoliciesList?: (filters?: FilterParams) => Promise<PoliciesKPI | undefined>;
-  onAddFinancialRecord?: (values: AddFinancialRecordFormValues) => Promise<void>;
-  onUpdateFinancialRecord?: (
-    recordId: string,
-    values: AddFinancialRecordFormValues,
-  ) => Promise<void>;
-  onDeleteFinancialRecord?: (recordId: string) => Promise<void>;
-  onDeletePayment?: (paymentId: string) => Promise<void>;
-  onMarkPaymentPaid?: (paymentId: string, actualDate: string) => Promise<void>;
-  onMarkFinancialRecordPaid?: (recordId: string, paidDate: string) => Promise<void>;
-}
 
 export const PoliciesView: React.FC<PoliciesViewProps> = ({
   policies,
@@ -493,621 +418,77 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         title="Полисы"
         description="Статусы, сроки, платежи и финансовые записи"
       />
-      <div className="flex flex-col gap-2">
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-white px-3 py-2">
-            <p className="app-label">Всего</p>
-            <p className="text-lg font-semibold text-slate-900">{kpi.total}</p>
-          </div>
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
-            <p className="app-label text-rose-600">Есть неоплаченные записи</p>
-            <p className="text-lg font-semibold text-rose-700">{kpi.problemCount}</p>
-          </div>
-          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2">
-            <p className="app-label text-orange-700">К оплате</p>
-            <p className="text-lg font-semibold text-orange-700">{kpi.dueCount}</p>
-          </div>
-          <div className="rounded-xl border border-sky-200 bg-sky-50 px-3 py-2">
-            <p className="app-label text-sky-700">Скоро истекают ({kpi.expiringDays} дн.)</p>
-            <p className="text-lg font-semibold text-sky-700">{kpi.expiringSoonCount}</p>
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-white p-2">
-          <p className="app-label mb-2">Пресеты фильтров</p>
-          <div className="flex flex-wrap items-center gap-2">
-            <input
-              type="text"
-              className="field field-input h-8 w-56 text-xs"
-              placeholder="Название пресета"
-              value={presetName}
-              onChange={(event) => setPresetName(event.target.value)}
-            />
-            <Button type="button" variant="quiet" size="sm" onClick={handleSavePreset}>
-              Сохранить текущий
-            </Button>
-            {presets.map((preset) => (
-              <div
-                key={preset.id}
-                className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1"
-              >
-                <Button
-                  type="button"
-                  className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
-                  onClick={() => handleApplyPreset(preset)}
-                >
-                  {preset.name}
-                </Button>
-                <Button
-                  type="button"
-                  className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
-                  onClick={() => void handleDeletePreset(preset)}
-                  disabled={deletingPresetId === preset.id}
-                >
-                  ×
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex flex-wrap items-end gap-2 rounded-xl border border-slate-200 bg-white p-2">
-          <label className="text-xs text-slate-600">
-            Окончание с
-            <DateInput
-              aria-label="Окончание с"
-              className="field field-input mt-1 h-8"
-              value={endDateFrom}
-              onChange={(event) => updateFilters({ ...filters, end_date_from: event.target.value })}
-            />
-          </label>
-          <label className="text-xs text-slate-600">
-            Окончание по
-            <DateInput
-              aria-label="Окончание по"
-              className="field field-input mt-1 h-8"
-              value={endDateTo}
-              onChange={(event) => updateFilters({ ...filters, end_date_to: event.target.value })}
-            />
-          </label>
-          {[30, 60, 90].map((days) => (
-            <Button
-              key={days}
-              type="button"
-              variant="quiet"
-              size="sm"
-              onClick={() => setQuickEndPeriod(days)}
-            >
-              {days} дней
-            </Button>
-          ))}
-        </div>
-        <FilterBar
-          key={`policies-filterbar-${filterBarVersion}`}
-          onFilterChange={updateFilters}
-          searchPlaceholder="Поиск по номеру, клиенту или компании..."
-          initialFilters={filters}
-          sortOptions={POLICY_SORT_OPTIONS}
-          customFilters={customFilters.filter((filter) => !String(filter.key).includes('date_'))}
-          density="compact"
-          layout="inline-wrap"
-        />
-        {isDebouncePending && <div className="text-xs text-slate-500">Применяю фильтр...</div>}
-        {kpiError && (
-          <div className="rounded-xl border border-orange-200 bg-orange-50 px-3 py-2 text-xs font-semibold text-orange-700">
-            {kpiError}
-          </div>
-        )}
-        {combinedPoliciesError && (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <span>{combinedPoliciesError}</span>
-              <Button type="button" variant="quiet" size="sm" onClick={handleRefreshPolicies}>
-                Повторить
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {policies.length ? (
-        <DataTableShell>
-          <table
-            className="deals-table w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
-            aria-label="Список полисов"
-          >
-            <thead className={TABLE_THEAD_CLASS}>
-              <tr>
-                <TableHeadCell padding="sm" className="w-[13%]">
-                  Номер полиса
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[25%]">
-                  Основные данные
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
-                  Начало
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[8%]">
-                  Конец
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[20%]">
-                  Платеж
-                </TableHeadCell>
-                <TableHeadCell padding="sm" className="w-[26%]">
-                  Финансовые записи
-                </TableHeadCell>
-              </tr>
-            </thead>
-            <tbody className="bg-white">
-              {policies.map((policy) => {
-                const paymentsForPolicy = paymentsByPolicyMap.get(policy.id) ?? [];
-                const ledgerRows = buildPolicyLedgerRows(
-                  policy,
-                  paymentsForPolicy,
-                  POLICY_TEXT.messages.noComment,
-                );
-                const model = buildPolicyCardModel(policy, paymentsForPolicy);
-                const computedStatusBadge = getPolicyComputedStatusBadge(policy.computedStatus);
-                const expiryBadge = getPolicyExpiryBadge(policy.endDate);
-                const renewalBadge = getPolicyRenewalBadge({
-                  isRenewed: policy.isRenewed,
-                });
-                const notePreview = getPolicyNotePreview(policy.note);
-                const rowSpan = Math.max(ledgerRows.length, 1);
-                const firstLedgerRow = ledgerRows[0];
-                const insuranceCompany = (model.insuranceCompany ?? '').trim();
-                const insuranceType = (model.insuranceType ?? '').trim();
-                const salesChannel = (model.salesChannel ?? '').trim();
-                const metaTitle = [insuranceCompany, insuranceType, salesChannel]
-                  .filter(Boolean)
-                  .join(', ');
-                const hasMeta = Boolean(metaTitle);
-                const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
-                const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
-                const policyClient = policy.clientId ? clientsById.get(policy.clientId) : null;
-                const policyDocuments = getPolicyDocumentsState(policy, documentsByPolicyId);
-
-                return (
-                  <React.Fragment key={policy.id}>
-                    <tr className={`${TABLE_ROW_CLASS} border-t border-slate-300`}>
-                      <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
-                        <PolicyNumberButton
-                          value={model.number}
-                          className="text-xl font-bold leading-tight text-slate-900"
-                        />
-                        <PolicyDocumentsList
-                          state={policyDocuments}
-                          onLoad={() => void loadPolicyDocuments(policy)}
-                        />
-                      </td>
-                      <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
-                        <div className="space-y-1.5">
-                          <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                            <ClientNameIndicators
-                              client={policyClient}
-                              hint={
-                                policyClient ? clientDuplicateHints[policyClient.id] : undefined
-                              }
-                              onFindSimilar={onClientFindSimilar}
-                              onNormalizeName={onClientNormalizeName}
-                            />
-                            {model.clientId && onClientOpenById ? (
-                              <Button
-                                type="button"
-                                className="underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
-                                disabled={openingClientId === model.clientId}
-                                onClick={() => {
-                                  setOpeningClientId(model.clientId);
-                                  void onClientOpenById(model.clientId!)
-                                    .catch(() => undefined)
-                                    .finally(() => {
-                                      setOpeningClientId((current) =>
-                                        current === model.clientId ? null : current,
-                                      );
-                                    });
-                                }}
-                              >
-                                {model.client}
-                              </Button>
-                            ) : (
-                              <span>{model.client}</span>
-                            )}
-                          </p>
-                          {policy.dealId ? (
-                            canOpenDeal ? (
-                              <Button
-                                type="button"
-                                onClick={() => handleOpenDeal(policy.dealId)}
-                                className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
-                              >
-                                {dealTitle}
-                              </Button>
-                            ) : (
-                              <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
-                            )
-                          ) : null}
-                          {hasMeta ? (
-                            <p className="text-sm text-slate-700 truncate" title={metaTitle}>
-                              {insuranceCompany ? (
-                                <>
-                                  <ColoredLabel
-                                    value={insuranceCompany}
-                                    showDot
-                                    className="text-sm"
-                                  />
-                                  {(insuranceType || salesChannel) && ', '}
-                                </>
-                              ) : null}
-                              {insuranceType}
-                              {insuranceType && salesChannel ? ', ' : null}
-                              {salesChannel}
-                            </p>
-                          ) : (
-                            <p className="text-sm text-slate-700">—</p>
-                          )}
-                          <p
-                            className="text-xs text-slate-600 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
-                            title={notePreview.fullText}
-                          >
-                            {notePreview.preview}
-                          </p>
-                          <div className="flex flex-wrap gap-1 pt-1">
-                            {computedStatusBadge && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]}`}
-                                title={computedStatusBadge.tooltip}
-                              >
-                                {computedStatusBadge.label}
-                              </span>
-                            )}
-                            {expiryBadge && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
-                                  expiryBadge.tone,
-                                )}`}
-                              >
-                                {expiryBadge.label}
-                              </span>
-                            )}
-                            {renewalBadge && (
-                              <span
-                                className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
-                                title={renewalBadge.tooltip}
-                              >
-                                {renewalBadge.label}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
-                          <div className="flex flex-wrap gap-1">
-                            {onRequestEditPolicy && (
-                              <Button
-                                type="button"
-                                onClick={() => onRequestEditPolicy(policy)}
-                                variant="quiet"
-                                size="sm"
-                                className="h-7 px-2 text-[11px]"
-                                aria-label={`Редактировать полис ${model.number}`}
-                              >
-                                Редактировать
-                              </Button>
-                            )}
-                            {onMovePolicy && (
-                              <Button
-                                type="button"
-                                onClick={() => setPolicyToMove(policy)}
-                                variant="quiet"
-                                size="sm"
-                                className="h-7 px-2 text-[11px]"
-                              >
-                                Перенести
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td
-                        rowSpan={rowSpan}
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
-                      >
-                        {model.startDate}
-                      </td>
-                      <td
-                        rowSpan={rowSpan}
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
-                      >
-                        {model.endDate}
-                      </td>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        {firstLedgerRow ? (
-                          <div className="space-y-1">
-                            <div
-                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[firstLedgerRow.state]}`}
-                              title={firstLedgerRow.line.text}
-                            >
-                              <span className="truncate">{firstLedgerRow.line.dateText}</span>
-                              <span className="font-semibold whitespace-nowrap">
-                                {firstLedgerRow.line.amountText}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <Button
-                                  type="button"
-                                  onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                >
-                                  Проставить оплату
-                                </Button>
-                              )}
-                              {onDeletePayment && (
-                                <Button
-                                  type="button"
-                                  onClick={() =>
-                                    onDeletePayment(firstLedgerRow.payment.id).catch(
-                                      () => undefined,
-                                    )
-                                  }
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                  disabled={firstLedgerRow.payment.canDelete === false}
-                                  title={
-                                    firstLedgerRow.payment.canDelete === false
-                                      ? 'Сначала удалите оплаченные финансовые записи'
-                                      : 'Удалить платёж'
-                                  }
-                                >
-                                  Удалить платёж
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        ) : null}
-                      </td>
-                      <td className={TABLE_CELL_CLASS_COMPACT}>
-                        {firstLedgerRow?.records.length ? (
-                          <div className="space-y-1">
-                            {firstLedgerRow.records.map((recordRow) => (
-                              <div
-                                key={recordRow.record.id}
-                                className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
-                                title={recordRow.line.text}
-                              >
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="truncate">{recordRow.line.dateText}</span>
-                                  <span className="font-semibold whitespace-nowrap">
-                                    {recordRow.line.amountText}
-                                  </span>
-                                </div>
-                                <p className="truncate">{recordRow.line.comment}</p>
-                                {!recordRow.record.statementId && !recordRow.record.date ? (
-                                  <div className="flex flex-wrap gap-1 pt-1">
-                                    {onMarkFinancialRecordPaid ? (
-                                      <Button
-                                        type="button"
-                                        onClick={() =>
-                                          openMarkRecordPaidPrompt(recordRow.record.id)
-                                        }
-                                        variant="quiet"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                      >
-                                        Проставить оплату
-                                      </Button>
-                                    ) : null}
-                                    {onDeleteFinancialRecord ? (
-                                      <Button
-                                        type="button"
-                                        onClick={() =>
-                                          onDeleteFinancialRecord(recordRow.record.id).catch(
-                                            () => undefined,
-                                          )
-                                        }
-                                        variant="quiet"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                      >
-                                        Удалить запись
-                                      </Button>
-                                    ) : null}
-                                  </div>
-                                ) : null}
-                              </div>
-                            ))}
-                          </div>
-                        ) : null}
-                      </td>
-                    </tr>
-                    {ledgerRows.slice(1).map((ledgerRow) => (
-                      <tr key={ledgerRow.payment.id} className={TABLE_ROW_CLASS}>
-                        <td className={TABLE_CELL_CLASS_COMPACT}>
-                          <div className="space-y-1">
-                            <div
-                              className={`flex items-center justify-between gap-2 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[ledgerRow.state]}`}
-                              title={ledgerRow.line.text}
-                            >
-                              <span className="truncate">{ledgerRow.line.dateText}</span>
-                              <span className="font-semibold whitespace-nowrap">
-                                {ledgerRow.line.amountText}
-                              </span>
-                            </div>
-                            <div className="flex flex-wrap gap-1">
-                              {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <Button
-                                  type="button"
-                                  onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                >
-                                  Проставить оплату
-                                </Button>
-                              )}
-                              {onDeletePayment && (
-                                <Button
-                                  type="button"
-                                  onClick={() =>
-                                    onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
-                                  }
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                  disabled={ledgerRow.payment.canDelete === false}
-                                  title={
-                                    ledgerRow.payment.canDelete === false
-                                      ? 'Сначала удалите оплаченные финансовые записи'
-                                      : 'Удалить платёж'
-                                  }
-                                >
-                                  Удалить платёж
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                        <td className={TABLE_CELL_CLASS_COMPACT}>
-                          {ledgerRow.records.length ? (
-                            <div className="space-y-1">
-                              {ledgerRow.records.map((recordRow) => (
-                                <div
-                                  key={recordRow.record.id}
-                                  className={`space-y-0.5 rounded-md px-2 py-1 text-[11px] ${POLICY_LEDGER_STATE_CLASS[recordRow.state]}`}
-                                  title={recordRow.line.text}
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="truncate">{recordRow.line.dateText}</span>
-                                    <span className="font-semibold whitespace-nowrap">
-                                      {recordRow.line.amountText}
-                                    </span>
-                                  </div>
-                                  <p className="truncate">{recordRow.line.comment}</p>
-                                  {!recordRow.record.statementId && !recordRow.record.date ? (
-                                    <div className="flex flex-wrap gap-1 pt-1">
-                                      {onMarkFinancialRecordPaid ? (
-                                        <Button
-                                          type="button"
-                                          onClick={() =>
-                                            openMarkRecordPaidPrompt(recordRow.record.id)
-                                          }
-                                          variant="quiet"
-                                          size="sm"
-                                          className="h-7 px-2 text-[11px]"
-                                        >
-                                          Проставить оплату
-                                        </Button>
-                                      ) : null}
-                                      {onDeleteFinancialRecord ? (
-                                        <Button
-                                          type="button"
-                                          onClick={() =>
-                                            onDeleteFinancialRecord(recordRow.record.id).catch(
-                                              () => undefined,
-                                            )
-                                          }
-                                          variant="quiet"
-                                          size="sm"
-                                          className="h-7 px-2 text-[11px]"
-                                        >
-                                          Удалить запись
-                                        </Button>
-                                      ) : null}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ))}
-                            </div>
-                          ) : null}
-                        </td>
-                      </tr>
-                    ))}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
-        </DataTableShell>
-      ) : (
-        <div className="app-panel-muted px-5 py-8 text-center text-sm text-slate-600">
-          <div className="mx-auto max-w-md space-y-3">
-            <p className="text-base font-semibold text-slate-900">
-              {isPoliciesLoading ? 'Загружаем полисы...' : 'Полисов по текущим условиям нет'}
-            </p>
-            <p>
-              {isPoliciesLoading
-                ? 'Список обновляется. Показатели и финансовые данные загружаются независимо.'
-                : 'Измените фильтры или обновите список, если данные должны быть доступны.'}
-            </p>
-            {!isPoliciesLoading && (
-              <Button type="button" onClick={handleRefreshPolicies} variant="quiet" size="sm">
-                Обновить
-              </Button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {policiesHasMore && onLoadMorePolicies && (
-        <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center">
-          <Button
-            type="button"
-            onClick={() => {
-              void onLoadMorePolicies();
-            }}
-            disabled={isLoadingMorePolicies}
-            variant="quiet"
-            size="sm"
-          >
-            {isLoadingMorePolicies ? 'Загрузка...' : 'Показать ещё'}
-          </Button>
-        </div>
-      )}
-      <PromptDialog
-        isOpen={Boolean(paymentToMarkPaid)}
-        title="Проставить дату оплаты"
-        label="Дата оплаты"
-        value={paymentPaidDate}
-        onChange={(value) => {
-          setPaymentPaidDate(value);
-          if (paymentPaidDateError) {
-            setPaymentPaidDateError(null);
-          }
-        }}
-        error={paymentPaidDateError}
-        confirmLabel="Продолжить"
-        onConfirm={() => {
-          void handleConfirmMarkPaid();
-        }}
-        onCancel={closeMarkPaidPrompt}
-        inputType="date"
+      <PoliciesFiltersPanel
+        kpi={kpi}
+        presetName={presetName}
+        presets={presets}
+        deletingPresetId={deletingPresetId}
+        filters={filters}
+        endDateFrom={endDateFrom}
+        endDateTo={endDateTo}
+        filterBarVersion={filterBarVersion}
+        customFilters={customFilters}
+        isDebouncePending={isDebouncePending}
+        kpiError={kpiError}
+        combinedPoliciesError={combinedPoliciesError}
+        onPresetNameChange={setPresetName}
+        onSavePreset={handleSavePreset}
+        onApplyPreset={handleApplyPreset}
+        onDeletePreset={handleDeletePreset}
+        onUpdateFilters={updateFilters}
+        onSetQuickEndPeriod={setQuickEndPeriod}
+        onRefreshPolicies={handleRefreshPolicies}
       />
-      <PromptDialog
-        isOpen={Boolean(recordToMarkPaidId)}
-        title="Проставить дату оплаты"
-        label="Дата оплаты"
-        value={recordPaidDate}
-        onChange={(value) => {
-          setRecordPaidDate(value);
-          if (recordPaidDateError) {
-            setRecordPaidDateError(null);
-          }
-        }}
-        error={recordPaidDateError}
-        confirmLabel="Продолжить"
-        onConfirm={() => {
-          void handleConfirmRecordMarkPaid();
-        }}
-        onCancel={closeMarkRecordPaidPrompt}
-        inputType="date"
+
+      <PoliciesTable
+        policies={policies}
+        paymentsByPolicyMap={paymentsByPolicyMap}
+        clientsById={clientsById}
+        clientDuplicateHints={clientDuplicateHints}
+        documentsByPolicyId={documentsByPolicyId}
+        openingClientId={openingClientId}
+        isPoliciesLoading={isPoliciesLoading}
+        onClientOpenById={onClientOpenById}
+        onClientFindSimilar={onClientFindSimilar}
+        onClientNormalizeName={onClientNormalizeName}
+        onDealSelect={onDealSelect}
+        onDealPreview={onDealPreview}
+        onOpenDeal={handleOpenDeal}
+        onLoadPolicyDocuments={loadPolicyDocuments}
+        onSetOpeningClientId={setOpeningClientId}
+        onRequestEditPolicy={onRequestEditPolicy}
+        onRequestMovePolicy={onMovePolicy ? setPolicyToMove : undefined}
+        onMarkPaymentPaid={onMarkPaymentPaid ? openMarkPaidPrompt : undefined}
+        onDeletePayment={onDeletePayment}
+        onMarkFinancialRecordPaid={onMarkFinancialRecordPaid ? openMarkRecordPaidPrompt : undefined}
+        onDeleteFinancialRecord={onDeleteFinancialRecord}
+        onRefreshPolicies={handleRefreshPolicies}
       />
-      <ConfirmDialogRenderer />
-      <PolicyMoveDialog
-        isOpen={Boolean(policyToMove)}
-        policy={policyToMove}
+
+      <PoliciesViewDialogs
+        policiesHasMore={policiesHasMore}
+        onLoadMorePolicies={onLoadMorePolicies}
+        isLoadingMorePolicies={isLoadingMorePolicies}
+        paymentToMarkPaid={paymentToMarkPaid}
+        paymentPaidDate={paymentPaidDate}
+        paymentPaidDateError={paymentPaidDateError}
+        recordToMarkPaidId={recordToMarkPaidId}
+        recordPaidDate={recordPaidDate}
+        recordPaidDateError={recordPaidDateError}
+        policyToMove={policyToMove}
         deals={deals}
-        isSubmitting={isMovingPolicy}
-        onCancel={() => setPolicyToMove(null)}
-        onConfirm={handleConfirmMovePolicy}
+        isMovingPolicy={isMovingPolicy}
+        ConfirmDialogRenderer={ConfirmDialogRenderer}
+        onPaymentPaidDateChange={setPaymentPaidDate}
+        onClearPaymentPaidDateError={() => setPaymentPaidDateError(null)}
+        onConfirmMarkPaid={handleConfirmMarkPaid}
+        onCancelMarkPaid={closeMarkPaidPrompt}
+        onRecordPaidDateChange={setRecordPaidDate}
+        onClearRecordPaidDateError={() => setRecordPaidDateError(null)}
+        onConfirmRecordMarkPaid={handleConfirmRecordMarkPaid}
+        onCancelRecordMarkPaid={closeMarkRecordPaidPrompt}
+        onCancelMovePolicy={() => setPolicyToMove(null)}
+        onConfirmMovePolicy={handleConfirmMovePolicy}
       />
     </section>
   );

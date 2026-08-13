@@ -120,6 +120,14 @@
 - `src/components/views/commissions/hooks/useCommissionsRows.ts`
 - `src/components/views/commissions/hooks/useCommissionsViewModel.ts`
 
+## Декомпозиция orchestration-экранов
+
+- `AppContent`, dashboard, настройки, база знаний и форма полиса разделены на entry-компоненты, controller-hooks, presentation-секции и pure helpers.
+- Сделка, файлы, полисы сделки и список сделок используют отдельные view-model/controller-слои; внешние props сохранены.
+- Списки полисов и комиссий разделены на фильтры, таблицы, строки, диалоги и controller-hooks.
+- Целевые entry-компоненты укладываются в 500 значимых строк, leaf TSX — в 700; пороги закреплены ESLint `max-lines` как предупреждения.
+- Dashboard calculations покрывают диапазоны дат, календарь, серии графиков и финансовую матрицу. Подготовка payload формы полиса остаётся в типизированном controller-hook и проверяется view-тестами формы.
+
 ## Обновления (2026-02-16)
 
 - Убран `window.prompt` из закрытия сделки; теперь используется `PromptDialog`.

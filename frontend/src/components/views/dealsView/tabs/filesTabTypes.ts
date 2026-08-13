@@ -1,0 +1,41 @@
+import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
+
+export interface FilesTabProps {
+  selectedDeal: Deal | null;
+  isDriveLoading: boolean;
+  loadDriveFiles: () => Promise<void>;
+  onUploadDriveFile: (file: File) => Promise<void>;
+  isSelectedDealDeleted: boolean;
+  selectedDriveFileIds: string[];
+  toggleDriveFileSelection: (fileId: string) => void;
+  handleRecognizePolicies: () => Promise<void>;
+  isRecognizing: boolean;
+  recognitionResults: PolicyRecognitionResult[];
+  recognitionMessage: string | null;
+  isTrashing: boolean;
+  trashMessage: string | null;
+  handleTrashSelectedFiles: () => Promise<void>;
+  handleTrashDriveFile: (file: DriveFile) => Promise<void>;
+  isDownloading: boolean;
+  downloadMessage: string | null;
+  handleDownloadDriveFiles: (fileIds?: string[]) => Promise<void>;
+  getDriveFileBlob: (fileId: string) => Promise<Blob>;
+  driveError: string | null;
+  sortedDriveFiles: DriveFile[];
+  expandedFolderIds: Set<string>;
+  toggleFolderExpanded: (folderId: string) => void;
+  isFolderLoading: (folderId: string) => boolean;
+  getDriveFileDepth: (fileId: string) => number;
+  canRecognizeSelectedFiles: boolean;
+  driveSortDirection: 'asc' | 'desc';
+  toggleDriveSortDirection: () => void;
+  isRenaming: boolean;
+  renameMessage: string | null;
+  handleRenameDriveFile: (fileId: string, name: string) => Promise<void>;
+  isCreatingMailbox: boolean;
+  isCheckingMailbox: boolean;
+  mailboxActionError: string | null;
+  mailboxActionSuccess: string | null;
+  onCreateMailbox: () => Promise<void>;
+  onCheckMailbox: () => Promise<void>;
+}

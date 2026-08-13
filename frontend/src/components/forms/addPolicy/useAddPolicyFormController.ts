@@ -1,0 +1,858 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+
+import {
+  fetchInsuranceCompanies,
+  fetchInsuranceTypes,
+  fetchVehicleBrands,
+  fetchVehicleModels,
+} from '../../../api';
+import { useClientLookup } from '../../../hooks/useClientLookup';
+import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../types';
+import { formatErrorMessage } from '../../../utils/formatErrorMessage';
+import {
+  buildCommissionIncomeNote,
+  resolveSalesChannelName,
+  shouldAutofillCommissionNote,
+} from '../../../utils/financialRecordNotes';
+import { buildPaymentIssuesByIndex, countPaymentIssues } from './paymentIssues';
+import { getFirstScheduledPaymentEntry, sortPaymentDraftEntries } from './paymentDraftOrdering';
+import {
+  buildDefaultPaymentExpenses,
+  buildInitialPolicyFormSnapshot,
+  buildPolicyFormSnapshot,
+} from './policyFormState';
+import type { FinancialRecordDraft } from './types';
+import {
+  createEmptyRecord,
+  createPaymentWithDefaultIncome,
+  type PaymentDraft,
+  type PolicyFormValues,
+} from './types';
+
+export interface AddPolicyFormProps {
+  onSubmit: (values: PolicyFormValues) => Promise<void>;
+  onCancel: () => void;
+  salesChannels: SalesChannel[];
+  initialValues?: PolicyFormValues;
+  isEditing?: boolean;
+  initialInsuranceCompanyName?: string;
+  initialInsuranceTypeName?: string;
+  defaultCounterparty?: string;
+  executorName?: string | null;
+  clients: Client[];
+  onRequestAddClient: () => void;
+  onDirtyChange?: (isDirty: boolean) => void;
+}
+
+const MAX_CLIENT_SUGGESTIONS = 5;
+const VIN_REGEX = /^[A-Za-z0-9]{17}$/;
+const normalizeTypeForComparison = (value: string) =>
+  value
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]/gu, '')
+    .trim();
+const isCascoTypeName = (value?: string | null) => {
+  const normalized = normalizeTypeForComparison(value ?? '');
+  return normalized.includes('каско') || normalized.includes('casco');
+};
+
+const createPaymentDraftWithDefaults = ({
+  incomeNote,
+  defaultCounterparty,
+  executorName,
+}: {
+  incomeNote: string;
+  defaultCounterparty?: string;
+  executorName?: string | null;
+}): PaymentDraft => ({
+  ...createPaymentWithDefaultIncome(incomeNote),
+  expenses: buildDefaultPaymentExpenses(defaultCounterparty, executorName),
+});
+
+export const useAddPolicyFormController = ({
+  onSubmit,
+  onCancel,
+  salesChannels,
+  initialValues,
+  isEditing = false,
+  initialInsuranceCompanyName,
+  initialInsuranceTypeName,
+  defaultCounterparty,
+  executorName,
+  clients,
+  onRequestAddClient,
+  onDirtyChange,
+}: AddPolicyFormProps) => {
+  const [number, setNumber] = useState('');
+  const [insuranceCompanyId, setInsuranceCompanyId] = useState('');
+  const [insuranceTypeId, setInsuranceTypeId] = useState('');
+  const [isVehicle, setIsVehicle] = useState(false);
+  const [brand, setBrand] = useState('');
+  const [model, setModel] = useState('');
+  const [vin, setVin] = useState('');
+  const [deductible, setDeductible] = useState('0');
+  const [officialDealer, setOfficialDealer] = useState<boolean | null>(null);
+  const [gap, setGap] = useState<boolean | null>(null);
+  const [counterparty, setCounterparty] = useState('');
+  const [note, setNote] = useState('');
+  const [counterpartyTouched, setCounterpartyTouched] = useState(false);
+  const [salesChannelId, setSalesChannelId] = useState('');
+  const salesChannelName = useMemo(
+    () => resolveSalesChannelName(salesChannels, salesChannelId),
+    [salesChannels, salesChannelId],
+  );
+  const commissionNote = useMemo(
+    () => buildCommissionIncomeNote(salesChannelName),
+    [salesChannelName],
+  );
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [policyClientId, setPolicyClientId] = useState('');
+  const [payments, setPayments] = useState<PaymentDraft[]>(() => [
+    createPaymentDraftWithDefaults({
+      incomeNote: buildCommissionIncomeNote(),
+      defaultCounterparty,
+      executorName,
+    }),
+  ]);
+  const [expandedPaymentIndex, setExpandedPaymentIndex] = useState<number | null>(0);
+  const [clientQuery, setClientQuery] = useState('');
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const clientCandidates = useClientLookup(clientQuery, clients);
+  const filteredClients = useMemo(() => {
+    const normalizedQuery = clientQuery.trim().toLowerCase();
+    const candidates = normalizedQuery
+      ? clientCandidates.filter((client) => client.name.toLowerCase().includes(normalizedQuery))
+      : clientCandidates;
+    return candidates.slice(0, MAX_CLIENT_SUGGESTIONS);
+  }, [clientCandidates, clientQuery]);
+
+  useEffect(() => {
+    setPayments((prev) =>
+      prev.map((payment) => ({
+        ...payment,
+        incomes: payment.incomes.map((income) =>
+          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
+        ),
+      })),
+    );
+  }, [commissionNote]);
+
+  const resolveClientFromQuery = () => {
+    const query = clientQuery.trim().toLowerCase();
+    if (!query) {
+      return null;
+    }
+    return clientCandidates.find((client) => client.name.toLowerCase() === query) ?? null;
+  };
+
+  const handleClientSelect = (client: Client) => {
+    setPolicyClientId(client.id);
+    setClientQuery(client.name);
+    setShowClientSuggestions(false);
+  };
+  const [hasManualEndDate, setHasManualEndDate] = useState(false);
+  const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
+  const [types, setTypes] = useState<InsuranceType[]>([]);
+  const selectedInsuranceType = useMemo(
+    () => types.find((type) => type.id === insuranceTypeId),
+    [insuranceTypeId, types],
+  );
+  const shouldShowCascoFields = isCascoTypeName(
+    selectedInsuranceType?.name || initialInsuranceTypeName,
+  );
+  const [vehicleBrands, setVehicleBrands] = useState<string[]>([]);
+  const [vehicleModels, setVehicleModels] = useState<string[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(true);
+  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setSubmitting] = useState(false);
+  const submitLabel = initialValues ? 'Сохранить полис' : 'Создать полис';
+  const steps = [
+    { title: 'Полис', description: 'Номер, страховая и тип' },
+    { title: 'Платежи и сроки', description: 'График и даты действия' },
+    { title: 'Контрагенты и финансы', description: 'Доходы, расходы и партнёры' },
+  ];
+  const [currentStep, setCurrentStep] = useState(1);
+  const totalSteps = steps.length;
+  const orderedPaymentEntries = useMemo(() => sortPaymentDraftEntries(payments), [payments]);
+  const firstScheduledPaymentEntry = useMemo(
+    () => getFirstScheduledPaymentEntry(payments),
+    [payments],
+  );
+  const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const paymentIssuesByIndex = useMemo(
+    () =>
+      buildPaymentIssuesByIndex({
+        paymentEntries: orderedPaymentEntries,
+        startDate,
+        endDate,
+        todayDate,
+      }),
+    [orderedPaymentEntries, startDate, endDate, todayDate],
+  );
+  const paymentErrorsCount = useMemo(
+    () => countPaymentIssues(paymentIssuesByIndex, 'error'),
+    [paymentIssuesByIndex],
+  );
+  const paymentWarningsCount = useMemo(
+    () => countPaymentIssues(paymentIssuesByIndex, 'warning'),
+    [paymentIssuesByIndex],
+  );
+  const currentSnapshot = useMemo(
+    () =>
+      buildPolicyFormSnapshot({
+        number,
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand,
+        model,
+        vin,
+        deductible,
+        officialDealer,
+        gap,
+        counterparty,
+        note,
+        salesChannelId,
+        startDate,
+        endDate,
+        policyClientId,
+        clientQuery,
+        payments,
+      }),
+    [
+      number,
+      insuranceCompanyId,
+      insuranceTypeId,
+      isVehicle,
+      brand,
+      model,
+      vin,
+      deductible,
+      officialDealer,
+      gap,
+      counterparty,
+      note,
+      salesChannelId,
+      startDate,
+      endDate,
+      policyClientId,
+      clientQuery,
+      payments,
+    ],
+  );
+  const baselineSnapshot = useMemo(
+    () =>
+      buildInitialPolicyFormSnapshot({
+        initialValues,
+        isEditing,
+        defaultCounterparty,
+        executorName,
+      }),
+    [defaultCounterparty, executorName, initialValues, isEditing],
+  );
+  const initialFormState = useMemo(
+    () =>
+      JSON.parse(baselineSnapshot) as {
+        number: string;
+        insuranceCompanyId: string;
+        insuranceTypeId: string;
+        isVehicle: boolean;
+        brand: string;
+        model: string;
+        vin: string;
+        deductible: string;
+        officialDealer: boolean | null;
+        gap: boolean | null;
+        counterparty: string;
+        note: string;
+        salesChannelId: string;
+        startDate: string;
+        endDate: string;
+        policyClientId: string;
+        clientQuery: string;
+        payments: PaymentDraft[];
+      },
+    [baselineSnapshot],
+  );
+  const [isDirtyReady, setIsDirtyReady] = useState(false);
+  const isDirty = isDirtyReady && currentSnapshot !== baselineSnapshot;
+
+  useEffect(() => {
+    setIsDirtyReady(false);
+  }, [baselineSnapshot]);
+
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setIsDirtyReady(true);
+    });
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [baselineSnapshot, currentSnapshot]);
+
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setLoadingOptions(true);
+    Promise.all([fetchInsuranceCompanies(), fetchInsuranceTypes()])
+      .then(([companyList, typeList]) => {
+        if (!isMounted) return;
+        setCompanies(companyList);
+        setTypes(typeList);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setOptionsError(
+          'Не удалось загрузить справочники страховых компаний и типов. Обновите страницу и попробуйте снова.',
+        );
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setLoadingOptions(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    setNumber(initialFormState.number || '');
+    setInsuranceCompanyId(initialFormState.insuranceCompanyId || '');
+    setInsuranceTypeId(initialFormState.insuranceTypeId || '');
+    setIsVehicle(initialFormState.isVehicle);
+    setBrand(initialFormState.brand || '');
+    setModel(initialFormState.model || '');
+    setVin(initialFormState.vin || '');
+    setDeductible(initialFormState.deductible || '0');
+    setOfficialDealer(initialFormState.officialDealer ?? null);
+    setGap(initialFormState.gap ?? null);
+    setCounterparty(initialFormState.counterparty || '');
+    setNote(initialFormState.note || '');
+    setSalesChannelId(initialFormState.salesChannelId || '');
+    setStartDate(initialFormState.startDate || '');
+    setEndDate(initialFormState.endDate || '');
+    setHasManualEndDate(Boolean(initialFormState.endDate));
+    setPayments(initialFormState.payments ?? []);
+    setCounterpartyTouched(Boolean(initialFormState.counterparty));
+    setPolicyClientId(initialFormState.policyClientId || '');
+    setClientQuery(initialFormState.clientQuery || '');
+    setCurrentStep(1);
+  }, [initialFormState]);
+
+  useEffect(() => {
+    if (initialValues) {
+      return;
+    }
+    if (!defaultCounterparty || counterpartyTouched) {
+      return;
+    }
+    setCounterparty(defaultCounterparty);
+  }, [defaultCounterparty, counterpartyTouched, initialValues]);
+
+  useEffect(() => {
+    setExpandedPaymentIndex((prev) => {
+      if (!orderedPaymentEntries.length) {
+        return null;
+      }
+
+      if (prev == null || !orderedPaymentEntries.some((entry) => entry.sourceIndex === prev)) {
+        return orderedPaymentEntries[0].sourceIndex;
+      }
+
+      return prev;
+    });
+  }, [orderedPaymentEntries]);
+
+  useEffect(() => {
+    if (!initialInsuranceCompanyName || !companies.length) {
+      return;
+    }
+    const match = companies.find(
+      (company) => company.name.toLowerCase() === initialInsuranceCompanyName.toLowerCase(),
+    );
+    if (match) {
+      setInsuranceCompanyId(match.id);
+    }
+  }, [initialInsuranceCompanyName, companies]);
+
+  useEffect(() => {
+    if (!initialInsuranceTypeName || !types.length) {
+      return;
+    }
+    const normalizedRecognized = normalizeTypeForComparison(initialInsuranceTypeName);
+    if (!normalizedRecognized) {
+      return;
+    }
+    const match = types.find(
+      (type) => normalizeTypeForComparison(type.name) === normalizedRecognized,
+    );
+    if (match) {
+      setInsuranceTypeId(match.id);
+    }
+  }, [initialInsuranceTypeName, types]);
+
+  useEffect(() => {
+    if (!insuranceTypeId || !selectedInsuranceType || shouldShowCascoFields) {
+      return;
+    }
+    setDeductible('0');
+    setOfficialDealer(null);
+    setGap(null);
+  }, [insuranceTypeId, selectedInsuranceType, shouldShowCascoFields]);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchVehicleBrands()
+      .then((brands) => {
+        if (!isMounted) return;
+        setVehicleBrands(brands);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setOptionsError(
+          'Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.',
+        );
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchVehicleModels(brand || undefined)
+      .then((models) => {
+        if (!isMounted) return;
+        setVehicleModels(models);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setOptionsError(
+          'Не удалось загрузить справочники марок и моделей. Попробуйте обновить страницу.',
+        );
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [brand]);
+
+  const getDefaultEndDate = (value: string) => {
+    if (!value) {
+      return '';
+    }
+    const parsedDate = new Date(value);
+    if (Number.isNaN(parsedDate.getTime())) {
+      return '';
+    }
+    const nextDate = new Date(parsedDate);
+    nextDate.setFullYear(nextDate.getFullYear() + 1);
+    nextDate.setDate(nextDate.getDate() - 1);
+    return nextDate.toISOString().split('T')[0];
+  };
+
+  const handleStartDateChange = (value: string) => {
+    const previousStart = startDate;
+    const firstPaymentEntry = orderedPaymentEntries[0];
+    const previousScheduledDate = firstPaymentEntry?.payment.scheduledDate ?? '';
+    const shouldUpdateFirstPayment =
+      !previousScheduledDate || previousScheduledDate === previousStart;
+    const indexToUpdate = firstPaymentEntry?.sourceIndex ?? 0;
+
+    setStartDate(value);
+
+    if (payments.length && shouldUpdateFirstPayment) {
+      setPayments((prev) => {
+        if (!prev.length || !prev[indexToUpdate]) {
+          return prev;
+        }
+        const updated = [...prev];
+        updated[indexToUpdate] = {
+          ...updated[indexToUpdate],
+          scheduledDate: value,
+        };
+        return updated;
+      });
+    }
+
+    if (!value || hasManualEndDate) {
+      return;
+    }
+    const defaultEnd = getDefaultEndDate(value);
+    if (defaultEnd) {
+      setEndDate(defaultEnd);
+      setHasManualEndDate(false);
+    }
+  };
+
+  const handleEndDateChange = (value: string) => {
+    setEndDate(value);
+    setHasManualEndDate(Boolean(value));
+  };
+
+  const computedDefaultEndDate = startDate ? getDefaultEndDate(startDate) : '';
+  const policyDurationWarning =
+    startDate && endDate && computedDefaultEndDate && endDate !== computedDefaultEndDate
+      ? 'Срок полиса отличается от стандартного годового периода. Уточните даты, если это ожидаемо.'
+      : null;
+  const firstPaymentDateWarning =
+    startDate &&
+    firstScheduledPaymentEntry &&
+    firstScheduledPaymentEntry.payment.scheduledDate &&
+    firstScheduledPaymentEntry.payment.scheduledDate !== startDate
+      ? 'Дата первого платежа не совпадает с началом полиса. Проверьте расписание.'
+      : null;
+
+  const appendExpenseToAllPayments = useCallback((note: string) => {
+    const normalizedNote = note.trim();
+    if (!normalizedNote) {
+      return;
+    }
+
+    setPayments((prev) =>
+      prev.map((payment) => {
+        const alreadyHasNote = payment.expenses.some(
+          (expense) => (expense.note ?? '').trim() === normalizedNote,
+        );
+        if (alreadyHasNote) {
+          return payment;
+        }
+        return {
+          ...payment,
+          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
+        };
+      }),
+    );
+  }, []);
+
+  const handleAddCounterpartyExpenses = () => {
+    const name = counterparty.trim();
+    if (!name) {
+      return;
+    }
+    appendExpenseToAllPayments(`Расход контрагенту ${name}`);
+  };
+
+  const handleAddExecutorExpenses = () => {
+    const name = executorName?.trim();
+    if (!name) {
+      return;
+    }
+    appendExpenseToAllPayments(`Расход исполнителю ${name}`);
+  };
+
+  const handleAddPayment = () => {
+    setPayments((prev) => [
+      ...prev,
+      createPaymentDraftWithDefaults({
+        incomeNote: commissionNote,
+        defaultCounterparty,
+        executorName,
+      }),
+    ]);
+  };
+
+  const handleRemovePayment = (index: number) => {
+    setPayments((prev) => prev.filter((_, idx) => idx !== index));
+  };
+
+  const togglePaymentDetails = (index: number) => {
+    setExpandedPaymentIndex((prev) => (prev === index ? null : index));
+  };
+
+  const handleNextStep = () => {
+    if (currentStep === 1) {
+      if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
+        setError('Заполните номер полиса, страховую компанию и тип страхования.');
+        return;
+      }
+    }
+    if (currentStep === 2) {
+      if (!payments.length) {
+        setError('Добавьте хотя бы один платёж, чтобы связать финансовые данные.');
+        return;
+      }
+    }
+    setError(null);
+    setCurrentStep((prev) => Math.min(totalSteps, prev + 1));
+  };
+
+  const handlePreviousStep = () => {
+    setError(null);
+    finalSubmitIntent.current = false;
+    setCurrentStep((prev) => Math.max(1, prev - 1));
+  };
+
+  const finalSubmitIntent = useRef(false);
+
+  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key !== 'Enter' || currentStep !== totalSteps) {
+      return;
+    }
+    const target = event.target as HTMLElement;
+    if (target instanceof HTMLButtonElement) {
+      return;
+    }
+    event.preventDefault();
+  };
+
+  const markFinalSubmitIntent = () => {
+    finalSubmitIntent.current = true;
+  };
+
+  const updatePaymentField = (
+    index: number,
+    field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
+    value: string,
+  ) => {
+    setPayments((prev) =>
+      prev.map((payment, idx) =>
+        idx === index
+          ? {
+              ...payment,
+              [field]: value,
+            }
+          : payment,
+      ),
+    );
+  };
+
+  const addRecord = (paymentIndex: number, type: 'incomes' | 'expenses') => {
+    setPayments((prev) =>
+      prev.map((payment, idx) =>
+        idx === paymentIndex
+          ? {
+              ...payment,
+              [type]: [
+                ...payment[type],
+                type === 'expenses'
+                  ? createEmptyRecord('1')
+                  : createEmptyRecord('0', commissionNote),
+              ],
+            }
+          : payment,
+      ),
+    );
+  };
+
+  const updateRecordField = (
+    paymentIndex: number,
+    type: 'incomes' | 'expenses',
+    recordIndex: number,
+    field: keyof FinancialRecordDraft,
+    value: string,
+  ) => {
+    setPayments((prev) =>
+      prev.map((payment, idx) => {
+        if (idx !== paymentIndex) return payment;
+        const updatedRecords = payment[type].map((record, recIdx) =>
+          recIdx === recordIndex
+            ? {
+                ...record,
+                [field]: value,
+              }
+            : record,
+        );
+        return {
+          ...payment,
+          [type]: updatedRecords,
+        };
+      }),
+    );
+  };
+
+  const removeRecord = (
+    paymentIndex: number,
+    type: 'incomes' | 'expenses',
+    recordIndex: number,
+  ) => {
+    setPayments((prev) =>
+      prev.map((payment, idx) =>
+        idx === paymentIndex
+          ? {
+              ...payment,
+              [type]: payment[type].filter((_, recIdx) => recIdx !== recordIndex),
+            }
+          : payment,
+      ),
+    );
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (currentStep < totalSteps) {
+      finalSubmitIntent.current = false;
+      handleNextStep();
+      return;
+    }
+    if (!finalSubmitIntent.current) {
+      return;
+    }
+    finalSubmitIntent.current = false;
+    if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
+      setError('Заполните номер полиса, страховую компанию и тип страхования.');
+      return;
+    }
+    if (paymentErrorsCount > 0) {
+      setError('Исправьте ошибки в платежах перед сохранением полиса.');
+      return;
+    }
+
+    const normalizedVin = vin.trim();
+
+    if (isVehicle && !normalizedVin) {
+      setError('Укажите VIN, если полис оформлен на автомобиль.');
+      return;
+    }
+
+    if (normalizedVin && !VIN_REGEX.test(normalizedVin)) {
+      setError('VIN должен состоять из 17 латинских букв и цифр.');
+      return;
+    }
+    const normalizedDeductible = deductible.trim() ? Number(deductible) : 0;
+    if (
+      shouldShowCascoFields &&
+      (!Number.isFinite(normalizedDeductible) || normalizedDeductible < 0)
+    ) {
+      setError('Франшиза должна быть неотрицательным числом.');
+      return;
+    }
+
+    setError(null);
+    setSubmitting(true);
+
+    try {
+      const resolvedClient = resolveClientFromQuery();
+      const selectedClientId = resolvedClient?.id || policyClientId;
+      const selectedClientName =
+        resolvedClient?.name ||
+        (selectedClientId
+          ? clients.find((client) => client.id === selectedClientId)?.name
+          : undefined) ||
+        clientQuery.trim() ||
+        undefined;
+
+      await onSubmit({
+        number: number.trim(),
+        insuranceCompanyId,
+        insuranceTypeId,
+        isVehicle,
+        brand: isVehicle ? brand.trim() || undefined : undefined,
+        model: isVehicle ? model.trim() || undefined : undefined,
+        vin: isVehicle ? normalizedVin : undefined,
+        deductible: shouldShowCascoFields ? normalizedDeductible : 0,
+        officialDealer: shouldShowCascoFields ? officialDealer : null,
+        gap: shouldShowCascoFields ? gap : null,
+        counterparty: counterparty.trim() || undefined,
+        note: note.trim() || undefined,
+        salesChannelId: salesChannelId || undefined,
+        clientId: selectedClientId || undefined,
+        clientName: selectedClientName,
+        startDate: startDate || null,
+        endDate: endDate || null,
+        payments,
+      });
+    } catch (err) {
+      setError(formatErrorMessage(err, 'Не удалось сохранить полис. Попробуйте позже.'));
+      throw err;
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return {
+    number,
+    setNumber,
+    insuranceCompanyId,
+    setInsuranceCompanyId,
+    insuranceTypeId,
+    setInsuranceTypeId,
+    isVehicle,
+    setIsVehicle,
+    brand,
+    setBrand,
+    model,
+    setModel,
+    vin,
+    setVin,
+    deductible,
+    setDeductible,
+    officialDealer,
+    setOfficialDealer,
+    gap,
+    setGap,
+    counterparty,
+    setCounterparty,
+    setCounterpartyTouched,
+    note,
+    setNote,
+    salesChannelId,
+    setSalesChannelId,
+    salesChannelName,
+    commissionNote,
+    startDate,
+    endDate,
+    policyClientId,
+    setPolicyClientId,
+    payments,
+    expandedPaymentIndex,
+    setExpandedPaymentIndex,
+    clientQuery,
+    setClientQuery,
+    showClientSuggestions,
+    setShowClientSuggestions,
+    filteredClients,
+    resolveClientFromQuery,
+    handleClientSelect,
+    companies,
+    types,
+    selectedInsuranceType,
+    shouldShowCascoFields,
+    vehicleBrands,
+    vehicleModels,
+    loadingOptions,
+    optionsError,
+    error,
+    isSubmitting,
+    submitLabel,
+    steps,
+    currentStep,
+    setCurrentStep,
+    totalSteps,
+    orderedPaymentEntries,
+    firstScheduledPaymentEntry,
+    todayDate,
+    paymentIssuesByIndex,
+    paymentErrorsCount,
+    paymentWarningsCount,
+    computedDefaultEndDate,
+    policyDurationWarning,
+    firstPaymentDateWarning,
+    handleStartDateChange,
+    handleEndDateChange,
+    handleAddCounterpartyExpenses,
+    handleAddExecutorExpenses,
+    handleAddPayment,
+    handleRemovePayment,
+    togglePaymentDetails,
+    handleNextStep,
+    handlePreviousStep,
+    handleFormKeyDown,
+    markFinalSubmitIntent,
+    updatePaymentField,
+    addRecord,
+    updateRecordField,
+    removeRecord,
+    handleSubmit,
+    onCancel,
+    onRequestAddClient,
+    isEditing,
+    salesChannels,
+    isDirty,
+    executorName,
+  };
+};

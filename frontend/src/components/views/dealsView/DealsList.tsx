@@ -1,5 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { Client, ClientDuplicateHint, Deal, User } from '../../../types';
+import React from 'react';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 import { Button } from '../../common/Button';
 
@@ -9,100 +8,14 @@ import { DataTableShell } from '../../common/table/DataTableShell';
 import { EmptyTableState } from '../../common/table/EmptyTableState';
 import { TABLE_CELL_CLASS_LG, TABLE_THEAD_CLASS } from '../../common/tableStyles';
 
-import { formatDate, formatDeletedAt, getDeadlineTone, getUserDisplayName } from './helpers';
-
-type DealsSortKey = 'deadline' | 'nextContact';
-type DealsSortDirection = 'asc' | 'desc' | null;
-type DeadlineBadge = {
-  label: string;
-  className: string;
-};
-
-const DEALS_LIST_HEIGHT_STORAGE_KEY = 'crm:deals:list-height';
-const DEFAULT_DEALS_LIST_HEIGHT = '26vh';
-const MIN_DEALS_LIST_HEIGHT_PX = 220;
-const MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO = 0.7;
-
-const getMaxDealsListHeight = () => {
-  if (typeof window === 'undefined') {
-    return 760;
-  }
-  return Math.max(
-    MIN_DEALS_LIST_HEIGHT_PX,
-    Math.round(window.innerHeight * MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO),
-  );
-};
-
-const clampDealsListHeight = (height: number) =>
-  Math.min(Math.max(Math.round(height), MIN_DEALS_LIST_HEIGHT_PX), getMaxDealsListHeight());
-
-const useIsDesktopDealsLayout = () => {
-  const [isDesktop, setIsDesktop] = useState(() =>
-    typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-      ? window.matchMedia('(min-width: 768px)').matches
-      : true,
-  );
-
-  useEffect(() => {
-    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-      return;
-    }
-    const media = window.matchMedia('(min-width: 768px)');
-    const update = () => setIsDesktop(media.matches);
-    update();
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, []);
-
-  return isDesktop;
-};
-
-const parseStoredDealsListHeight = (raw: string | null) => {
-  if (!raw) {
-    return null;
-  }
-  if (!/^\d+px$/.test(raw)) {
-    return null;
-  }
-  const parsed = Number.parseInt(raw, 10);
-  if (!Number.isFinite(parsed)) {
-    return null;
-  }
-  return `${clampDealsListHeight(parsed)}px`;
-};
-
-interface DealsListProps {
-  sortedDeals: Deal[];
-  selectedDeal: Deal | null;
-  dealRowFocusRequest?: { dealId: string; nonce: number } | null;
-  dealSearch: string;
-  onDealSearchChange: (value: string) => void;
-  onDealSearchSubmit: (value?: string) => void;
-  onRefreshDealsList?: () => Promise<void>;
-  dealExecutorFilter: string;
-  onDealExecutorFilterChange: (value: string) => void;
-  dealShowDeleted: boolean;
-  onDealShowDeletedChange: (value: boolean) => void;
-  dealShowClosed: boolean;
-  onDealShowClosedChange: (value: boolean) => void;
-  dealOrdering?: string;
-  onDealOrderingChange: (value: string | undefined) => void;
-  users: User[];
-  dealsHasMore: boolean;
-  dealsTotalCount: number;
-  isLoadingMoreDeals: boolean;
-  isRefreshingDealsList?: boolean;
-  onLoadMoreDeals: () => Promise<void>;
-  onSelectDeal: (dealId: string) => void;
-  onPinDeal: (dealId: string) => Promise<void>;
-  onUnpinDeal: (dealId: string) => Promise<void>;
-  currentUser: User | null;
-  isDealSelectionBlocked?: boolean;
-  clients?: Client[];
-  clientDuplicateHints?: Record<string, ClientDuplicateHint>;
-  onClientFindSimilar?: (client: Client) => void;
-  onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
-}
+import { DealsListHeader } from './DealsListHeader';
+import type { DealsListProps } from './dealsListTypes';
+import { formatDate, formatDeletedAt, getDeadlineTone, getDealDeadlineBadge } from './helpers';
+import {
+  MAX_DEALS_LIST_HEIGHT_VIEWPORT_RATIO,
+  MIN_DEALS_LIST_HEIGHT_PX,
+  useDealsListController,
+} from './hooks/useDealsListController';
 
 export const DealsList: React.FC<DealsListProps> = ({
   sortedDeals,
@@ -136,199 +49,26 @@ export const DealsList: React.FC<DealsListProps> = ({
   onClientFindSimilar,
   onClientNormalizeName,
 }) => {
-  const selectedRowRef = useRef<HTMLTableRowElement | null>(null);
-  const tableScrollRef = useRef<HTMLDivElement | null>(null);
-  const lastHandledFocusNonceRef = useRef<number | null>(null);
-  const [dealsListHeight, setDealsListHeight] = useState(DEFAULT_DEALS_LIST_HEIGHT);
-  const isDesktopLayout = useIsDesktopDealsLayout();
-
-  const selectedDealId = selectedDeal?.id ?? null;
-  const clientsById = React.useMemo(() => {
-    const map = new Map<string, Client>();
-    clients.forEach((client) => map.set(client.id, client));
-    return map;
-  }, [clients]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') {
-      return;
-    }
-    const storedHeight = parseStoredDealsListHeight(
-      window.localStorage.getItem(DEALS_LIST_HEIGHT_STORAGE_KEY),
-    );
-    if (storedHeight) {
-      setDealsListHeight(storedHeight);
-    }
-  }, []);
-
-  const saveDealsListHeight = useCallback((height: number) => {
-    const clampedHeight = clampDealsListHeight(height);
-    const nextHeight = `${clampedHeight}px`;
-    setDealsListHeight(nextHeight);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DEALS_LIST_HEIGHT_STORAGE_KEY, nextHeight);
-    }
-  }, []);
-
-  const handleResizePointerDown = useCallback(
-    (event: React.PointerEvent<HTMLButtonElement>) => {
-      if (!tableScrollRef.current) {
-        return;
-      }
-      event.preventDefault();
-      event.currentTarget.setPointerCapture?.(event.pointerId);
-
-      const startY = event.clientY;
-      const startHeight = tableScrollRef.current.getBoundingClientRect().height;
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        saveDealsListHeight(startHeight + moveEvent.clientY - startY);
-      };
-
-      const handlePointerUp = () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerUp);
-      };
-
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerUp, { once: true });
-    },
-    [saveDealsListHeight],
-  );
-
-  const handleResizeKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLButtonElement>) => {
-      if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) {
-        return;
-      }
-      event.preventDefault();
-      const currentHeight = tableScrollRef.current?.getBoundingClientRect().height ?? 0;
-      if (event.key === 'Home') {
-        saveDealsListHeight(MIN_DEALS_LIST_HEIGHT_PX);
-      } else if (event.key === 'End') {
-        saveDealsListHeight(getMaxDealsListHeight());
-      } else {
-        const step = event.shiftKey ? 48 : 16;
-        saveDealsListHeight(currentHeight + (event.key === 'ArrowDown' ? step : -step));
-      }
-    },
-    [saveDealsListHeight],
-  );
-
-  const getDeadlineBadge = (value?: string | null): DeadlineBadge => {
-    if (!value) {
-      return {
-        label: 'Нет срока',
-        className: 'bg-slate-100 text-slate-600 border-slate-200',
-      };
-    }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const deadline = new Date(value);
-    deadline.setHours(0, 0, 0, 0);
-    const diffDays = Math.ceil((deadline.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays < 0) {
-      return {
-        label: `Просрочено: ${formatDate(value)}`,
-        className: 'bg-rose-50 text-rose-700 border-rose-200',
-      };
-    }
-    if (diffDays <= 3) {
-      return {
-        label: `Скоро: ${formatDate(value)}`,
-        className: 'bg-orange-50 text-orange-700 border-orange-200',
-      };
-    }
-    return {
-      label: formatDate(value),
-      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-    };
-  };
-
-  useEffect(() => {
-    if (!selectedDealId || !selectedRowRef.current || !selectedRowRef.current.isConnected) {
-      return;
-    }
-    selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [selectedDealId]);
-
-  useEffect(() => {
-    if (!dealRowFocusRequest) {
-      return;
-    }
-    if (lastHandledFocusNonceRef.current === dealRowFocusRequest.nonce) {
-      return;
-    }
-    if (dealRowFocusRequest.dealId !== selectedDealId) {
-      return;
-    }
-    lastHandledFocusNonceRef.current = dealRowFocusRequest.nonce;
-    if (!selectedRowRef.current || !selectedRowRef.current.isConnected) {
-      return;
-    }
-    selectedRowRef.current.focus({ preventScroll: true });
-  }, [dealRowFocusRequest, selectedDealId]);
-
-  const getOrderingField = (key: DealsSortKey) =>
-    key === 'deadline' ? 'expected_close' : 'next_contact_date';
-
-  const getSortDirection = (key: DealsSortKey): DealsSortDirection => {
-    const field = getOrderingField(key);
-    if (dealOrdering === `-${field}`) {
-      return 'desc';
-    }
-    if (dealOrdering === field) {
-      return 'asc';
-    }
-    return null;
-  };
-
-  const toggleColumnSort = (key: DealsSortKey) => {
-    const field = getOrderingField(key);
-    const currentDirection = getSortDirection(key);
-    if (!currentDirection) {
-      onDealOrderingChange(field);
-      return;
-    }
-    if (currentDirection === 'asc') {
-      onDealOrderingChange(`-${field}`);
-      return;
-    }
-    onDealOrderingChange(undefined);
-  };
-
-  const getSortIndicator = (key: DealsSortKey) => {
-    const direction = getSortDirection(key);
-    if (!direction) {
-      return '↕';
-    }
-    return direction === 'asc' ? '↑' : '↓';
-  };
-
-  const getSortLabel = (key: DealsSortKey) => {
-    const direction = getSortDirection(key);
-    if (!direction) {
-      return 'не сортируется';
-    }
-    return direction === 'asc' ? 'по возрастанию' : 'по убыванию';
-  };
-
-  const getColumnTitleClass = (key: DealsSortKey) => {
-    const baseClass = 'text-[11px] font-semibold uppercase tracking-wide';
-    if (getSortDirection(key)) {
-      return `${baseClass} text-rose-600 underline decoration-rose-500 decoration-2 underline-offset-2`;
-    }
-    return `${baseClass} text-slate-900`;
-  };
-
-  const getAriaSort = (key: DealsSortKey): 'ascending' | 'descending' | 'none' => {
-    const direction = getSortDirection(key);
-    if (!direction) {
-      return 'none';
-    }
-    return direction === 'asc' ? 'ascending' : 'descending';
-  };
+  const {
+    clientsById,
+    dealsListHeight,
+    getAriaSort,
+    getColumnTitleClass,
+    getSortIndicator,
+    getSortLabel,
+    handleResizeKeyDown,
+    handleResizePointerDown,
+    isDesktopLayout,
+    selectedRowRef,
+    tableScrollRef,
+    toggleColumnSort,
+  } = useDealsListController({
+    selectedDeal,
+    dealRowFocusRequest,
+    dealOrdering,
+    onDealOrderingChange,
+    clients,
+  });
 
   const handleClientDealsCountClick = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -343,121 +83,23 @@ export const DealsList: React.FC<DealsListProps> = ({
 
   return (
     <>
-      <div className="bg-gradient-to-r from-slate-50 via-white to-blue-50/70 px-4 py-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-baseline lg:justify-between">
-          <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">Сделки</span>
-            <span className="text-sm text-slate-500 whitespace-nowrap">
-              Сделок всего {dealsTotalCount}, показано {sortedDeals.length}
-            </span>
-          </div>
-          <div className="w-full max-w-md">
-            <label htmlFor="dealSearch" className="sr-only">
-              Поиск по сделкам
-            </label>
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                onDealSearchSubmit();
-              }}
-              className="flex items-center gap-2"
-            >
-              <div className="relative flex-1">
-                <input
-                  id="dealSearch"
-                  type="text"
-                  value={dealSearch}
-                  onChange={(event) => onDealSearchChange(event.target.value)}
-                  placeholder="Поиск по сделкам"
-                  className="field field-input pr-10"
-                />
-                {dealSearch && (
-                  <Button
-                    type="button"
-                    onClick={() => onDealSearchSubmit('')}
-                    aria-label="Очистить поиск сделок"
-                    className="search-clear-btn"
-                  >
-                    ×
-                  </Button>
-                )}
-              </div>
-              <Button type="submit" variant="quiet" size="sm">
-                Найти
-              </Button>
-              <Button
-                type="button"
-                variant="quiet"
-                size="sm"
-                onClick={() => {
-                  void onRefreshDealsList?.();
-                }}
-                disabled={!onRefreshDealsList || isRefreshingDealsList}
-              >
-                {isRefreshingDealsList ? 'Обновляем...' : 'Обновить'}
-              </Button>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-b border-slate-200/80 bg-white px-4 py-4">
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <input
-              id="dealShowClosed"
-              type="checkbox"
-              checked={dealShowClosed}
-              onChange={(event) => onDealShowClosedChange(event.target.checked)}
-              className="check"
-            />
-            <label htmlFor="dealShowClosed" className="text-xs font-semibold text-slate-500">
-              Показать закрытые сделки
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <input
-              id="dealShowDeleted"
-              type="checkbox"
-              checked={dealShowDeleted}
-              onChange={(event) => onDealShowDeletedChange(event.target.checked)}
-              className="check"
-            />
-            <label htmlFor="dealShowDeleted" className="text-xs font-semibold text-slate-500">
-              Показать удалённые сделки
-            </label>
-          </div>
-
-          <div className="flex items-center gap-2 min-w-[220px]">
-            <label
-              htmlFor="dealExecutorFilter"
-              className="text-xs font-semibold text-slate-500 whitespace-nowrap"
-            >
-              Исполнитель
-            </label>
-            <select
-              id="dealExecutorFilter"
-              value={dealExecutorFilter}
-              onChange={(event) => onDealExecutorFilterChange(event.target.value)}
-              aria-label="Фильтр по исполнителю"
-              className="field field-select"
-            >
-              <option value="">Все</option>
-              {users.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {getUserDisplayName(user)}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        {isDealSelectionBlocked && (
-          <p className="mt-3 text-xs font-semibold text-rose-700">
-            Подтвердите продолжение учета времени, чтобы переключиться на другую сделку.
-          </p>
-        )}
-      </div>
+      <DealsListHeader
+        totalCount={dealsTotalCount}
+        visibleCount={sortedDeals.length}
+        search={dealSearch}
+        onSearchChange={onDealSearchChange}
+        onSearchSubmit={onDealSearchSubmit}
+        onRefresh={onRefreshDealsList}
+        isRefreshing={isRefreshingDealsList}
+        executorFilter={dealExecutorFilter}
+        onExecutorFilterChange={onDealExecutorFilterChange}
+        showDeleted={dealShowDeleted}
+        onShowDeletedChange={onDealShowDeletedChange}
+        showClosed={dealShowClosed}
+        onShowClosedChange={onDealShowClosedChange}
+        users={users}
+        isSelectionBlocked={isDealSelectionBlocked}
+      />
 
       <DataTableShell>
         {isDesktopLayout && (
@@ -521,7 +163,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                 {sortedDeals.length ? (
                   sortedDeals.map((deal) => {
                     const deadlineTone = getDeadlineTone(deal.expectedClose);
-                    const deadlineBadge = getDeadlineBadge(deal.expectedClose);
+                    const deadlineBadge = getDealDeadlineBadge(deal.expectedClose);
                     const isDeleted = Boolean(deal.deletedAt);
                     const deletedTextClass = isDeleted ? 'line-through decoration-rose-500/80' : '';
                     const isSelected = selectedDeal?.id === deal.id;
@@ -733,7 +375,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           <div className="divide-y divide-slate-200 bg-white">
             {sortedDeals.length ? (
               sortedDeals.map((deal) => {
-                const deadlineBadge = getDeadlineBadge(deal.expectedClose);
+                const deadlineBadge = getDealDeadlineBadge(deal.expectedClose);
                 const isSelected = selectedDeal?.id === deal.id;
                 const isPinned = Boolean(deal.isPinned);
                 const isDeleted = Boolean(deal.deletedAt);

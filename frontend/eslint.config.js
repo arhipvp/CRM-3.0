@@ -59,6 +59,46 @@ export default defineConfig([
     },
   },
   {
+    files: ['src/**/*.tsx'],
+    ignores: ['src/**/__tests__/**/*', 'src/**/*.test.*'],
+    rules: {
+      'max-lines': [
+        'warn',
+        {
+          max: 700,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
+  },
+  {
+    files: [
+      'src/AppContent.tsx',
+      'src/components/forms/AddPolicyForm.tsx',
+      'src/components/views/SellerDashboardView.tsx',
+      'src/components/views/PoliciesView.tsx',
+      'src/components/views/CommissionsView.tsx',
+      'src/components/views/SettingsView.tsx',
+      'src/components/views/KnowledgeDocumentsView.tsx',
+      'src/components/views/dealsView/DealDetailsPanel.tsx',
+      'src/components/views/dealsView/DealsList.tsx',
+      'src/components/views/dealsView/tabs/FilesTab.tsx',
+      'src/components/views/dealsView/tabs/PoliciesTab.tsx',
+      'src/components/views/commissions/RecordsTable.tsx',
+    ],
+    rules: {
+      'max-lines': [
+        'warn',
+        {
+          max: 500,
+          skipBlankLines: true,
+          skipComments: true,
+        },
+      ],
+    },
+  },
+  {
     files: FRONTEND_STYLE_STANDARD_FILES,
     rules: {
       '@typescript-eslint/consistent-type-definitions': ['error', 'interface'],
