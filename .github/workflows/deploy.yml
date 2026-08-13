@@ -178,11 +178,29 @@ jobs:
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
           echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate backend telegram_bot frontend nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate backend telegram_bot external_job_worker frontend nginx
 
           echo "MARK: after app compose up"
           echo "Running containers:"
           docker compose -f docker-compose.prod.yml --env-file .env.production ps
+
+          echo "Waiting for external job worker to start"
+          external_job_worker_running=false
+          for attempt in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{.State.Running}}' crm3-external-job-worker 2>/dev/null || true)" = "true" ]; then
+              external_job_worker_running=true
+              echo "External job worker is running."
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "${external_job_worker_running}" != "true" ]; then
+            echo "ERROR: external job worker did not reach running state within 30 seconds."
+            docker inspect -f 'status={{.State.Status}} exit_code={{.State.ExitCode}} oom_killed={{.State.OOMKilled}} restart_count={{.RestartCount}}' crm3-external-job-worker 2>/dev/null || true
+            echo "Inspect external job worker logs over SSH; they are omitted from CI output to avoid exposing sensitive external-service data."
+            exit 1
+          fi
 
           echo "Resolved images:"
           docker compose -f docker-compose.prod.yml --env-file .env.production config | awk '/^[[:space:]]*image:/{print $0}'
