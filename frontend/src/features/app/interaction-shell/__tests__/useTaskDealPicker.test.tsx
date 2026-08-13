@@ -48,7 +48,9 @@ describe('useTaskDealPicker', () => {
       'task-deal-recent',
     ]);
 
-    await act(async () => result.current.items[0].onSelect());
+    const remoteDealItem = result.current.items[0];
+    expect(remoteDealItem?.onSelect).toBeDefined();
+    await act(async () => remoteDealItem?.onSelect?.());
     expect(selectDealById).toHaveBeenCalledWith('remote');
     expect(setQuickTaskDealId).toHaveBeenCalledWith('remote');
   });
