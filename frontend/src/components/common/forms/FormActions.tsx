@@ -1,6 +1,7 @@
 import React from 'react';
 
 import { Button } from '../Button';
+import type { ButtonSize, ButtonVariant } from '../buttonClassName';
 
 export interface FormActionsProps {
   onCancel?: () => void;
@@ -12,6 +13,10 @@ export interface FormActionsProps {
   align?: 'end' | 'between';
   submitClassName?: string;
   cancelClassName?: string;
+  submitVariant?: ButtonVariant;
+  cancelVariant?: ButtonVariant;
+  submitSize?: ButtonSize;
+  cancelSize?: ButtonSize;
 }
 
 export const FormActions: React.FC<FormActionsProps> = ({
@@ -24,6 +29,10 @@ export const FormActions: React.FC<FormActionsProps> = ({
   align = 'end',
   submitClassName,
   cancelClassName,
+  submitVariant = 'primary',
+  cancelVariant = 'secondary',
+  submitSize = 'md',
+  cancelSize = 'md',
 }) => {
   const containerClassName =
     align === 'between'
@@ -36,7 +45,8 @@ export const FormActions: React.FC<FormActionsProps> = ({
         <Button
           onClick={onCancel}
           disabled={isSubmitting}
-          variant="secondary"
+          variant={cancelVariant}
+          size={cancelSize}
           className={cancelClassName}
         >
           {cancelLabel}
@@ -45,7 +55,8 @@ export const FormActions: React.FC<FormActionsProps> = ({
       <Button
         type="submit"
         disabled={isSubmitting || isSubmitDisabled}
-        variant="primary"
+        variant={submitVariant}
+        size={submitSize}
         isLoading={isSubmitting}
         loadingLabel={submittingLabel}
         className={submitClassName}

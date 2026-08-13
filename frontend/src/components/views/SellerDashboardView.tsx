@@ -1119,13 +1119,13 @@ export const SellerDashboardView: React.FC = () => {
               />
               Только ячейки с данными
             </label>
-            <button
+            <Button
               type="button"
               className="field field-input text-sm font-medium"
               onClick={resetFinancialControls}
             >
               Сбросить фильтры
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -1313,7 +1313,7 @@ export const SellerDashboardView: React.FC = () => {
               Следующие контакты
             </span>
             <div className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
-              <button
+              <Button
                 type="button"
                 onClick={() => setCalendarMode('sum')}
                 className={`rounded-full px-2 py-1 text-[11px] font-medium ${
@@ -1321,8 +1321,8 @@ export const SellerDashboardView: React.FC = () => {
                 }`}
               >
                 Сумма
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => setCalendarMode('split')}
                 className={`rounded-full px-2 py-1 text-[11px] font-medium ${
@@ -1330,7 +1330,7 @@ export const SellerDashboardView: React.FC = () => {
                 }`}
               >
                 Раздельно
-              </button>
+              </Button>
             </div>
           </div>
         </div>

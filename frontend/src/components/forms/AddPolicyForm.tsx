@@ -28,7 +28,6 @@ import {
   buildInitialPolicyFormSnapshot,
   buildPolicyFormSnapshot,
 } from './addPolicy/policyFormState';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { Button } from '../common/Button';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import {
@@ -922,9 +921,9 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
         className="flex items-center justify-between gap-3 border-t border-slate-200 bg-white px-5 py-4"
         data-testid="policy-form-footer"
       >
-        <button type="button" onClick={onCancel} className={BTN_SECONDARY} disabled={isSubmitting}>
+        <Button type="button" onClick={onCancel} variant="secondary" disabled={isSubmitting}>
           Отмена
-        </button>
+        </Button>
         <div className="flex items-center gap-3">
           {isDirty && (
             <span
@@ -945,34 +944,34 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = ({
             </span>
           )}
           {currentStep > 1 && (
-            <button
+            <Button
               type="button"
               onClick={handlePreviousStep}
-              className={BTN_SECONDARY}
+              variant="secondary"
               disabled={isSubmitting}
             >
               Назад
-            </button>
+            </Button>
           )}
           {currentStep < totalSteps ? (
-            <button
+            <Button
               type="button"
               onClick={handleNextStep}
-              className={BTN_PRIMARY}
+              variant="primary"
               disabled={isSubmitting}
             >
               Далее
-            </button>
+            </Button>
           ) : (
-            <button
+            <Button
               type="submit"
               onMouseDown={markFinalSubmitIntent}
               onClick={markFinalSubmitIntent}
-              className={BTN_PRIMARY}
+              variant="primary"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Сохраняем...' : submitLabel}
-            </button>
+            </Button>
           )}
         </div>
       </div>

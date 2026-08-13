@@ -5,7 +5,7 @@ import { copyToClipboard } from '../../../utils/clipboard';
 import { buildTelegramLink, buildWhatsAppLink } from '../../../utils/links';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 import { AppIcon } from '../../common/AppIcon';
-import { IconButton } from '../../common/Button';
+import { IconButton, Button } from '../../common/Button';
 
 interface DealHeaderProps {
   deal: Deal;
@@ -55,7 +55,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
         <div className="space-y-1">
           <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-500">
             <span>Сделка</span>
-            <button
+            <Button
               type="button"
               onClick={() => {
                 void handleCopyDealId();
@@ -65,7 +65,7 @@ export const DealHeader: React.FC<DealHeaderProps> = ({
               aria-label={`ID сделки ${deal.id}`}
             >
               #{shortDealId}
-            </button>
+            </Button>
           </p>
           <h2 className="text-xl font-semibold leading-tight text-slate-900">{deal.title}</h2>
         </div>

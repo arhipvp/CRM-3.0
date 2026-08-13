@@ -1,5 +1,5 @@
 import React from 'react';
-import { BTN_SM_QUIET } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { DateInput } from '../../common/forms/DateInput';
 import type { ExpectedCloseReasonResult } from './expectedCloseReason';
 
@@ -57,25 +57,27 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
         />
         <div className="flex flex-wrap gap-2">
           {quickOptions.map((option) => (
-            <button
+            <Button
               key={option.label}
               type="button"
               onClick={() => onQuickShift(option.days)}
-              className={BTN_SM_QUIET}
+              variant="quiet"
+              size="sm"
             >
               {option.label}
-            </button>
+            </Button>
           ))}
           {eventDelayLabel && onEventDelayClick && (
-            <button
+            <Button
               type="button"
               onClick={onEventDelayClick}
               disabled={eventDelayDisabled}
               title={eventDelayTitle}
-              className={BTN_SM_QUIET}
+              variant="quiet"
+              size="sm"
             >
               {eventDelayLabel}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -87,13 +89,15 @@ export const DealDateControls: React.FC<DealDateControlsProps> = ({
           {expectedCloseValue || '—'}
         </div>
         {onAddEventClick && (
-          <button
+          <Button
             type="button"
-            className={`${BTN_SM_QUIET} max-w-[220px]`}
+            variant="quiet"
+            size="sm"
+            className="max-w-[220px]"
             onClick={onAddEventClick}
           >
             Добавить событие
-          </button>
+          </Button>
         )}
         <div className="max-w-[360px] rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
           <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">

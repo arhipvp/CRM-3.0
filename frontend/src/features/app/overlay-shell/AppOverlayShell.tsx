@@ -1,6 +1,5 @@
 import React, { Suspense, lazy } from 'react';
 
-import { BTN_DANGER, BTN_SECONDARY } from '../../../components/common/buttonStyles';
 import { FormActions } from '../../../components/common/forms/FormActions';
 import { FormModal } from '../../../components/common/modal/FormModal';
 import { AddTaskForm } from '../../../components/forms/AddTaskForm';
@@ -205,8 +204,8 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
             isSubmitting={isSyncing}
             submitLabel="Удалить"
             submittingLabel="Удаляем..."
-            submitClassName={`${BTN_DANGER} rounded-xl`}
-            cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+            submitVariant="danger"
+            cancelVariant="secondary"
           />
         </form>
       </FormModal>

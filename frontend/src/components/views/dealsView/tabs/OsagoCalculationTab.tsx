@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Button } from '../../../common/Button';
 
 import { recognizeDealCalculation, saveDealCalculation } from '../../../../api/deals';
 import { DriveFilesTable } from '../../../common/table/DriveFilesTable';
@@ -206,7 +207,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
           const isActive = currentStep === step;
           const isComplete = currentStep > step;
           return (
-            <button
+            <Button
               type="button"
               id={`calculation-tab-${step}`}
               role="tab"
@@ -231,7 +232,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
                 Шаг {number}
               </p>
               <p className="mt-1 text-sm font-semibold text-slate-800">{label}</p>
-            </button>
+            </Button>
           );
         })}
       </div>
@@ -254,13 +255,13 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
 
               <div className="flex items-center justify-between pt-2">
                 <span className="app-label">Файлы сделки</span>
-                <button
+                <Button
                   type="button"
                   className="app-button-secondary"
                   onClick={() => void loadDriveFiles()}
                 >
                   Обновить
-                </button>
+                </Button>
               </div>
               {driveError && <p className="text-sm text-red-600">{driveError}</p>}
               {isDriveLoading ? (
@@ -302,14 +303,14 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <button
+            <Button
               type="button"
               className="app-button-primary"
               disabled={isRecognizing || (!selectedDriveFileIds.length && !sourceText.trim())}
               onClick={() => void handleRecognize()}
             >
               {isRecognizing ? 'Распознавание...' : 'Далее: распознать'}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -430,9 +431,9 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
                 ))}
               </div>
             ))}
-            <button type="button" className="app-button-secondary" onClick={addDriver}>
+            <Button type="button" className="app-button-secondary" onClick={addDriver}>
               Добавить водителя
-            </button>
+            </Button>
           </fieldset>
 
           <fieldset className="grid gap-3 rounded-lg border border-slate-200 p-4 md:grid-cols-2">
@@ -474,22 +475,22 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
           </fieldset>
 
           <div className="flex flex-wrap gap-3">
-            <button
+            <Button
               type="button"
               className="app-button-secondary"
               disabled={isSaving || isRecognizing}
               onClick={() => setCurrentStep(1)}
             >
               Назад к источникам
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               className="app-button-primary"
               disabled={isSaving || isRecognizing}
               onClick={() => void handleSave()}
             >
               {isSaving ? 'Сохранение...' : 'Сохранить данные'}
-            </button>
+            </Button>
           </div>
         </>
       )}

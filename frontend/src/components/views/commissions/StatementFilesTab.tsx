@@ -2,14 +2,9 @@ import React from 'react';
 
 import type { DriveFile, Statement } from '../../../types';
 import { FileUploadManager } from '../../FileUploadManager';
-import { BTN_SM_DANGER, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { InlineAlert } from '../../common/InlineAlert';
 import { DriveFilesTable } from '../../common/table/DriveFilesTable';
-import {
-  LINK_ACTION_XS,
-  PANEL_MUTED_TEXT,
-  STATUS_BADGE_DANGER_XS,
-} from '../../common/uiClassNames';
 import { formatDriveDate, formatDriveFileSize } from '../dealsView/helpers';
 
 interface StatementFilesTabProps {
@@ -66,7 +61,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                 href={statementDriveFolderLink}
                 target="_blank"
                 rel="noreferrer"
-                className={LINK_ACTION_XS}
+                className={'link-action text-xs'}
               >
                 Открыть папку в Google Drive
               </a>
@@ -77,14 +72,15 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
           </p>
         </div>
         {selectedStatement && (
-          <button
+          <Button
             type="button"
             onClick={onRefresh}
             disabled={isStatementDriveLoading}
-            className={BTN_SM_SECONDARY}
+            variant="secondary"
+            size="sm"
           >
             {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -100,7 +96,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
       />
 
       <div className="flex flex-wrap items-center gap-2 pt-2">
-        <button
+        <Button
           type="button"
           onClick={onDownloadSelected}
           disabled={
@@ -111,11 +107,12 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             selectedStatementDriveFileIds.length === 0 ||
             !!statementDriveError
           }
-          className={BTN_SM_SECONDARY}
+          variant="secondary"
+          size="sm"
         >
           {isStatementDriveDownloading ? 'Скачиваю...' : 'Скачать'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onTrashSelected}
           disabled={
@@ -126,10 +123,11 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             selectedStatementDriveFileIds.length === 0 ||
             !!statementDriveError
           }
-          className={BTN_SM_DANGER}
+          variant="danger"
+          size="sm"
         >
           {isStatementDriveTrashing ? 'Удаляю...' : 'Удалить'}
-        </button>
+        </Button>
         <p className="text-xs text-slate-500">
           {selectedStatementDriveFileIds.length
             ? `${selectedStatementDriveFileIds.length} файл${selectedStatementDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
@@ -140,18 +138,18 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
       {statementDriveError && <InlineAlert as="p">{statementDriveError}</InlineAlert>}
 
       {statementDriveTrashMessage && (
-        <p className={STATUS_BADGE_DANGER_XS}>{statementDriveTrashMessage}</p>
+        <p className={'ui-status-danger-badge-xs'}>{statementDriveTrashMessage}</p>
       )}
 
       {statementDriveDownloadMessage && (
-        <p className={STATUS_BADGE_DANGER_XS}>{statementDriveDownloadMessage}</p>
+        <p className={'ui-status-danger-badge-xs'}>{statementDriveDownloadMessage}</p>
       )}
 
       {!statementDriveError &&
         hasStatementDriveFolder &&
         !isStatementDriveLoading &&
         sortedStatementDriveFiles.length === 0 && (
-          <div className={PANEL_MUTED_TEXT}>Папка пуста.</div>
+          <div className={'ui-panel-muted-text'}>Папка пуста.</div>
         )}
 
       {!statementDriveError && sortedStatementDriveFiles.length > 0 && (
@@ -174,14 +172,14 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                   href={file.webViewLink}
                   target="_blank"
                   rel="noreferrer"
-                  className={LINK_ACTION_XS}
+                  className={'link-action text-xs'}
                 >
                   Открыть
                 </a>
               ) : (
                 <span className="text-xs text-slate-400">—</span>
               )}
-              <button
+              <Button
                 type="button"
                 onClick={() => onDownloadFile(file.id)}
                 disabled={
@@ -191,11 +189,11 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                   isStatementDriveLoading ||
                   !!statementDriveError
                 }
-                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                className={`${'link-action text-xs'} disabled:text-slate-300`}
               >
                 Скачать
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={() => onDeleteFile(file)}
                 disabled={
@@ -205,10 +203,10 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                   isStatementDriveLoading ||
                   !!statementDriveError
                 }
-                className={`${LINK_ACTION_XS} disabled:text-slate-300`}
+                className={`${'link-action text-xs'} disabled:text-slate-300`}
               >
                 Удалить
-              </button>
+              </Button>
             </div>
           )}
           emptyMessage="Папка пуста."

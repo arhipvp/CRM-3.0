@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
 import { AppIcon } from '../AppIcon';
-import { Button, IconButton } from '../Button';
+import { ActionLink, Button, DisclosureSummary, IconButton } from '../Button';
+import { KpiCard } from '../KpiCard';
+import { LoadingState, Spinner } from '../LoadingState';
 import { PageHeader, Panel, SegmentedControl, StatusBadge, Toolbar } from '../layoutPrimitives';
 import { Tabs } from '../Tabs';
 
@@ -21,6 +24,43 @@ describe('ui primitives', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Добавить' }));
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Закрыть' })).toBeInTheDocument();
+  });
+
+  it('supports typed link variants and semantic tones', () => {
+    render(
+      <div>
+        <Button variant="link">Открыть</Button>
+        <Button variant="linkDanger">Удалить</Button>
+        <ActionLink href="/example" variant="secondary" size="sm">
+          Документ
+        </ActionLink>
+        <details>
+          <DisclosureSummary>Дополнительно</DisclosureSummary>
+        </details>
+        <KpiCard label="Сальдо" value="12 000 ₽" tone="balance" />
+        <StatusBadge tone="overdue">Просрочено</StatusBadge>
+        <Spinner label="Обновление" />
+        <LoadingState label="Получаем данные" />
+      </div>,
+    );
+
+    expect(screen.getByRole('button', { name: 'Открыть' })).toHaveClass('btn-link');
+    expect(screen.getByRole('button', { name: 'Удалить' })).toHaveClass('btn-link-danger');
+    expect(screen.getByRole('link', { name: 'Документ' })).toHaveClass('btn-secondary');
+    expect(screen.getByText('Дополнительно')).toHaveClass('btn-secondary');
+    expect(screen.getByLabelText('Сальдо')).toHaveClass('kpi-card-balance');
+    expect(screen.getByText('Просрочено')).toBeInTheDocument();
+    expect(screen.getByLabelText('Обновление')).toBeInTheDocument();
+    expect(screen.getByText('Получаем данные')).toBeInTheDocument();
+  });
+
+  it('handles button interaction through user events', async () => {
+    const user = userEvent.setup();
+    const onClick = vi.fn();
+    render(<Button onClick={onClick}>Продолжить</Button>);
+
+    await user.click(screen.getByRole('button', { name: 'Продолжить' }));
+    expect(onClick).toHaveBeenCalledOnce();
   });
 
   it('renders icon title when provided', () => {

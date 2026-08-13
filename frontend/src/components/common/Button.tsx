@@ -1,9 +1,9 @@
-import type { ButtonHTMLAttributes, ReactNode } from 'react';
+import type { AnchorHTMLAttributes, ButtonHTMLAttributes, HTMLAttributes, ReactNode } from 'react';
 
 import { AppIcon, type AppIconName } from './AppIcon';
+import { buttonClassName, type ButtonSize, type ButtonVariant } from './buttonClassName';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'danger' | 'success' | 'outline';
-export type ButtonSize = 'sm' | 'md' | 'block';
+export type { ButtonSize, ButtonVariant } from './buttonClassName';
 
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -22,19 +22,16 @@ export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'chi
   size?: 'sm' | 'md';
 };
 
-const variantClassName: Record<ButtonVariant, string> = {
-  primary: 'btn-primary',
-  secondary: 'btn-secondary',
-  quiet: 'btn-quiet',
-  danger: 'btn-danger',
-  success: 'btn-success',
-  outline: 'btn-outline',
+export type ActionLinkProps = AnchorHTMLAttributes<HTMLAnchorElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  children: ReactNode;
 };
 
-const sizeClassName: Record<ButtonSize, string> = {
-  sm: 'btn-sm rounded-xl',
-  md: '',
-  block: 'w-full rounded-xl',
+export type DisclosureSummaryProps = HTMLAttributes<HTMLElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  children: ReactNode;
 };
 
 const iconToneClassName: Record<NonNullable<IconButtonProps['tone']>, string> = {
@@ -61,9 +58,7 @@ export function Button({
   type = 'button',
   ...props
 }: ButtonProps) {
-  const resolvedClassName = ['btn', variantClassName[variant], sizeClassName[size], className]
-    .filter(Boolean)
-    .join(' ');
+  const resolvedClassName = buttonClassName({ variant, size, className });
   const iconNode = icon ? <AppIcon name={icon} size={size === 'sm' ? 14 : 16} /> : null;
 
   return (
@@ -119,5 +114,33 @@ export function IconButton({
     >
       <AppIcon name={icon} size={size === 'sm' ? 14 : 16} />
     </button>
+  );
+}
+
+export function ActionLink({
+  variant = 'secondary',
+  size = 'md',
+  className = '',
+  children,
+  ...props
+}: ActionLinkProps) {
+  return (
+    <a className={buttonClassName({ variant, size, className })} {...props}>
+      {children}
+    </a>
+  );
+}
+
+export function DisclosureSummary({
+  variant = 'secondary',
+  size = 'md',
+  className = '',
+  children,
+  ...props
+}: DisclosureSummaryProps) {
+  return (
+    <summary className={buttonClassName({ variant, size, className })} {...props}>
+      {children}
+    </summary>
   );
 }

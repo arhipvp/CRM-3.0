@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { BTN_PRIMARY } from '../common/buttonStyles';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
@@ -131,7 +130,8 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       <FormActions
         isSubmitting={isSubmitting}
         submitLabel={submitLabel}
-        submitClassName={`${BTN_PRIMARY} w-full rounded-xl`}
+        submitVariant="primary"
+        submitSize="block"
       />
     </form>
   );

@@ -11,7 +11,7 @@ import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModa
 import { Modal } from '../../Modal';
 import { PaymentModal } from '../../payments/PaymentModal';
 import { PromptDialog } from '../../common/modal/PromptDialog';
-import { BTN_SECONDARY } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { DealMergeModal, DealSimilarModal } from './DealDetailsModals';
 
 const DEAL_CHILD_MODAL_Z_INDEX = 70;
@@ -205,13 +205,14 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
               setIsEditingDeal(false);
             }}
           />
-          <button
+          <Button
             type="button"
             onClick={() => setIsEditingDeal(false)}
-            className={`${BTN_SECONDARY} w-full`}
+            variant="secondary"
+            className="w-full"
           >
             Отмена
-          </button>
+          </Button>
         </div>
       </Modal>
     )}

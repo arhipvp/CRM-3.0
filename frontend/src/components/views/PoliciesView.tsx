@@ -31,7 +31,7 @@ import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import { useConfirm } from '../../hooks/useConfirm';
 import { PolicyNumberButton } from '../policies/PolicyNumberButton';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_QUIET } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 import { PolicyMoveDialog } from '../policies/PolicyMoveDialog';
@@ -522,29 +522,29 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
               value={presetName}
               onChange={(event) => setPresetName(event.target.value)}
             />
-            <button type="button" className={BTN_SM_QUIET} onClick={handleSavePreset}>
+            <Button type="button" variant="quiet" size="sm" onClick={handleSavePreset}>
               Сохранить текущий
-            </button>
+            </Button>
             {presets.map((preset) => (
               <div
                 key={preset.id}
                 className="inline-flex items-center gap-1 rounded-lg bg-slate-100 p-1"
               >
-                <button
+                <Button
                   type="button"
                   className="rounded-md px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-white"
                   onClick={() => handleApplyPreset(preset)}
                 >
                   {preset.name}
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
                   onClick={() => void handleDeletePreset(preset)}
                   disabled={deletingPresetId === preset.id}
                 >
                   ×
-                </button>
+                </Button>
               </div>
             ))}
           </div>
@@ -569,14 +569,15 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
             />
           </label>
           {[30, 60, 90].map((days) => (
-            <button
+            <Button
               key={days}
               type="button"
-              className={BTN_SM_QUIET}
+              variant="quiet"
+              size="sm"
               onClick={() => setQuickEndPeriod(days)}
             >
               {days} дней
-            </button>
+            </Button>
           ))}
         </div>
         <FilterBar
@@ -599,9 +600,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
           <div className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-700">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span>{combinedPoliciesError}</span>
-              <button type="button" className={BTN_SM_QUIET} onClick={handleRefreshPolicies}>
+              <Button type="button" variant="quiet" size="sm" onClick={handleRefreshPolicies}>
                 Повторить
-              </button>
+              </Button>
             </div>
           </div>
         )}
@@ -689,7 +690,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                               onNormalizeName={onClientNormalizeName}
                             />
                             {model.clientId && onClientOpenById ? (
-                              <button
+                              <Button
                                 type="button"
                                 className="underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
                                 disabled={openingClientId === model.clientId}
@@ -705,20 +706,20 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                 }}
                               >
                                 {model.client}
-                              </button>
+                              </Button>
                             ) : (
                               <span>{model.client}</span>
                             )}
                           </p>
                           {policy.dealId ? (
                             canOpenDeal ? (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => handleOpenDeal(policy.dealId)}
                                 className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
                               >
                                 {dealTitle}
-                              </button>
+                              </Button>
                             ) : (
                               <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
                             )
@@ -778,23 +779,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                           <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                           <div className="flex flex-wrap gap-1">
                             {onRequestEditPolicy && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => onRequestEditPolicy(policy)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                variant="quiet"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
                                 aria-label={`Редактировать полис ${model.number}`}
                               >
                                 Редактировать
-                              </button>
+                              </Button>
                             )}
                             {onMovePolicy && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => setPolicyToMove(policy)}
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                variant="quiet"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
                               >
                                 Перенести
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -825,23 +830,27 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                 >
                                   Проставить оплату
-                                </button>
+                                </Button>
                               )}
                               {onDeletePayment && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() =>
                                     onDeletePayment(firstLedgerRow.payment.id).catch(
                                       () => undefined,
                                     )
                                   }
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                   disabled={firstLedgerRow.payment.canDelete === false}
                                   title={
                                     firstLedgerRow.payment.canDelete === false
@@ -850,7 +859,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                   }
                                 >
                                   Удалить платёж
-                                </button>
+                                </Button>
                               )}
                             </div>
                           </div>
@@ -875,28 +884,32 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                 {!recordRow.record.statementId && !recordRow.record.date ? (
                                   <div className="flex flex-wrap gap-1 pt-1">
                                     {onMarkFinancialRecordPaid ? (
-                                      <button
+                                      <Button
                                         type="button"
                                         onClick={() =>
                                           openMarkRecordPaidPrompt(recordRow.record.id)
                                         }
-                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                        variant="quiet"
+                                        size="sm"
+                                        className="h-7 px-2 text-[11px]"
                                       >
                                         Проставить оплату
-                                      </button>
+                                      </Button>
                                     ) : null}
                                     {onDeleteFinancialRecord ? (
-                                      <button
+                                      <Button
                                         type="button"
                                         onClick={() =>
                                           onDeleteFinancialRecord(recordRow.record.id).catch(
                                             () => undefined,
                                           )
                                         }
-                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                        variant="quiet"
+                                        size="sm"
+                                        className="h-7 px-2 text-[11px]"
                                       >
                                         Удалить запись
-                                      </button>
+                                      </Button>
                                     ) : null}
                                   </div>
                                 ) : null}
@@ -921,21 +934,25 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                 >
                                   Проставить оплату
-                                </button>
+                                </Button>
                               )}
                               {onDeletePayment && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() =>
                                     onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
                                   }
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                   disabled={ledgerRow.payment.canDelete === false}
                                   title={
                                     ledgerRow.payment.canDelete === false
@@ -944,7 +961,7 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                   }
                                 >
                                   Удалить платёж
-                                </button>
+                                </Button>
                               )}
                             </div>
                           </div>
@@ -968,28 +985,32 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                                   {!recordRow.record.statementId && !recordRow.record.date ? (
                                     <div className="flex flex-wrap gap-1 pt-1">
                                       {onMarkFinancialRecordPaid ? (
-                                        <button
+                                        <Button
                                           type="button"
                                           onClick={() =>
                                             openMarkRecordPaidPrompt(recordRow.record.id)
                                           }
-                                          className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                          variant="quiet"
+                                          size="sm"
+                                          className="h-7 px-2 text-[11px]"
                                         >
                                           Проставить оплату
-                                        </button>
+                                        </Button>
                                       ) : null}
                                       {onDeleteFinancialRecord ? (
-                                        <button
+                                        <Button
                                           type="button"
                                           onClick={() =>
                                             onDeleteFinancialRecord(recordRow.record.id).catch(
                                               () => undefined,
                                             )
                                           }
-                                          className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                          variant="quiet"
+                                          size="sm"
+                                          className="h-7 px-2 text-[11px]"
                                         >
                                           Удалить запись
-                                        </button>
+                                        </Button>
                                       ) : null}
                                     </div>
                                   ) : null}
@@ -1018,9 +1039,9 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
                 : 'Измените фильтры или обновите список, если данные должны быть доступны.'}
             </p>
             {!isPoliciesLoading && (
-              <button type="button" onClick={handleRefreshPolicies} className={BTN_SM_QUIET}>
+              <Button type="button" onClick={handleRefreshPolicies} variant="quiet" size="sm">
                 Обновить
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -1028,16 +1049,17 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
 
       {policiesHasMore && onLoadMorePolicies && (
         <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center">
-          <button
+          <Button
             type="button"
             onClick={() => {
               void onLoadMorePolicies();
             }}
             disabled={isLoadingMorePolicies}
-            className={BTN_SM_QUIET}
+            variant="quiet"
+            size="sm"
           >
             {isLoadingMorePolicies ? 'Загрузка...' : 'Показать ещё'}
-          </button>
+          </Button>
         </div>
       )}
       <PromptDialog

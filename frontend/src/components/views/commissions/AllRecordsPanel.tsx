@@ -6,17 +6,9 @@ import {
   type FinancialRecordsSummary,
 } from '../../../api';
 import type { DriveFile, SalesChannel, Statement } from '../../../types';
-import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { ActionLink, Button } from '../../common/Button';
 import { InlineAlert } from '../../common/InlineAlert';
 import { Combobox } from '../../common/forms/Combobox';
-import {
-  CHECKBOX_LABEL_XS,
-  LOAD_MORE_CONTAINER,
-  SEGMENTED_CONTROL,
-  SEGMENTED_CONTROL_BUTTON,
-  SECTION_HELP_TEXT,
-  SECTION_META_TEXT,
-} from '../../common/uiClassNames';
 
 interface AllRecordsPanelProps {
   allRecordsSearchInput: string;
@@ -89,7 +81,7 @@ const RECORD_TYPE_BUTTON_IDLE_CLASS = 'text-slate-600 hover:bg-white';
 
 function RecordsFilterToggle({ checked, label, onChange }: RecordsFilterToggleProps) {
   return (
-    <label className={CHECKBOX_LABEL_XS}>
+    <label className={'ui-checkbox-label-xs'}>
       <input
         type="checkbox"
         checked={checked}
@@ -114,15 +106,15 @@ function RecordTypeButton({
     : RECORD_TYPE_BUTTON_IDLE_CLASS;
 
   return (
-    <button
+    <Button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`${SEGMENTED_CONTROL_BUTTON} ${toneClassName}`}
+      className={`${'ui-segmented-button'} ${toneClassName}`}
       title={title}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -266,7 +258,7 @@ export function AllRecordsPanel({
             <span className="text-lg font-semibold text-slate-900 whitespace-nowrap">
               Все финансовые записи
             </span>
-            <span className={SECTION_HELP_TEXT}>Фильтры по записям</span>
+            <span className={'ui-section-help'}>Фильтры по записям</span>
           </div>
           <form
             onSubmit={(event) => {
@@ -288,7 +280,7 @@ export function AllRecordsPanel({
                 className="field field-input pr-10"
               />
               {allRecordsSearchInput && (
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     onSearchChange('');
@@ -299,20 +291,21 @@ export function AllRecordsPanel({
                   disabled={isAllRecordsLoading}
                 >
                   ×
-                </button>
+                </Button>
               )}
             </div>
-            <button type="submit" className={BTN_SM_QUIET} disabled={isAllRecordsLoading}>
+            <Button type="submit" variant="quiet" size="sm" disabled={isAllRecordsLoading}>
               Найти
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              className={BTN_SM_QUIET}
+              variant="quiet"
+              size="sm"
               onClick={onRetryLoad}
               disabled={isAllRecordsLoading}
             >
               {isAllRecordsLoading ? 'Обновляем...' : 'Обновить'}
-            </button>
+            </Button>
           </form>
         </div>
       </div>
@@ -320,14 +313,15 @@ export function AllRecordsPanel({
         <div className="border-b border-slate-200 bg-white px-4 py-3">
           <InlineAlert className="flex flex-wrap items-center justify-between gap-3">
             <span>{allRecordsError || allRecordsExportError}</span>
-            <button
+            <Button
               type="button"
               onClick={onRetryLoad}
-              className={BTN_SM_SECONDARY}
+              variant="secondary"
+              size="sm"
               disabled={isAllRecordsLoading}
             >
               Повторить
-            </button>
+            </Button>
           </InlineAlert>
         </div>
       )}
@@ -353,7 +347,7 @@ export function AllRecordsPanel({
             onChange={onToggleShowZeroSaldo}
             label="Показывать нулевое сальдо"
           />
-          <div className={SEGMENTED_CONTROL}>
+          <div className={'ui-segmented'}>
             <RecordTypeButton
               tone="income"
               isActive={recordTypeFilter === 'income'}
@@ -412,42 +406,46 @@ export function AllRecordsPanel({
               className="field field-input h-10 text-sm font-normal text-slate-700"
             />
           </label>
-          <button
+          <Button
             type="button"
-            className={BTN_SM_SECONDARY}
+            variant="secondary"
+            size="sm"
             onClick={onApplyProcessingPreset}
             disabled={!onApplyProcessingPreset}
           >
             К обработке
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={BTN_SM_SECONDARY}
+            variant="secondary"
+            size="sm"
             onClick={onResetAllRecordsFilters}
             disabled={!canResetAllRecordsFilters}
           >
             Сбросить фильтры
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className={BTN_SM_QUIET}
+            variant="quiet"
+            size="sm"
             onClick={() => void onExportAllRecords()}
             disabled={isAllRecordsExporting || isAllRecordsLoading}
           >
             {isAllRecordsExporting ? 'Выгружаем...' : 'Экспорт XLSX'}
-          </button>
+          </Button>
           {allRecordsExportFile?.webViewLink && (
-            <a
+            <ActionLink
               href={allRecordsExportFile.webViewLink}
               target="_blank"
               rel="noreferrer"
-              className={BTN_SM_SECONDARY}
+              variant="secondary"
+              size="sm"
             >
               Открыть в Google Drive
-            </a>
+            </ActionLink>
           )}
           {activeAllRecordsFilterCount > 0 && (
-            <span className={SECTION_META_TEXT}>
+            <span className={'ui-section-meta'}>
               Активных фильтров: {activeAllRecordsFilterCount}
             </span>
           )}
@@ -479,7 +477,7 @@ export function AllRecordsPanel({
             ))}
           </div>
         )}
-        <div className={`flex flex-wrap items-center justify-between gap-3 ${SECTION_META_TEXT}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-3 ${'ui-section-meta'}`}>
           <span>
             Показано: <span className="font-semibold text-slate-700">{shownRecordsCount}</span>
             {totalRecordsCount ? ` из ${totalRecordsCount}` : ''}
@@ -490,15 +488,16 @@ export function AllRecordsPanel({
         {recordsTable}
 
         {allRecordsHasMore && (
-          <div className={LOAD_MORE_CONTAINER}>
-            <button
+          <div className={'ui-load-more'}>
+            <Button
               type="button"
               onClick={onLoadMore}
               disabled={isAllRecordsLoadingMore || isAllRecordsLoading}
-              className={BTN_SM_QUIET}
+              variant="quiet"
+              size="sm"
             >
               {isAllRecordsLoadingMore ? 'Загрузка...' : 'Показать ещё'}
-            </button>
+            </Button>
           </div>
         )}
       </div>

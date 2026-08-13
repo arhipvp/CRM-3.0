@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  BTN_DANGER,
-  BTN_PRIMARY,
-  BTN_QUIET,
-  BTN_SECONDARY,
-  BTN_SUCCESS,
-} from '../../common/buttonStyles';
+import { Button, DisclosureSummary } from '../../common/Button';
 
 interface DealActionsProps {
   isSelectedDealDeleted: boolean;
@@ -48,79 +42,59 @@ export const DealActions: React.FC<DealActionsProps> = ({
 }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 app-panel-muted p-3 shadow-none">
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={onEdit}
-        disabled={isSelectedDealDeleted}
-        className={BTN_PRIMARY}
-      >
+      <Button type="button" onClick={onEdit} disabled={isSelectedDealDeleted} variant="primary">
         Редактировать
-      </button>
+      </Button>
     </div>
 
     <div className="flex flex-wrap items-center justify-end gap-2">
-      <button
+      <Button
         type="button"
         onClick={onClose}
         disabled={
           isSelectedDealDeleted || isDealClosedStatus || isClosingDeal || !isCurrentUserSeller
         }
-        className={BTN_SUCCESS}
+        variant="success"
       >
         {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
-      </button>
+      </Button>
 
       {isDealClosedStatus && (
-        <button
+        <Button
           type="button"
           onClick={onReopen}
           disabled={isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal}
-          className={BTN_QUIET}
+          variant="quiet"
         >
           {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
-        </button>
+        </Button>
       )}
 
       <details className="relative">
-        <summary className={`${BTN_SECONDARY} cursor-pointer list-none`}>Ещё</summary>
+        <DisclosureSummary className="cursor-pointer list-none">Ещё</DisclosureSummary>
         <div className="absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-          <button type="button" onClick={onRefresh} disabled={isRefreshing} className={BTN_QUIET}>
+          <Button type="button" onClick={onRefresh} disabled={isRefreshing} variant="quiet">
             {isRefreshing ? 'Обновляем...' : 'Обновить данные'}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             onClick={onSimilar}
             disabled={isSelectedDealDeleted}
-            className={BTN_QUIET}
+            variant="quiet"
           >
             Похожие сделки
-          </button>
-          <button
-            type="button"
-            onClick={onMerge}
-            disabled={isSelectedDealDeleted}
-            className={BTN_QUIET}
-          >
+          </Button>
+          <Button type="button" onClick={onMerge} disabled={isSelectedDealDeleted} variant="quiet">
             Объединить сделки
-          </button>
+          </Button>
           {isSelectedDealDeleted ? (
-            <button
-              type="button"
-              onClick={onRestore}
-              disabled={isRestoringDeal}
-              className={BTN_QUIET}
-            >
+            <Button type="button" onClick={onRestore} disabled={isRestoringDeal} variant="quiet">
               {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить сделку'}
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isDeletingDeal}
-              className={BTN_DANGER}
-            >
+            <Button type="button" onClick={onDelete} disabled={isDeletingDeal} variant="danger">
               {isDeletingDeal ? 'Удаляем...' : 'Удалить сделку'}
-            </button>
+            </Button>
           )}
         </div>
       </details>

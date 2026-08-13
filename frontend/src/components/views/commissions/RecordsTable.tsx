@@ -4,7 +4,7 @@ import type { RefObject } from 'react';
 import type { Payment, Policy, Statement } from '../../../types';
 import { formatCurrencyRu, formatDateRu } from '../../../utils/formatting';
 import { normalizeNumericAmount, parseNumericAmount } from '../../../utils/parseNumericAmount';
-import { BTN_SM_DANGER, BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { DataTableShell } from '../../common/table/DataTableShell';
 import { EmptyTableState } from '../../common/table/EmptyTableState';
 import { TableHeadCell } from '../../common/TableHeadCell';
@@ -252,13 +252,13 @@ const RecordsTableRow = memo(function RecordsTableRow({
         <p className="text-sm font-semibold text-slate-900">{policyClientName}</p>
         <div className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
           {dealId && onDealSelect ? (
-            <button
+            <Button
               type="button"
               onClick={() => onOpenDeal(dealId)}
               className="link-action text-[11px] font-semibold"
             >
               {dealTitle}
-            </button>
+            </Button>
           ) : (
             <span>{dealTitle}</span>
           )}
@@ -269,7 +269,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
       </td>
       <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-slate-700`}>
         {canEditPolicy ? (
-          <button
+          <Button
             type="button"
             onClick={() => void onRequestEditPolicy?.(row)}
             disabled={isOpeningPolicy}
@@ -278,7 +278,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
             aria-label={`Редактировать полис ${policyNumber}`}
           >
             {policyNumber}
-          </button>
+          </Button>
         ) : (
           <span>{policyNumber}</span>
         )}
@@ -377,7 +377,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
                 {amountSuffix}
               </span>
             </div>
-            <button
+            <Button
               type="button"
               onClick={() => onToggleRecordAmountMode(row)}
               disabled={isRecordLocked || (amountMode === 'rub' && !isPercentModeAvailable)}
@@ -396,7 +396,7 @@ const RecordsTableRow = memo(function RecordsTableRow({
               }
             >
               {amountMode === 'rub' ? '%' : '₽'}
-            </button>
+            </Button>
           </div>
         )}
         {isSavingAmount && <p className="mt-1 text-[11px] text-sky-600">Сохраняем…</p>}
@@ -520,10 +520,11 @@ export const RecordsTable = ({
           <div className="flex flex-wrap items-center gap-2">
             {viewMode === 'statements' ? (
               selectedRecordIds.length > 0 && (
-                <button
+                <Button
                   type="button"
                   onClick={() => void onRemoveSelected()}
-                  className={BTN_SM_DANGER}
+                  variant="danger"
+                  size="sm"
                   disabled={
                     !selectedRecordIds.length ||
                     !canRemoveSelectedAction ||
@@ -532,13 +533,14 @@ export const RecordsTable = ({
                   }
                 >
                   Убрать из ведомости
-                </button>
+                </Button>
               )
             ) : (
-              <button
+              <Button
                 type="button"
                 onClick={() => void onAttachSelected()}
-                className={BTN_SM_PRIMARY}
+                variant="primary"
+                size="sm"
                 disabled={
                   !selectedRecordIds.length ||
                   !canAttachSelectedAction ||
@@ -548,12 +550,12 @@ export const RecordsTable = ({
                 }
               >
                 {isAttaching ? 'Добавляем...' : 'Добавить выбранные'}
-              </button>
+              </Button>
             )}
             {selectedRecordIds.length > 0 && (
-              <button type="button" onClick={onResetSelection} className={BTN_SM_SECONDARY}>
+              <Button type="button" onClick={onResetSelection} variant="secondary" size="sm">
                 Сбросить выделение
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -599,7 +601,7 @@ export const RecordsTable = ({
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[10%] min-w-0" align="right">
                 {viewMode === 'all' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onToggleAllRecordsSort('paymentDate')}
                     aria-label={`Сортировать по дате платежа, текущий порядок ${getAllRecordsSortLabel('paymentDate')}`}
@@ -609,14 +611,14 @@ export const RecordsTable = ({
                     <span className={SORT_LABEL_CLASS}>
                       {getAllRecordsSortIndicator('paymentDate')}
                     </span>
-                  </button>
+                  </Button>
                 ) : (
                   <span className={SORT_LABEL_CLASS}>Дата платежа</span>
                 )}
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[12%] min-w-0" align="right">
                 {viewMode === 'all' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onToggleAllRecordsSort('payment')}
                     aria-label={`Сортировать по платежу, текущий порядок ${getAllRecordsSortLabel('payment')}`}
@@ -626,14 +628,14 @@ export const RecordsTable = ({
                     <span className={SORT_LABEL_CLASS}>
                       {getAllRecordsSortIndicator('payment')}
                     </span>
-                  </button>
+                  </Button>
                 ) : (
                   <span className={SORT_LABEL_CLASS}>Платеж</span>
                 )}
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[13%] min-w-0" align="right">
                 {viewMode === 'all' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onToggleAllRecordsSort('saldo')}
                     aria-label={`Сортировать по сальдо, текущий порядок ${getAllRecordsSortLabel('saldo')}`}
@@ -641,14 +643,14 @@ export const RecordsTable = ({
                   >
                     <span className={SORT_LABEL_CLASS}>Сальдо</span>
                     <span className={SORT_LABEL_CLASS}>{getAllRecordsSortIndicator('saldo')}</span>
-                  </button>
+                  </Button>
                 ) : (
                   <span className={SORT_LABEL_CLASS}>Сальдо</span>
                 )}
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[15%] min-w-0">
                 {viewMode === 'all' ? (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onToggleAllRecordsSort('comment')}
                     aria-label={`Сортировать по примечанию, текущий порядок ${getAllRecordsSortLabel('comment')}`}
@@ -658,7 +660,7 @@ export const RecordsTable = ({
                     <span className={SORT_LABEL_CLASS}>
                       {getAllRecordsSortIndicator('comment')}
                     </span>
-                  </button>
+                  </Button>
                 ) : (
                   <span className={SORT_LABEL_CLASS}>Примечание</span>
                 )}
@@ -666,7 +668,7 @@ export const RecordsTable = ({
               <TableHeadCell padding="sm" className="w-[220px]" align="right">
                 <div className="flex flex-col items-end gap-2">
                   {viewMode === 'all' ? (
-                    <button
+                    <Button
                       type="button"
                       onClick={() => onToggleAllRecordsSort('amount')}
                       aria-label={`Сортировать по сумме, текущий порядок ${getAllRecordsSortLabel('amount')}`}
@@ -676,10 +678,10 @@ export const RecordsTable = ({
                       <span className={SORT_LABEL_CLASS}>
                         {getAllRecordsSortIndicator('amount')}
                       </span>
-                    </button>
+                    </Button>
                   ) : (
                     <>
-                      <button
+                      <Button
                         type="button"
                         onClick={onToggleAmountSort}
                         aria-label={`Сортировать по сумме, текущий порядок ${getAmountSortLabel()}`}
@@ -687,7 +689,7 @@ export const RecordsTable = ({
                       >
                         <span className={SORT_LABEL_CLASS}>Сумма, ₽</span>
                         <span className={SORT_LABEL_CLASS}>{getAmountSortIndicator()}</span>
-                      </button>
+                      </Button>
                       {isRecordAmountEditable && (
                         <div className="flex w-full flex-col items-end gap-2 normal-case tracking-normal">
                           <div className="flex w-full items-start justify-end gap-2">
@@ -716,7 +718,7 @@ export const RecordsTable = ({
                                 {statementAmountSuffix}
                               </span>
                             </div>
-                            <button
+                            <Button
                               type="button"
                               onClick={onToggleStatementAmountMode}
                               disabled={
@@ -735,9 +737,9 @@ export const RecordsTable = ({
                               aria-label={statementAmountModeToggleLabel}
                             >
                               {statementAmountDraft.mode === 'rub' ? '%' : '₽'}
-                            </button>
+                            </Button>
                           </div>
-                          <button
+                          <Button
                             type="button"
                             onClick={() => void onApplyStatementAmount()}
                             disabled={
@@ -750,7 +752,7 @@ export const RecordsTable = ({
                             {isApplyingStatementAmount
                               ? 'Применяем...'
                               : 'Применить ко всей ведомости'}
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </>

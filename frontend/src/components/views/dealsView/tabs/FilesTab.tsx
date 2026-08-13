@@ -4,25 +4,9 @@ import { FileUploadManager } from '../../../FileUploadManager';
 import { buildDriveFolderLink } from '../../../../utils/links';
 import { copyToClipboard } from '../../../../utils/clipboard';
 import { useNotification } from '../../../../contexts/NotificationContext';
-import {
-  BTN_BLOCK_PRIMARY,
-  BTN_BLOCK_SECONDARY,
-  BTN_SM_DANGER,
-  BTN_SM_PRIMARY,
-  BTN_SM_SECONDARY,
-} from '../../../common/buttonStyles';
+import { ActionLink, Button } from '../../../common/Button';
+import type { ButtonSize, ButtonVariant } from '../../../common/buttonClassName';
 import { DriveFilesTable } from '../../../common/table/DriveFilesTable';
-import {
-  CONTENT_SECTION_DIVIDER,
-  LINK_ACTION_XS,
-  LOADING_SPINNER_SM,
-  MODAL_INPUT_SHELL,
-  PANEL_MUTED_TEXT,
-  PANEL_SECTION,
-  RESULT_CARD,
-  SECTION_META_TEXT,
-  STATUS_BADGE_DANGER_XS,
-} from '../../../common/uiClassNames';
 import { InlineAlert } from '../../../common/InlineAlert';
 import { Modal } from '../../../Modal';
 import { formatDriveDate, formatDriveFileSize, formatRecognitionSummary } from '../helpers';
@@ -78,7 +62,9 @@ interface FilePreviewState {
 interface HeaderActionButtonProps {
   onClick: () => void | Promise<void>;
   disabled: boolean;
-  className: string;
+  className?: string;
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   children: ReactNode;
 }
 
@@ -92,7 +78,7 @@ interface RecognitionResultsProps {
   results: PolicyRecognitionResult[];
 }
 
-const FILE_ACTION_LINK_CLASS = `${LINK_ACTION_XS} disabled:text-slate-300`;
+const FILE_ACTION_LINK_CLASS = `${'link-action text-xs'} disabled:text-slate-300`;
 const SORT_HEADER_BUTTON_CLASS =
   'flex w-full items-center justify-end gap-2 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 const SORT_HEADER_TITLE_CLASS =
@@ -106,24 +92,33 @@ const PDF_MIME_TYPE = 'application/pdf';
 const DOC_MIME_TYPE = 'application/msword';
 const DOCX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 
-function HeaderActionButton({ onClick, disabled, className, children }: HeaderActionButtonProps) {
+function HeaderActionButton({
+  onClick,
+  disabled,
+  className,
+  variant,
+  size,
+  children,
+}: HeaderActionButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={() => {
         void onClick();
       }}
       disabled={disabled}
       className={className}
+      variant={variant}
+      size={size}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
 function ActionLinkButton({ onClick, disabled, children }: ActionLinkButtonProps) {
   return (
-    <button
+    <Button
       type="button"
       onClick={() => {
         void onClick();
@@ -132,7 +127,7 @@ function ActionLinkButton({ onClick, disabled, children }: ActionLinkButtonProps
       className={FILE_ACTION_LINK_CLASS}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 
@@ -142,7 +137,7 @@ function RecognitionResults({ results }: RecognitionResultsProps) {
   }
 
   return (
-    <div className={RESULT_CARD}>
+    <div className={'ui-result-card'}>
       {results.map((result) => (
         <div key={`${result.fileId}-${result.status}`} className="space-y-1">
           <p className="font-semibold text-slate-900">{result.fileName ?? result.fileId}</p>
@@ -237,7 +232,7 @@ export function FilesTab({
     if (tone === 'danger') {
       return <InlineAlert>{message}</InlineAlert>;
     }
-    return <div className={PANEL_MUTED_TEXT}>{message}</div>;
+    return <div className={'ui-panel-muted-text'}>{message}</div>;
   };
 
   const disableUpload = !selectedDeal?.driveFolderId;
@@ -573,21 +568,26 @@ export function FilesTab({
   const renameExtension = renamingFile ? splitFileName(renamingFile.name).extension : '';
 
   return (
-    <section className={`${PANEL_SECTION} space-y-5`}>
+    <section className={`${'ui-panel-section'} space-y-5`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="app-label">Файлы</p>
             {isDriveLoading && (
-              <span className={LOADING_SPINNER_SM} aria-label="Идет загрузка файлов" />
+              <span className={'ui-loading-spinner-sm'} aria-label="Идет загрузка файлов" />
             )}
             {driveFolderLink && (
-              <a href={driveFolderLink} target="_blank" rel="noreferrer" className={LINK_ACTION_XS}>
+              <a
+                href={driveFolderLink}
+                target="_blank"
+                rel="noreferrer"
+                className={'link-action text-xs'}
+              >
                 Открыть папку в Google Drive
               </a>
             )}
           </div>
-          <p className={SECTION_META_TEXT}>
+          <p className={'ui-section-meta'}>
             Файлы загружаются прямо из папки, привязанной к этой сделке.
           </p>
         </div>
@@ -596,7 +596,8 @@ export function FilesTab({
             <HeaderActionButton
               onClick={onCreateMailbox}
               disabled={isCreatingMailbox || isCheckingMailbox}
-              className={BTN_SM_PRIMARY}
+              variant="primary"
+              size="sm"
             >
               {isCreatingMailbox ? 'Создаю ящик...' : 'Создать почту сделки'}
             </HeaderActionButton>
@@ -604,25 +605,27 @@ export function FilesTab({
           <HeaderActionButton
             onClick={onCheckMailbox}
             disabled={!selectedDeal.mailboxEmail || isCheckingMailbox || isCreatingMailbox}
-            className={BTN_SM_SECONDARY}
+            variant="secondary"
+            size="sm"
           >
             {isCheckingMailbox ? 'Проверяем почту...' : 'Проверить почту'}
           </HeaderActionButton>
           <HeaderActionButton
             onClick={loadDriveFiles}
             disabled={!selectedDeal.driveFolderId || isDriveLoading}
-            className={BTN_SM_SECONDARY}
+            variant="secondary"
+            size="sm"
           >
             {isDriveLoading ? 'Обновляю...' : 'Обновить'}
           </HeaderActionButton>
         </div>
       </div>
       {mailboxEmail && (
-        <p className={SECTION_META_TEXT}>
+        <p className={'ui-section-meta'}>
           Почта сделки:{' '}
-          <button
+          <Button
             type="button"
-            className={LINK_ACTION_XS}
+            className={'link-action text-xs'}
             onClick={async (event) => {
               event.stopPropagation();
               const copied = await copyToClipboard(mailboxEmail);
@@ -634,7 +637,7 @@ export function FilesTab({
             title="Скопировать почту сделки"
           >
             {mailboxEmail}
-          </button>
+          </Button>
         </p>
       )}
       {mailboxActionError && <InlineAlert>{mailboxActionError}</InlineAlert>}
@@ -649,7 +652,7 @@ export function FilesTab({
       />
 
       <div className="flex flex-wrap items-center gap-2 pt-2">
-        <button
+        <Button
           type="button"
           onClick={handleRecognizePolicies}
           disabled={
@@ -661,11 +664,12 @@ export function FilesTab({
             !canRecognizeSelectedFiles ||
             !!driveError
           }
-          className={BTN_SM_PRIMARY}
+          variant="primary"
+          size="sm"
         >
           {isRecognizing ? 'Распознаём...' : 'Распознать полис (PDF, DOC, DOCX)'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() => handleDownloadDriveFiles()}
           disabled={
@@ -676,11 +680,12 @@ export function FilesTab({
             selectedDriveFileIds.length === 0 ||
             !!driveError
           }
-          className={BTN_SM_SECONDARY}
+          variant="secondary"
+          size="sm"
         >
           {isDownloading ? 'Скачиваю...' : 'Скачать'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={handleTrashSelectedFiles}
           disabled={
@@ -691,24 +696,25 @@ export function FilesTab({
             selectedDriveFileIds.length === 0 ||
             !!driveError
           }
-          className={BTN_SM_DANGER}
+          variant="danger"
+          size="sm"
         >
           {isTrashing ? 'Удаляю...' : 'Удалить'}
-        </button>
-        <p className={SECTION_META_TEXT}>
+        </Button>
+        <p className={'ui-section-meta'}>
           {selectedDriveFileIds.length
             ? `${selectedDriveFileIds.length} элемент${selectedDriveFileIds.length === 1 ? '' : 'ов'} выбрано`
             : 'Выберите файлы для распознавания.'}
         </p>
       </div>
 
-      {recognitionMessage && <p className={STATUS_BADGE_DANGER_XS}>{recognitionMessage}</p>}
+      {recognitionMessage && <p className={'ui-status-danger-badge-xs'}>{recognitionMessage}</p>}
 
-      {trashMessage && <p className={STATUS_BADGE_DANGER_XS}>{trashMessage}</p>}
+      {trashMessage && <p className={'ui-status-danger-badge-xs'}>{trashMessage}</p>}
 
-      {downloadMessage && <p className={STATUS_BADGE_DANGER_XS}>{downloadMessage}</p>}
+      {downloadMessage && <p className={'ui-status-danger-badge-xs'}>{downloadMessage}</p>}
 
-      {renameMessage && <p className={STATUS_BADGE_DANGER_XS}>{renameMessage}</p>}
+      {renameMessage && <p className={'ui-status-danger-badge-xs'}>{renameMessage}</p>}
 
       <RecognitionResults results={recognitionResults} />
 
@@ -720,7 +726,7 @@ export function FilesTab({
           'Папка Google Drive ещё не создана. Сначала сохраните сделку, чтобы получить папку.',
         )}
 
-      <div className={CONTENT_SECTION_DIVIDER}>
+      <div className={'ui-content-divider'}>
         {!driveError &&
           selectedDeal.driveFolderId &&
           isDriveLoading &&
@@ -747,7 +753,7 @@ export function FilesTab({
             getRowDepth={(file) => getDriveFileDepth(file.id)}
             dateHeaderAriaSort={getAriaSort()}
             dateHeaderContent={
-              <button
+              <Button
                 type="button"
                 onClick={toggleDriveSortDirection}
                 aria-label={`Сортировать по дате, текущий порядок ${sortLabel}`}
@@ -755,7 +761,7 @@ export function FilesTab({
               >
                 <span className={SORT_HEADER_TITLE_CLASS}>Дата</span>
                 <span className={SORT_HEADER_VALUE_CLASS}>{sortIndicator}</span>
-              </button>
+              </Button>
             }
             renderDate={(file) => formatDriveDate(file.modifiedAt ?? file.createdAt)}
             renderSize={(file) => formatDriveFileSize(file.size)}
@@ -766,7 +772,7 @@ export function FilesTab({
                     href={file.webViewLink}
                     target="_blank"
                     rel="noreferrer"
-                    className={LINK_ACTION_XS}
+                    className={'link-action text-xs'}
                   >
                     Открыть
                   </a>
@@ -842,7 +848,7 @@ export function FilesTab({
                 Имя файла
               </label>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <div className={MODAL_INPUT_SHELL}>
+                <div className={'ui-modal-input-shell'}>
                   <input
                     id="deal-file-preview-rename"
                     name="previewRenameDraft"
@@ -858,62 +864,72 @@ export function FilesTab({
                     </span>
                   )}
                 </div>
-                <button type="submit" disabled={isPreviewRenameDisabled} className={BTN_SM_PRIMARY}>
+                <Button
+                  type="submit"
+                  disabled={isPreviewRenameDisabled}
+                  variant="primary"
+                  size="sm"
+                >
                   Переименовать
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => handleDownloadDriveFiles([filePreview.file.id])}
                   disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
-                  className={BTN_SM_SECONDARY}
+                  variant="secondary"
+                  size="sm"
                 >
                   {isDownloading ? 'Скачиваю...' : 'Скачать'}
-                </button>
+                </Button>
                 {filePreview.file.webViewLink && (
-                  <a
+                  <ActionLink
                     href={filePreview.file.webViewLink}
                     target="_blank"
                     rel="noreferrer"
-                    className={BTN_SM_SECONDARY}
+                    variant="secondary"
+                    size="sm"
                   >
                     Открыть в Google Drive
-                  </a>
+                  </ActionLink>
                 )}
-                <button
+                <Button
                   type="button"
                   onClick={() => {
                     void handlePreviewDelete();
                   }}
                   disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
-                  className={BTN_SM_DANGER}
+                  variant="danger"
+                  size="sm"
                 >
                   {isTrashing ? 'Удаляю...' : 'Удалить'}
-                </button>
+                </Button>
               </div>
               {previewRenameError && <InlineAlert as="p">{previewRenameError}</InlineAlert>}
             </form>
             <div className="flex items-center justify-between gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={goToPrevFile}
                 disabled={!canGoPrev || isPreviewLoading}
-                className={BTN_SM_SECONDARY}
+                variant="secondary"
+                size="sm"
               >
                 Назад
-              </button>
+              </Button>
               <p className="text-xs font-semibold text-slate-500">
                 {currentPreviewIndex >= 0
                   ? `${currentPreviewIndex + 1} / ${previewableFiles.length}`
                   : '—'}
               </p>
-              <button
+              <Button
                 type="button"
                 onClick={goToNextFile}
                 disabled={!canGoNext || isPreviewLoading}
-                className={BTN_SM_SECONDARY}
+                variant="secondary"
+                size="sm"
               >
                 Вперёд
-              </button>
+              </Button>
             </div>
             <div className="min-h-[60vh] overflow-hidden rounded-lg border border-slate-200 bg-slate-50">
               {filePreview.kind === 'image' && (
@@ -962,7 +978,7 @@ export function FilesTab({
             {renameError && <InlineAlert as="p">{renameError}</InlineAlert>}
             <div>
               <label className="block text-sm font-semibold text-slate-700">Новое имя</label>
-              <div className={MODAL_INPUT_SHELL}>
+              <div className={'ui-modal-input-shell'}>
                 <input
                   type="text"
                   value={renameDraft}
@@ -977,17 +993,18 @@ export function FilesTab({
               </div>
             </div>
             <div className="space-y-2">
-              <button
+              <Button
                 type="button"
                 onClick={handleRenameSubmit}
                 disabled={isRenaming}
-                className={BTN_BLOCK_PRIMARY}
+                variant="primary"
+                size="block"
               >
                 {isRenaming ? 'Сохраняем...' : 'Сохранить'}
-              </button>
-              <button type="button" onClick={closeRenameModal} className={BTN_BLOCK_SECONDARY}>
+              </Button>
+              <Button type="button" onClick={closeRenameModal} variant="secondary" size="block">
                 Отмена
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

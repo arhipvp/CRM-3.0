@@ -14,10 +14,9 @@ import { fetchPolicy, reopenFinanceStatement } from '../../api';
 import type { AttachFinanceStatementRecordsResult } from '../../api';
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import { PanelMessage } from '../PanelMessage';
-import { BTN_DANGER, BTN_PRIMARY, BTN_SECONDARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { Tabs } from '../common/Tabs';
 import { handleTabKeyboardNavigation } from '../common/tabKeyboard';
-import { STATUS_TEXT_DANGER_XS } from '../common/uiClassNames';
 import { formatCurrencyRu, formatDateRu } from '../../utils/formatting';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
 import { useConfirm } from '../../hooks/useConfirm';
@@ -647,13 +646,14 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               </div>
               {onCreateStatement && (
                 <div className="mt-3 flex flex-wrap items-center gap-4">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setStatementModalOpen(true)}
-                    className={BTN_SM_SECONDARY}
+                    variant="secondary"
+                    size="sm"
                   >
                     + Создать ведомость
-                  </button>
+                  </Button>
                   <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                     <input
                       type="checkbox"
@@ -667,14 +667,15 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
               )}
               {!shouldShowStatementsPendingState && statementsHasMore && (
                 <div className="border-t border-slate-200 p-3 text-center">
-                  <button
+                  <Button
                     type="button"
-                    className={BTN_SM_SECONDARY}
+                    variant="secondary"
+                    size="sm"
                     disabled={isLoadingMoreStatements}
                     onClick={() => void onLoadMoreStatements?.()}
                   >
                     {isLoadingMoreStatements ? 'Загружаем…' : 'Показать ещё ведомости'}
-                  </button>
+                  </Button>
                 </div>
               )}
             </div>
@@ -707,7 +708,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         }`}
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => setSelectedStatementId(statement.id)}
                             className="flex flex-1 flex-wrap items-center justify-between gap-3 text-left"
@@ -736,7 +737,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                               <p className="text-sm font-semibold text-slate-900">{totalLabel}</p>
                               <p className="text-xs text-slate-500">Записей: {recordsCount}</p>
                             </div>
-                          </button>
+                          </Button>
                         </div>
                       </li>
                     );
@@ -775,7 +776,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                           {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
                         </p>
                         {selectedStatement.paidAt && (
-                          <p className={STATUS_TEXT_DANGER_XS}>
+                          <p className={'ui-status-danger-text-xs'}>
                             Выплаченная ведомость недоступна для редактирования и удаления.
                           </p>
                         )}
@@ -783,49 +784,49 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
 
                       <div className="flex flex-wrap items-center justify-end gap-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <button
+                          <Button
                             type="button"
                             onClick={() => void handleExportStatement()}
                             disabled={isStatementExporting}
-                            className={BTN_SECONDARY}
+                            variant="secondary"
                             title="Сформировать XLSX-файл ведомости и сохранить в Google Drive"
                           >
                             {isStatementExporting ? 'Формируем...' : 'Сформировать ведомость'}
-                          </button>
+                          </Button>
                           {onUpdateStatement && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => handleEditStatementOpen(selectedStatement)}
                               disabled={isSelectedStatementPaid}
-                              className={BTN_PRIMARY}
+                              variant="primary"
                             >
                               Редактировать
-                            </button>
+                            </Button>
                           )}
                           {selectedStatement.paidAt && canReopenStatement && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => void handleReopenStatement()}
                               disabled={isReopeningStatement}
-                              className={BTN_DANGER}
+                              variant="danger"
                             >
                               {isReopeningStatement ? 'Отменяем…' : 'Отменить выплату'}
-                            </button>
+                            </Button>
                           )}
                           {reopenStatementError && (
-                            <span role="alert" className={STATUS_TEXT_DANGER_XS}>
+                            <span role="alert" className={'ui-status-danger-text-xs'}>
                               {reopenStatementError}
                             </span>
                           )}
                           {onDeleteStatement && (
-                            <button
+                            <Button
                               type="button"
                               onClick={() => setDeletingStatement(selectedStatement)}
                               disabled={isSelectedStatementPaid}
-                              className={BTN_DANGER}
+                              variant="danger"
                             >
                               Удалить
-                            </button>
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -843,7 +844,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                       {statementTabs.map((tab) => {
                         const isActive = statementTab === tab.id;
                         return (
-                          <button
+                          <Button
                             key={tab.id}
                             id={`statement-tab-${tab.id}`}
                             role="tab"
@@ -876,7 +877,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                                 {tab.count}
                               </span>
                             </span>
-                          </button>
+                          </Button>
                         );
                       })}
                     </div>
@@ -893,29 +894,31 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
                         <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <span>{statementRecordsError}</span>
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 void loadStatementRecords();
                               }}
-                              className={BTN_SM_SECONDARY}
+                              variant="secondary"
+                              size="sm"
                             >
                               Повторить
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       )}
                       {recordsTable}
                       {statementRecordsHasMore && (
                         <div className="mt-4 flex justify-center">
-                          <button
+                          <Button
                             type="button"
-                            className={BTN_SM_SECONDARY}
+                            variant="secondary"
+                            size="sm"
                             disabled={isStatementRecordsLoading || isStatementRecordsLoadingMore}
                             onClick={() => void loadStatementRecords('more')}
                           >
                             {isStatementRecordsLoadingMore ? 'Загружаем...' : 'Показать ещё'}
-                          </button>
+                          </Button>
                         </div>
                       )}
                     </div>
@@ -949,7 +952,7 @@ export const CommissionsView: React.FC<CommissionsViewProps> = ({
           hidden={viewMode !== 'all'}
         >
           {policyEditError && (
-            <p className={`px-4 pt-3 ${STATUS_TEXT_DANGER_XS}`}>{policyEditError}</p>
+            <p className={`px-4 pt-3 ${'ui-status-danger-text-xs'}`}>{policyEditError}</p>
           )}
           <AllRecordsPanel
             allRecordsSearchInput={allRecordsSearchInput}

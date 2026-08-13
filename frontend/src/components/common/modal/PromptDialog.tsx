@@ -1,6 +1,5 @@
 import React, { useId } from 'react';
 
-import { BTN_PRIMARY, BTN_SECONDARY } from '../buttonStyles';
 import { DateInput } from '../forms/DateInput';
 import { FormActions } from '../forms/FormActions';
 import { FormError } from '../forms/FormError';
@@ -87,8 +86,8 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
           onCancel={onCancel}
           submitLabel={confirmLabel}
           isSubmitting={isSubmitting}
-          submitClassName={`${BTN_PRIMARY} rounded-xl`}
-          cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+          submitVariant="primary"
+          cancelVariant="secondary"
         />
       </form>
     </FormModal>

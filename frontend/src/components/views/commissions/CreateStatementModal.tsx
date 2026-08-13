@@ -1,7 +1,6 @@
 import React from 'react';
 
 import type { Statement } from '../../../types';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
 import { FormSection } from '../../common/forms/FormSection';
@@ -123,8 +122,8 @@ export const CreateStatementModal: React.FC<CreateStatementModalProps> = ({
           isSubmitting={isSubmitting}
           submitLabel="Создать"
           submittingLabel="Создаём..."
-          submitClassName={`${BTN_PRIMARY} rounded-xl`}
-          cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+          submitVariant="primary"
+          cancelVariant="secondary"
         />
       </form>
     </FormModal>

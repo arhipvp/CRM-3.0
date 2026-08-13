@@ -6,7 +6,9 @@
 - Добавлены единые `PageShell`, `PageHeader`, `Toolbar` и типизированный `Tabs`.
 - Все основные маршруты получили видимый заголовок первого уровня и общий page shell.
 - Базовые кнопки, поля, панели, таблицы, модальные окна, уведомления и пагинация переведены на компактный desktop-стандарт.
-- `buttonStyles.ts` остаётся compatibility layer для специализированных старых участков; новый код должен использовать `Button` и `IconButton`.
+- Compatibility-файлы `buttonStyles.ts` и `uiClassNames.ts` удалены; production-кнопки переведены на `Button` и `IconButton`, а возврат старых импортов запрещён ESLint.
+- Добавлены `KpiCard`, `LoadingState`, `Spinner`, `SortButton`, `CheckboxField`, расширенные semantic tones и dev-only UI Catalog.
+- Добавлены committed visual baselines Playwright для двух desktop-разрешений.
 - Правила и токены описаны в `docs/design-system.md`.
 
 ## Целевой стандарт
@@ -35,11 +37,11 @@
 
 5. Кнопки действий:
 
-- `src/components/common/buttonStyles.ts` для унифицированных кнопочных вариантов (`primary/secondary/danger/quiet/success/outline` и `sm`-варианты).
+- `Button`/`IconButton` и типизированные варианты `primary/secondary/danger/quiet/success/outline/link/linkDanger`; нативные кнопки остаются только внутри общих примитивов.
 
-6. Частые UI-классы:
+6. Семантическое оформление:
 
-- `src/components/common/uiClassNames.ts` для повторяющихся классов (`link-action`, muted panel, status badges).
+- Статусы задаются `tone`; повторяемая геометрия хранится в общих компонентах и semantic CSS-классах.
 
 7. Статус и ошибки:
 
@@ -89,8 +91,9 @@
 - `src/components/common/ConfirmDialog.tsx`
 - `src/hooks/useConfirm.ts`
 - `src/constants/confirmTexts.ts`
-- `src/components/common/buttonStyles.ts`
-- `src/components/common/uiClassNames.ts`
+- `src/components/common/KpiCard.tsx`
+- `src/components/common/LoadingState.tsx`
+- `src/components/common/forms/CheckboxField.tsx`
 - `src/components/common/table/DataTableShell.tsx`
 - `src/components/common/table/EmptyTableState.tsx`
 - `src/components/common/table/DriveFilesTable.tsx`
@@ -128,8 +131,7 @@
   - `src/components/views/dealsView/DealsList.tsx`
   - `src/components/views/dealsView/tabs/QuotesTab.tsx`
   - `src/components/views/commissions/RecordsTable.tsx`
-- Добавлены button-варианты в `buttonStyles.ts`:
-  - `BTN_SUCCESS`, `BTN_OUTLINE`, `BTN_QUIET`, `BTN_SM_QUIET`.
+- Кнопочные варианты перенесены в типизированный API `Button`.
 - Добавлены form class helpers:
   - `FORM_INPUT_DISABLED`, `FORM_TEXTAREA_DISABLED`.
 - Статус/ошибки в ключевых экранах переведены на `InlineAlert`.

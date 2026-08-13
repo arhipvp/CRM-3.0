@@ -11,8 +11,7 @@ import {
   TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
 } from '../../../common/tableStyles';
-import { BTN_SM_SECONDARY } from '../../../common/buttonStyles';
-import { LINK_ACTION_XS } from '../../../common/uiClassNames';
+import { Button } from '../../../common/Button';
 
 type QuoteSortKey =
   | 'insuranceType'
@@ -130,7 +129,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
 
     return (
       <TableHeadCell padding="sm" className={className} aria-sort={ariaSort}>
-        <button
+        <Button
           type="button"
           onClick={() => handleSort(sortKey)}
           aria-label={`Сортировать по: ${label}. Текущий порядок: ${ariaSort === 'none' ? 'не задан' : ariaSort === 'ascending' ? 'по возрастанию' : 'по убыванию'}`}
@@ -140,7 +139,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           {isActive && (
             <span className="text-[11px]">{sortConfig?.direction === 'asc' ? '↑' : '↓'}</span>
           )}
-        </button>
+        </Button>
       </TableHeadCell>
     );
   };
@@ -167,13 +166,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
             )}
           </label>
         </div>
-        <button
+        <Button
           type="button"
           onClick={() => onRequestAddQuote(selectedDeal.id)}
-          className={BTN_SM_SECONDARY}
+          variant="secondary"
+          size="sm"
         >
           + Добавить расчёт
-        </button>
+        </Button>
       </div>
       <DataTableShell>
         <table className="deals-table min-w-full border-collapse text-left text-sm">
@@ -270,14 +270,14 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
                     <div className={TABLE_ACTIONS_CLASS_ROW}>
-                      <button
-                        className={LINK_ACTION_XS}
+                      <Button
+                        className={'link-action text-xs'}
                         onClick={() => onRequestEditQuote(quote)}
                         type="button"
                       >
                         Редактировать
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         className="link-danger text-xs"
                         onClick={() =>
                           onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(
@@ -287,7 +287,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                         type="button"
                       >
                         Удалить
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>

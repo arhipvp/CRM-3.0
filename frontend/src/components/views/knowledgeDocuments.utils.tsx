@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../common/Button';
 
 import type { KnowledgeCitation } from '../../types';
 
@@ -73,13 +74,13 @@ export const renderKnowledgeAnswerWithCitations = (
     if (number) {
       parts.push(
         <sup key={`cite-${key}`}>
-          <button
+          <Button
             type="button"
             className="text-blue-600 hover:text-blue-700"
             onClick={() => onOpenSource(sourceId)}
           >
             [{number}]
-          </button>
+          </Button>
         </sup>,
       );
       key += 1;

@@ -31,6 +31,32 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/buttonStyles', '**/uiClassNames'],
+              message: 'Используйте типизированные примитивы дизайн-системы.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/components/common/**/*', 'src/**/__tests__/**/*', 'src/**/*.test.*'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='button']",
+          message: 'Используйте Button, IconButton или другой общий интерактивный примитив.',
+        },
+      ],
+    },
   },
   {
     files: FRONTEND_STYLE_STANDARD_FILES,

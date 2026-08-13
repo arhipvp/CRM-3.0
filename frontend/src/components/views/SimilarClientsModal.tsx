@@ -1,5 +1,5 @@
 import React from 'react';
-import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { Modal } from '../Modal';
 import { formatDateRu } from '../../utils/formatting';
 import type { Client, ClientSimilarityCandidate } from '../../types';
@@ -104,22 +104,24 @@ export const SimilarClientsModal: React.FC<SimilarClientsModalProps> = ({
                     </div>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2 self-start md:justify-end">
-                    <button
+                    <Button
                       type="button"
-                      className={BTN_SM_SECONDARY}
+                      variant="secondary"
+                      size="sm"
                       onClick={() => {
                         void onExclude(item.client.id);
                       }}
                     >
                       Это разные
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
-                      className={BTN_SM_SECONDARY}
+                      variant="secondary"
+                      size="sm"
                       onClick={() => onMerge(item.client.id)}
                     >
                       Объединить
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </article>

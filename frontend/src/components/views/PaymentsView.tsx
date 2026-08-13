@@ -12,7 +12,7 @@ import {
 } from '../common/tableStyles';
 import { FilterParams } from '../../api';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 
 type PaymentSortKey = 'scheduledDate' | 'actualDate' | 'amount';
@@ -153,13 +153,14 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     <div className={TABLE_ACTIONS_CLASS_ROW}>
                       {!payment.actualDate ? (
-                        <button
+                        <Button
                           type="button"
                           onClick={() => onMarkPaid(payment.id)}
-                          className={BTN_SM_SECONDARY}
+                          variant="secondary"
+                          size="sm"
                         >
                           Отметить оплаченным
-                        </button>
+                        </Button>
                       ) : (
                         <span className="text-xs text-emerald-700 font-semibold">Оплачен</span>
                       )}

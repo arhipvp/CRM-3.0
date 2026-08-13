@@ -3,6 +3,7 @@ import type { FinancialRecord, Payment } from '../../types';
 import { formatCurrency, formatDate } from '../views/dealsView/helpers';
 import { POLICY_TEXT } from './text';
 import { NESTED_TABLE_CELL_CLASS_COMPACT, NESTED_TABLE_ROW_CLASS } from '../common/tableStyles';
+import { Button } from '../common/Button';
 
 interface PaymentCardProps {
   payment: Payment;
@@ -123,7 +124,7 @@ const renderRecordList = (
                   : 'flex gap-3 text-[11px] text-slate-500'
               }
             >
-              <button
+              <Button
                 onClick={() => onEditRecord(record.id)}
                 className={
                   compact
@@ -133,8 +134,8 @@ const renderRecordList = (
                 type="button"
               >
                 Изменить
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => onDeleteRecord(record.id).catch(() => undefined)}
                 className={
                   compact
@@ -144,7 +145,7 @@ const renderRecordList = (
                 type="button"
               >
                 Удалить
-              </button>
+              </Button>
             </div>
           </div>
         );
@@ -210,9 +211,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <p className="text-[11px] text-slate-500">{describeRecordsCount(records)}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button type="button" onClick={onAdd} className="link-action text-[11px] font-semibold">
+            <Button type="button" onClick={onAdd} className="link-action text-[11px] font-semibold">
               Добавить
-            </button>
+            </Button>
           </div>
         </div>
         <div className={sectionBodyClassName}>
@@ -269,21 +270,21 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <div className="space-y-0.5">
               {renderRecordsSummary(incomes, 'income', true)}
               <div className="flex flex-wrap items-center gap-1.5">
-                <button
+                <Button
                   type="button"
                   onClick={() => onRequestAddRecord(payment.id, 'income')}
                   className="link-action text-[11px] font-semibold"
                 >
                   Добавить
-                </button>
+                </Button>
                 {incomes.length > 0 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setIsIncomeExpanded((prev) => !prev)}
                     className="link-action text-[11px] font-semibold"
                   >
                     {incomeToggleLabel}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -292,21 +293,21 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <div className="space-y-0.5">
               {renderRecordsSummary(expenses, 'expense', true)}
               <div className="flex flex-wrap items-center gap-1.5">
-                <button
+                <Button
                   type="button"
                   onClick={() => onRequestAddRecord(payment.id, 'expense')}
                   className="link-action text-[11px] font-semibold"
                 >
                   Добавить
-                </button>
+                </Button>
                 {expenses.length > 0 && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setIsExpenseExpanded((prev) => !prev)}
                     className="link-action text-[11px] font-semibold"
                   >
                     {expenseToggleLabel}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -315,16 +316,16 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
               <div className="flex flex-wrap items-center gap-1.5">
                 {onEditPayment && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onEditPayment(payment.id)}
                     className="link-action whitespace-nowrap text-[11px] font-semibold"
                   >
                     Изменить
-                  </button>
+                  </Button>
                 )}
                 {onDeletePayment && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
                     className="link-danger whitespace-nowrap text-[11px] font-semibold"
@@ -336,7 +337,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                     }
                   >
                     Удалить
-                  </button>
+                  </Button>
                 )}
               </div>
             </td>
@@ -355,13 +356,13 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                         {RECORD_TITLES.income}
                       </p>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => onRequestAddRecord(payment.id, 'income')}
                         className="link-action text-[11px] font-semibold"
                       >
                         Добавить
-                      </button>
+                      </Button>
                     </div>
                     {renderRecordList(
                       incomes,
@@ -378,13 +379,13 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                       <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-slate-500">
                         {RECORD_TITLES.expense}
                       </p>
-                      <button
+                      <Button
                         type="button"
                         onClick={() => onRequestAddRecord(payment.id, 'expense')}
                         className="link-action text-[11px] font-semibold"
                       >
                         Добавить
-                      </button>
+                      </Button>
                     </div>
                     {renderRecordList(
                       expenses,
@@ -438,16 +439,16 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
         </div>
         <div className="flex items-center gap-2">
           {onEditPayment && (
-            <button
+            <Button
               type="button"
               onClick={() => onEditPayment(payment.id)}
               className="link-action whitespace-nowrap text-xs font-semibold"
             >
               Изменить
-            </button>
+            </Button>
           )}
           {onDeletePayment && (
-            <button
+            <Button
               type="button"
               onClick={() => onDeletePayment(payment.id).catch(() => undefined)}
               className="link-danger whitespace-nowrap text-xs font-semibold"
@@ -459,7 +460,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               }
             >
               Удалить
-            </button>
+            </Button>
           )}
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../../../common/Button';
 
 import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../../types';
 import { Combobox } from '../../../common/forms/Combobox';
@@ -184,13 +185,13 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
               placeholder="Начните вводить клиента"
               emptyMessage="Клиенты не найдены"
             />
-            <button
+            <Button
               type="button"
               onClick={onRequestAddClient}
               className="btn btn-sm btn-secondary whitespace-nowrap"
             >
               + Добавить клиента
-            </button>
+            </Button>
           </div>
         </div>
       </div>

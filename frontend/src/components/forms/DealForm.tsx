@@ -8,7 +8,7 @@ import { Combobox } from '../common/forms/Combobox';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
-import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { FormSection } from '../common/forms/FormSection';
 
 const MAX_CLIENT_SUGGESTIONS = 6;
@@ -397,9 +397,9 @@ export const DealForm: React.FC<DealFormProps> = ({
             />
 
             {shouldShowAddClient && (
-              <button type="button" onClick={onRequestAddClient} className={BTN_SM_SECONDARY}>
+              <Button type="button" onClick={onRequestAddClient} variant="secondary" size="sm">
                 + Контактное лицо
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -448,7 +448,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                 selectedViewerUsers.map((user) => {
                   const userColor = getUserColorValue(user);
                   return (
-                    <button
+                    <Button
                       key={user.id}
                       type="button"
                       onClick={() =>
@@ -466,7 +466,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                         </span>
                       </span>
                       <span className="text-slate-400">×</span>
-                    </button>
+                    </Button>
                   );
                 })
               ) : (
@@ -478,7 +478,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                 availableViewerUsers.map((user) => {
                   const userColor = getUserColorValue(user);
                   return (
-                    <button
+                    <Button
                       key={user.id}
                       type="button"
                       onClick={() => setVisibleUserIds((prev) => [...prev, user.id])}
@@ -491,7 +491,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                       <span style={userColor ? { color: userColor } : undefined}>
                         {getUserFullName(user)}
                       </span>
-                    </button>
+                    </Button>
                   );
                 })
               ) : (
@@ -532,7 +532,7 @@ export const DealForm: React.FC<DealFormProps> = ({
           />
           <div className="flex flex-wrap gap-2">
             {quickDateOptions.map((option) => (
-              <button
+              <Button
                 key={option.label}
                 type="button"
                 onClick={() => handleQuickNextContact(option.days)}
@@ -540,7 +540,7 @@ export const DealForm: React.FC<DealFormProps> = ({
                 className="btn btn-quiet btn-sm rounded-full"
               >
                 {option.label}
-              </button>
+              </Button>
             ))}
           </div>
         </FormField>
@@ -551,7 +551,8 @@ export const DealForm: React.FC<DealFormProps> = ({
         isSubmitDisabled={clients.length === 0}
         submitLabel={submitText}
         submittingLabel={submittingText}
-        submitClassName={`${BTN_PRIMARY} w-full rounded-xl`}
+        submitVariant="primary"
+        submitSize="block"
       />
     </form>
   );

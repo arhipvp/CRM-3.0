@@ -9,8 +9,7 @@ import { LinkifiedText } from '../../common/LinkifiedText';
 import { InlineAlert } from '../../common/InlineAlert';
 import { FileUploadManager } from '../../FileUploadManager';
 import { Modal } from '../../Modal';
-import { BTN_SM_PRIMARY, BTN_SM_SECONDARY } from '../../common/buttonStyles';
-import { PANEL_MUTED_TEXT } from '../../common/uiClassNames';
+import { Button } from '../../common/Button';
 import { dedupeFiles } from '../../../utils/fileUpload';
 
 const attachmentImageCache = new Map<string, string>();
@@ -71,7 +70,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     if (tone === 'danger') {
       return <InlineAlert>{message}</InlineAlert>;
     }
-    return <div className={PANEL_MUTED_TEXT}>{message}</div>;
+    return <div className={'ui-panel-muted-text'}>{message}</div>;
   };
 
   const buildAttachmentPath = (noteId: string, fileId: string) =>
@@ -183,7 +182,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
         : 'group inline-block overflow-hidden rounded-xl border border-amber-200 bg-white text-left shadow-sm';
 
     return (
-      <button
+      <Button
         type="button"
         className={buttonClassName}
         onClick={() => {
@@ -206,7 +205,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
           </div>
         )}
         <div className="px-2 py-1 text-[10px] text-slate-600 truncate">{file.name}</div>
-      </button>
+      </Button>
     );
   };
 
@@ -278,7 +277,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
     }
 
     return (
-      <button
+      <Button
         type="button"
         className="group relative overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm"
         onClick={() => {
@@ -300,7 +299,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             Загрузка...
           </div>
         )}
-      </button>
+      </Button>
     );
   };
 
@@ -312,7 +311,7 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
             <p className="app-label">Заметки</p>
             <div className="flex flex-wrap gap-2">
               {filterOptions.map((option) => (
-                <button
+                <Button
                   key={option.value}
                   type="button"
                   disabled={notesLoading}
@@ -322,17 +321,18 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                   }`}
                 >
                   {option.label}
-                </button>
+                </Button>
               ))}
             </div>
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => setIsCreateModalOpen(true)}
-            className={BTN_SM_PRIMARY}
+            variant="primary"
+            size="sm"
           >
             Добавить заметку
-          </button>
+          </Button>
         </div>
 
         {notesError && renderStatusMessage(notesError, 'danger')}
@@ -414,23 +414,23 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                       {formatDate(note.createdAt)}
                     </span>
                     {notesFilter === 'active' ? (
-                      <button
+                      <Button
                         type="button"
                         disabled={notesAction === note.id}
                         onClick={() => onArchiveNote(note.id)}
                         className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
                       >
                         {notesAction === note.id ? 'Удаляем...' : 'Удалить'}
-                      </button>
+                      </Button>
                     ) : (
-                      <button
+                      <Button
                         type="button"
                         disabled={notesAction === note.id}
                         onClick={() => onRestoreNote(note.id)}
                         className="text-[11px] font-semibold text-slate-700 transition hover:text-slate-900 disabled:text-slate-400"
                       >
                         {notesAction === note.id ? 'Восстанавливаем...' : 'Восстановить'}
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </article>
@@ -467,14 +467,14 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                           file={file}
                           onOpen={setImagePreview}
                         />
-                        <button
+                        <Button
                           type="button"
                           onClick={() => onRemoveNoteAttachment(file)}
                           className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white text-xs text-slate-500 shadow-sm transition hover:text-slate-700"
                           aria-label={`Удалить ${file.name}`}
                         >
                           x
-                        </button>
+                        </Button>
                       </div>
                     ) : (
                       <div
@@ -482,14 +482,14 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
                         className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs"
                       >
                         <span className="max-w-[180px] truncate text-slate-700">{file.name}</span>
-                        <button
+                        <Button
                           type="button"
                           onClick={() => onRemoveNoteAttachment(file)}
                           className="text-slate-400 transition hover:text-slate-600"
                           aria-label={`Удалить ${file.name}`}
                         >
                           x
-                        </button>
+                        </Button>
                       </div>
                     ),
                   )}
@@ -515,21 +515,23 @@ export const DealNotesSection: React.FC<DealNotesSectionProps> = ({
               <p className="text-xs text-slate-500">Все заметки видны всем участникам</p>
             </div>
             <div className="flex flex-wrap items-center justify-end gap-2">
-              <button
+              <Button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
-                className={BTN_SM_SECONDARY}
+                variant="secondary"
+                size="sm"
               >
                 Отмена
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={onAddNote}
                 disabled={notesAction === 'create' || noteAttachmentsUploading}
-                className={BTN_SM_PRIMARY}
+                variant="primary"
+                size="sm"
               >
                 {notesAction === 'create' ? 'Добавляем...' : 'Добавить заметку'}
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

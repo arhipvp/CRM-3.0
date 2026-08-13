@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { FormActions } from '../common/forms/FormActions';
 import { FormModal } from '../common/modal/FormModal';
 import type { Client, ClientMergePreviewResponse, ClientMergeSessionStatus } from '../../types';
@@ -239,16 +239,17 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
         {mergeError && <p className="text-sm text-rose-600">{mergeError}</p>}
         {isRetryableFailure && (
           <div className="flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 void onRetry();
               }}
               disabled={isMergingClients}
-              className={`${BTN_PRIMARY} rounded-xl`}
+              variant="primary"
+              className="rounded-xl"
             >
               {isMergingClients ? 'Продолжаем...' : 'Повторить'}
-            </button>
+            </Button>
           </div>
         )}
         <FormActions
@@ -257,21 +258,22 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
           isSubmitDisabled={!mergeSources.length || !isPreviewConfirmed || isRetryableFailure}
           submitLabel="Объединить клиентов"
           submittingLabel={isFinalizing ? 'Финализируем...' : 'Объединяем...'}
-          submitClassName={`${BTN_PRIMARY} rounded-xl`}
-          cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+          submitVariant="primary"
+          cancelVariant="secondary"
         />
         {mergeStep === 'select' && (
           <div className="flex justify-end">
-            <button
+            <Button
               type="button"
               onClick={() => {
                 void onPreview();
               }}
               disabled={isPreviewLoading || !mergeSources.length}
-              className={`${BTN_SECONDARY} rounded-xl`}
+              variant="secondary"
+              className="rounded-xl"
             >
               {isPreviewLoading ? 'Готовим предпросмотр...' : 'Предпросмотр объединения'}
-            </button>
+            </Button>
           </div>
         )}
       </form>

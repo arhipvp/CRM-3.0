@@ -188,7 +188,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
             {paymentEntries.map((entry, displayIndex) => {
               const isSelected = activeSourceIndex === entry.sourceIndex;
               return (
-                <button
+                <Button
                   key={`jump-${entry.sourceIndex}`}
                   type="button"
                   aria-pressed={isSelected}
@@ -204,7 +204,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
                   }`}
                 >
                   Платёж {displayIndex + 1}
-                </button>
+                </Button>
               );
             })}
           </div>

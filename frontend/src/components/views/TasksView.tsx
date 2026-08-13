@@ -5,7 +5,7 @@ import { DEFAULT_TASKS_API_ORDERING } from '../../api/tasks';
 import type { Task, TaskPriority, User } from '../../types';
 import { FilterBar } from '../FilterBar';
 import { useDebouncedValue } from '../../hooks/useDebouncedValue';
-import { BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { PRIORITY_LABELS, STATUS_LABELS } from '../tasks/constants';
 import { TaskTable } from '../tasks/TaskTable';
 import { PageHeader } from '../common/layoutPrimitives';
@@ -362,22 +362,24 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 {totalCount}
               </span>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
-                  className={BTN_SM_SECONDARY}
+                  variant="secondary"
+                  size="sm"
                   disabled={requestedPage <= 1 || isLoading}
                   onClick={() => setRequestedPage(requestedPage - 1)}
                 >
                   Назад
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
-                  className={BTN_SM_SECONDARY}
+                  variant="secondary"
+                  size="sm"
                   disabled={requestedPage >= Math.ceil(totalCount / TASKS_PAGE_SIZE) || isLoading}
                   onClick={() => setRequestedPage(requestedPage + 1)}
                 >
                   Далее
-                </button>
+                </Button>
               </div>
             </div>
           ) : null}
@@ -401,9 +403,14 @@ export const TasksView: React.FC<TasksViewProps> = ({
           </div>
           {isTasksEmpty && (
             <div className="flex flex-wrap justify-center gap-3">
-              <button type="button" onClick={() => navigate('/deals')} className={BTN_SM_SECONDARY}>
+              <Button
+                type="button"
+                onClick={() => navigate('/deals')}
+                variant="secondary"
+                size="sm"
+              >
                 Перейти к сделкам
-              </button>
+              </Button>
             </div>
           )}
         </div>

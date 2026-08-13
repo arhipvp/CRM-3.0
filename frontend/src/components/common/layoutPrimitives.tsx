@@ -35,10 +35,25 @@ export type ToolbarProps = HTMLAttributes<HTMLDivElement> & {
 
 export type StatusBadgeProps = {
   children: ReactNode;
-  tone?: 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
+  tone?: SemanticTone;
   dot?: boolean;
   className?: string;
 };
+
+export type SemanticTone =
+  | 'neutral'
+  | 'brand'
+  | 'primary'
+  | 'success'
+  | 'warning'
+  | 'danger'
+  | 'info'
+  | 'income'
+  | 'expense'
+  | 'balance'
+  | 'due'
+  | 'overdue'
+  | 'selected';
 
 type SegmentedControlProps<T extends string> = {
   options: Array<{ value: T; label: ReactNode; disabled?: boolean }>;
@@ -67,6 +82,19 @@ const badgeToneClassName: Record<NonNullable<StatusBadgeProps['tone']>, string> 
   success: 'border-emerald-200 bg-emerald-50 text-emerald-800',
   warning: 'border-amber-200 bg-amber-50 text-amber-800',
   danger: 'border-rose-200 bg-rose-50 text-rose-800',
+  brand: 'border-[var(--app-brand-200)] bg-[var(--app-brand-50)] text-[var(--app-brand-700)]',
+  info: 'border-[var(--app-info-border)] bg-[var(--app-info-surface)] text-[var(--app-info-text)]',
+  income:
+    'border-[var(--app-income-border)] bg-[var(--app-income-surface)] text-[var(--app-income-text)]',
+  expense:
+    'border-[var(--app-expense-border)] bg-[var(--app-expense-surface)] text-[var(--app-expense-text)]',
+  balance:
+    'border-[var(--app-balance-border)] bg-[var(--app-balance-surface)] text-[var(--app-balance-text)]',
+  due: 'border-[var(--app-due-border)] bg-[var(--app-due-surface)] text-[var(--app-due-text)]',
+  overdue:
+    'border-[var(--app-overdue-border)] bg-[var(--app-overdue-surface)] text-[var(--app-overdue-text)]',
+  selected:
+    'border-[var(--app-selected-border)] bg-[var(--app-selected-surface)] text-[var(--app-selected-text)]',
 };
 
 export function Panel({

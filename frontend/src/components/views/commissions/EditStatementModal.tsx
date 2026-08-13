@@ -1,7 +1,6 @@
 import React from 'react';
 
 import type { Statement } from '../../../types';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
 import { DateInput } from '../../common/forms/DateInput';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
@@ -125,8 +124,8 @@ export const EditStatementModal: React.FC<EditStatementModalProps> = ({
         <FormActions
           onCancel={onClose}
           submitLabel="Сохранить"
-          submitClassName={`${BTN_PRIMARY} rounded-xl`}
-          cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+          submitVariant="primary"
+          cancelVariant="secondary"
         />
       </form>
     </FormModal>

@@ -1,4 +1,5 @@
 import type { Client, ClientDuplicateHint } from '../../types';
+import { Button } from '../common/Button';
 
 interface ClientNameIndicatorsProps {
   client?: Client | null;
@@ -33,7 +34,7 @@ export function ClientNameIndicators({
   return (
     <span className="inline-flex items-center gap-1">
       {showDuplicateHint && (
-        <button
+        <Button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
@@ -46,10 +47,10 @@ export function ClientNameIndicators({
           <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="currentColor" aria-hidden="true">
             <path d="M7 7a4 4 0 1 1 7.5 2 4 4 0 0 1 2.5 3.7V14h-2v-1.3A2.7 2.7 0 0 0 12.3 10h-2.6A2.7 2.7 0 0 0 7 12.7V14H5v-1.3A4.7 4.7 0 0 1 7.5 9 4 4 0 0 1 7 7Zm4 2a2 2 0 1 0 0-4 2 2 0 0 0 0 4Zm7.5 1.5h2v3h3v2h-3v3h-2v-3h-3v-2h3v-3Z" />
           </svg>
-        </button>
+        </Button>
       )}
       {showNormalizeHint && (
-        <button
+        <Button
           type="button"
           onClick={(event) => {
             event.stopPropagation();
@@ -60,7 +61,7 @@ export function ClientNameIndicators({
           title={`Нормализовать: ${hint.normalizedName}`}
         >
           Aa
-        </button>
+        </Button>
       )}
     </span>
   );

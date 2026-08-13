@@ -20,7 +20,7 @@ import type { AddFinancialRecordFormValues } from '../../forms/AddFinancialRecor
 import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../../forms/AddTaskForm';
 import type { DealFormValues } from '../../forms/DealForm';
-import { BTN_PRIMARY } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { DateInput } from '../../common/forms/DateInput';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
@@ -770,7 +770,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 : 'border-blue-500 ring-2 ring-blue-400/30'
             }`}
           >
-            <button
+            <Button
               type="button"
               onClick={onClearDealFocus}
               className="icon-btn absolute right-3 top-3 z-10 h-8 w-8"
@@ -778,7 +778,7 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
               title="Снять фокус со сделки"
             >
               ✕
-            </button>
+            </Button>
             <div className="flex flex-col gap-4">
               <DealHeader
                 deal={selectedDeal}
@@ -1032,13 +1032,13 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
                 </p>
               </div>
               {accessMessage && onClearAccessMessage && (
-                <button
+                <Button
                   type="button"
                   onClick={onClearAccessMessage}
                   className="btn btn-sm btn-quiet"
                 >
                   Понятно
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -1168,9 +1168,9 @@ export const DealDetailsPanel: React.FC<DealDetailsPanelProps> = ({
             Учет времени приостановлен. Чтобы продолжить работу со сделкой, подтвердите продолжение
             учета времени.
           </p>
-          <button type="button" onClick={continueTracking} className={`${BTN_PRIMARY} w-full`}>
+          <Button type="button" onClick={continueTracking} variant="primary" className="w-full">
             Продолжить
-          </button>
+          </Button>
         </div>
       </FormModal>
     </>

@@ -1,4 +1,5 @@
 import type { PolicyDocumentsState } from './usePolicyDocuments';
+import { Button } from '../../common/Button';
 
 interface PolicyDocumentsListProps {
   state: PolicyDocumentsState;
@@ -8,14 +9,14 @@ interface PolicyDocumentsListProps {
 export const PolicyDocumentsList: React.FC<PolicyDocumentsListProps> = ({ state, onLoad }) => (
   <div className="mt-2 min-w-0 text-[11px] leading-4">
     {state.status === 'idle' ? (
-      <button
+      <Button
         type="button"
         className="inline-flex max-w-full items-center gap-1 rounded-md bg-slate-100 px-1.5 py-0.5 font-medium text-blue-700 transition hover:bg-slate-200"
         onClick={onLoad}
       >
         <span aria-hidden="true">📎</span>
         Показать документы
-      </button>
+      </Button>
     ) : null}
     {state.status === 'loading' ? <div className="text-slate-400">Документы: загрузка…</div> : null}
     {state.status === 'error' ? (

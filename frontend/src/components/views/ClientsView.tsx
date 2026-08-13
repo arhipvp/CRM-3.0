@@ -16,7 +16,7 @@ import {
 import { formatDateRu } from '../../utils/formatting';
 import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 import { PageHeader, PageShell, Panel } from '../common/layoutPrimitives';
@@ -281,46 +281,49 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {clientDealsCount}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
-                    <button
+                    <Button
                       type="button"
                       onClick={() => setFilesModalClient(client)}
-                      className={BTN_SM_SECONDARY}
+                      variant="secondary"
+                      size="sm"
                       aria-label={`Файлы клиента ${client.name}`}
                     >
                       Файлы
-                    </button>
+                    </Button>
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     {onClientEdit || onClientDelete || onClientMerge || onClientFindSimilar ? (
                       <div className={TABLE_ACTIONS_CLASS_COL}>
                         {onClientEdit && (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => onClientEdit(client)}
-                            className={BTN_SM_QUIET}
+                            variant="quiet"
+                            size="sm"
                             aria-label={`Редактировать клиента ${client.name}`}
                           >
                             Редактировать
-                          </button>
+                          </Button>
                         )}
                         <div className="relative">
-                          <button
+                          <Button
                             type="button"
                             onClick={() =>
                               setActionsClientId((current) =>
                                 current === client.id ? null : client.id,
                               )
                             }
-                            className={BTN_SM_SECONDARY}
+                            variant="secondary"
+                            size="sm"
                             aria-expanded={actionsClientId === client.id}
                             aria-label={`Дополнительные действия клиента ${client.name}`}
                           >
                             Ещё
-                          </button>
+                          </Button>
                           {actionsClientId === client.id && (
                             <div className="absolute right-0 z-20 mt-2 w-48 rounded-xl border border-slate-200 bg-white p-1 text-left shadow-lg">
                               {onClientFindSimilar && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => {
                                     setActionsClientId(null);
@@ -329,10 +332,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                                   className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
                                 >
                                   Объединить похожих
-                                </button>
+                                </Button>
                               )}
                               {onClientMerge && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => {
                                     setActionsClientId(null);
@@ -341,10 +344,10 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                                   className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 hover:bg-slate-50"
                                 >
                                   Объединить вручную
-                                </button>
+                                </Button>
                               )}
                               {onClientDelete && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => {
                                     setActionsClientId(null);
@@ -353,7 +356,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                                   className="block w-full rounded-lg px-3 py-2 text-left text-xs font-semibold text-rose-700 hover:bg-rose-50"
                                 >
                                   Удалить
-                                </button>
+                                </Button>
                               )}
                             </div>
                           )}

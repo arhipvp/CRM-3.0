@@ -12,13 +12,8 @@ import {
   getPolicyRenewalBadge,
 } from './policyIndicators';
 import { POLICY_PLACEHOLDER, POLICY_TEXT } from './text';
-import {
-  BTN_SM_DANGER,
-  BTN_SM_PRIMARY,
-  BTN_SM_QUIET,
-  BTN_SM_SECONDARY,
-} from '../common/buttonStyles';
-import { PANEL_MUTED_TEXT } from '../common/uiClassNames';
+import { Button } from '../common/Button';
+import type { ButtonVariant } from '../common/buttonClassName';
 import { hasUnpaidPayment, hasUnpaidRecord } from '../views/dealsView/helpers';
 
 export type PolicyCardActionVariant = 'secondary' | 'quiet' | 'danger';
@@ -48,14 +43,14 @@ interface PolicyCardProps {
   actions?: PolicyCardAction[];
 }
 
-const actionClassName = (variant: PolicyCardActionVariant | undefined) => {
+const actionVariant = (variant: PolicyCardActionVariant | undefined): ButtonVariant => {
   if (variant === 'danger') {
-    return `${BTN_SM_DANGER} whitespace-nowrap`;
+    return 'danger';
   }
   if (variant === 'quiet') {
-    return `${BTN_SM_QUIET} whitespace-nowrap`;
+    return 'quiet';
   }
-  return `${BTN_SM_SECONDARY} whitespace-nowrap`;
+  return 'secondary';
 };
 
 export const PolicyCard: React.FC<PolicyCardProps> = ({
@@ -234,10 +229,12 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             {actions.length > 0 && (
               <div className="flex flex-nowrap items-center justify-end gap-2 overflow-x-auto">
                 {actions.map((action) => (
-                  <button
+                  <Button
                     key={action.key}
                     type="button"
-                    className={actionClassName(action.variant)}
+                    variant={actionVariant(action.variant)}
+                    size="sm"
+                    className="whitespace-nowrap"
                     onClick={(event) => {
                       event.stopPropagation();
                       action.onClick();
@@ -246,7 +243,7 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
                     title={action.title ?? action.label}
                   >
                     {action.label}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -274,13 +271,13 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
 
         {!policy.isVehicle && hasAutoDetails && (
           <div className="text-right">
-            <button
+            <Button
               type="button"
               onClick={() => setIsDetailsExpanded((prev) => !prev)}
               className="text-xs font-semibold text-slate-500 hover:text-slate-700"
             >
               {isDetailsExpanded ? 'Скрыть детали' : 'Подробнее'}
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -299,19 +296,20 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
       {payments.length > 0 && !isPaymentsExpanded ? (
         <div className="border-t border-slate-200 px-4 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <button
+            <Button
               type="button"
               onClick={onTogglePaymentsExpanded}
               aria-expanded={false}
               aria-controls={paymentsPanelId}
-              className={BTN_SM_PRIMARY}
+              variant="primary"
+              size="sm"
             >
               {paymentsToggleLabel}
-            </button>
+            </Button>
             {onRequestAddPayment && (
-              <button type="button" onClick={onRequestAddPayment} className={BTN_SM_SECONDARY}>
+              <Button type="button" onClick={onRequestAddPayment} variant="secondary" size="sm">
                 {POLICY_TEXT.actions.addPayment}
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -327,28 +325,29 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
 
             <div className="flex flex-wrap items-center gap-2">
               {onRequestAddPayment && (
-                <button type="button" onClick={onRequestAddPayment} className={BTN_SM_SECONDARY}>
+                <Button type="button" onClick={onRequestAddPayment} variant="secondary" size="sm">
                   {POLICY_TEXT.actions.addPayment}
-                </button>
+                </Button>
               )}
 
               {payments.length > 0 && (
-                <button
+                <Button
                   type="button"
                   onClick={onTogglePaymentsExpanded}
                   aria-expanded={isPaymentsExpanded}
                   aria-controls={paymentsPanelId}
-                  className={BTN_SM_QUIET}
+                  variant="quiet"
+                  size="sm"
                 >
                   {paymentsToggleLabel}
-                </button>
+                </Button>
               )}
             </div>
           </div>
 
           {payments.length === 0 ? (
             <div className="mt-3">
-              <div className={PANEL_MUTED_TEXT}>{POLICY_TEXT.messages.noPayments}</div>
+              <div className={'ui-panel-muted-text'}>{POLICY_TEXT.messages.noPayments}</div>
             </div>
           ) : (
             <div id={paymentsPanelId} className="mt-3 space-y-2">

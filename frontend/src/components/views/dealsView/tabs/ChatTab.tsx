@@ -1,5 +1,6 @@
 import { ChatBox } from '../../../ChatBox';
 import type { ChatMessage, Deal, User } from '../../../../types';
+import { Button } from '../../../common/Button';
 
 interface ChatTabProps {
   selectedDeal: Deal | null;
@@ -35,13 +36,13 @@ export const ChatTab: React.FC<ChatTabProps> = ({
       {chatError ? (
         <div className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
           <p>{chatError}</p>
-          <button
+          <Button
             type="button"
             className="mt-2 font-semibold underline"
             onClick={() => void onRetryLoad()}
           >
             Повторить
-          </button>
+          </Button>
         </div>
       ) : isChatLoading ? (
         <div className="space-y-3 animate-pulse">

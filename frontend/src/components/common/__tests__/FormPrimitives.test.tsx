@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { FormActions } from '../forms/FormActions';
+import { CheckboxField } from '../forms/CheckboxField';
 import { FormError } from '../forms/FormError';
 import { FormField } from '../forms/FormField';
 
@@ -15,6 +16,23 @@ describe('form primitives', () => {
 
     expect(screen.getByText('Поле *')).toBeInTheDocument();
     expect(screen.getByText('Подсказка')).toBeInTheDocument();
+  });
+
+  it('connects checkbox label, description and error state', () => {
+    render(
+      <CheckboxField
+        id="notifications"
+        label="Уведомления"
+        description="Получать напоминания"
+        error="Настройка недоступна"
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: /Уведомления/ })).toHaveAttribute(
+      'type',
+      'checkbox',
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Настройка недоступна');
   });
 
   it('renders form error only when message exists', () => {

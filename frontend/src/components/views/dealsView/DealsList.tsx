@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { Client, ClientDuplicateHint, Deal, User } from '../../../types';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
-import { BTN_SM_QUIET } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { TableHeadCell } from '../../common/TableHeadCell';
@@ -372,29 +372,30 @@ export const DealsList: React.FC<DealsListProps> = ({
                   className="field field-input pr-10"
                 />
                 {dealSearch && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onDealSearchSubmit('')}
                     aria-label="Очистить поиск сделок"
                     className="search-clear-btn"
                   >
                     ×
-                  </button>
+                  </Button>
                 )}
               </div>
-              <button type="submit" className={BTN_SM_QUIET}>
+              <Button type="submit" variant="quiet" size="sm">
                 Найти
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                className={BTN_SM_QUIET}
+                variant="quiet"
+                size="sm"
                 onClick={() => {
                   void onRefreshDealsList?.();
                 }}
                 disabled={!onRefreshDealsList || isRefreshingDealsList}
               >
                 {isRefreshingDealsList ? 'Обновляем...' : 'Обновить'}
-              </button>
+              </Button>
             </form>
           </div>
         </div>
@@ -480,7 +481,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                     className="min-w-[200px]"
                     aria-sort={getAriaSort('nextContact')}
                   >
-                    <button
+                    <Button
                       type="button"
                       onClick={() => toggleColumnSort('nextContact')}
                       aria-label={`Сортировать по следующему контакту, текущий порядок ${getSortLabel(
@@ -492,14 +493,14 @@ export const DealsList: React.FC<DealsListProps> = ({
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                         {getSortIndicator('nextContact')}
                       </span>
-                    </button>
+                    </Button>
                   </TableHeadCell>
                   <TableHeadCell
                     align="center"
                     className="min-w-[180px]"
                     aria-sort={getAriaSort('deadline')}
                   >
-                    <button
+                    <Button
                       type="button"
                       onClick={() => toggleColumnSort('deadline')}
                       aria-label={`Сортировать по крайнему сроку, текущий порядок ${getSortLabel(
@@ -511,7 +512,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                       <span className="text-[11px] font-semibold uppercase tracking-wide text-slate-900">
                         {getSortIndicator('deadline')}
                       </span>
-                    </button>
+                    </Button>
                   </TableHeadCell>
                   <TableHeadCell className="min-w-[190px]">Исполнитель</TableHeadCell>
                 </tr>
@@ -580,7 +581,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                         <td className={`${TABLE_CELL_CLASS_LG} ${deletedTextClass}`}>
                           <div className="flex items-start gap-2">
                             {canPin && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -611,7 +612,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                                 >
                                   <path d="M14.8 3.3a1 1 0 0 1 1.4 0l2.5 2.5a1 1 0 0 1 0 1.4l-2 2 2.2 2.2c.4.4.4 1 0 1.4l-1.4 1.4a1 1 0 0 1-1.4 0l-2.2-2.2-5.8 5.8a1 1 0 0 1-.7.3H6v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1h2.3a1 1 0 0 1 .7.3l5.8-5.8-2.2-2.2a1 1 0 0 1 0-1.4l1.4-1.4a1 1 0 0 1 1.4 0l2.2 2.2 2-2a1 1 0 0 1 0-1.4l-2.5-2.5a1 1 0 0 1 0-1.4z" />
                                 </svg>
-                              </button>
+                              </Button>
                             )}
                             <div className="space-y-1">
                               <p
@@ -642,7 +643,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                               {activeDealsCount !== undefined && (
                                 <>
                                   {' '}
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={(event) =>
                                       handleClientDealsCountClick(event, deal.clientName)
@@ -652,7 +653,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                                     title={`Показать сделки клиента ${deal.clientName}`}
                                   >
                                     ({activeDealsCount})
-                                  </button>
+                                  </Button>
                                 </>
                               )}
                             </span>
@@ -716,7 +717,7 @@ export const DealsList: React.FC<DealsListProps> = ({
           </div>
         )}
         {isDesktopLayout && (
-          <button
+          <Button
             type="button"
             aria-label="Изменить высоту списка сделок"
             title="Изменить высоту списка сделок"
@@ -726,7 +727,7 @@ export const DealsList: React.FC<DealsListProps> = ({
             className="hidden h-3 w-full cursor-row-resize border-y border-slate-200 bg-slate-50 transition hover:bg-sky-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-inset md:flex md:items-center md:justify-center"
           >
             <span className="h-1 w-12 rounded-full bg-slate-300" aria-hidden="true" />
-          </button>
+          </Button>
         )}
         {!isDesktopLayout && (
           <div className="divide-y divide-slate-200 bg-white">
@@ -738,7 +739,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                 const isDeleted = Boolean(deal.deletedAt);
                 const dealClient = clientsById.get(deal.clientId) ?? null;
                 return (
-                  <button
+                  <Button
                     key={deal.id}
                     type="button"
                     onClick={() => {
@@ -809,7 +810,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                         )}
                       </div>
                     </div>
-                  </button>
+                  </Button>
                 );
               })
             ) : (
@@ -821,14 +822,15 @@ export const DealsList: React.FC<DealsListProps> = ({
 
       {dealsHasMore && (
         <div className="border-t border-slate-100 bg-slate-50/70 px-4 py-3 text-center">
-          <button
+          <Button
             type="button"
             onClick={onLoadMoreDeals}
             disabled={isLoadingMoreDeals}
-            className={BTN_SM_QUIET}
+            variant="quiet"
+            size="sm"
           >
             {isLoadingMoreDeals ? 'Загрузка...' : 'Показать ещё'}
-          </button>
+          </Button>
         </div>
       )}
     </>

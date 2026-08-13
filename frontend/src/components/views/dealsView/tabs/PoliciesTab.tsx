@@ -23,14 +23,7 @@ import {
   POLICY_LEDGER_STATE_CLASS,
   POLICY_STATUS_TONE_CLASS,
 } from '../../../policies/policyTableHelpers';
-import {
-  BTN_PRIMARY,
-  BTN_SM_DANGER,
-  BTN_SM_PRIMARY,
-  BTN_SM_QUIET,
-  BTN_SM_SECONDARY,
-} from '../../../common/buttonStyles';
-import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
+import { Button } from '../../../common/Button';
 import {
   TABLE_CELL_CLASS_COMPACT,
   TABLE_ROW_CLASS,
@@ -54,10 +47,6 @@ const POLICY_SORT_LABELS: Record<PolicySortKey, string> = {
 };
 
 const POLICY_ACTION_CLASS = 'h-8 whitespace-nowrap px-3 text-[11px]';
-const POLICY_PAYMENT_ACTION_CLASS =
-  'btn btn-success btn-sm rounded-xl h-8 whitespace-nowrap px-3 text-[11px]';
-const POLICY_RENEW_ACTION_CLASS =
-  'btn btn-sm rounded-xl h-8 whitespace-nowrap border border-amber-200 bg-amber-50 px-3 text-[11px] font-semibold text-amber-800 hover:bg-amber-100 focus-visible:ring-amber-500';
 
 interface PoliciesTabProps {
   selectedDeal: Deal | null;
@@ -204,7 +193,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
   }
 
   const renderStatusMessage = (message: string) => (
-    <div className={PANEL_MUTED_TEXT}>{message}</div>
+    <div className={'ui-panel-muted-text'}>{message}</div>
   );
 
   const renderPolicyFileUpload = () => {
@@ -349,13 +338,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
       <section className="app-panel p-4 shadow-none space-y-3">
         {renderPolicyFileUpload()}
         {renderStatusMessage('Для сделки пока нет полисов.')}
-        <button
+        <Button
           type="button"
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
-          className={`${BTN_PRIMARY} rounded-xl self-start`}
+          variant="primary"
+          className="rounded-xl self-start"
         >
           Создать полис
-        </button>
+        </Button>
       </section>
     );
   }
@@ -400,19 +390,20 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
           </label>
         </div>
 
-        <button
+        <Button
           type="button"
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
-          className={BTN_SM_SECONDARY}
+          variant="secondary"
+          size="sm"
         >
           + Создать полис
-        </button>
+        </Button>
       </div>
 
       {renderPolicyFileUpload()}
 
       {!visiblePolicies.length && (
-        <div className={PANEL_MUTED_TEXT}>
+        <div className={'ui-panel-muted-text'}>
           {showRenewedPolicies || showUnpaidPaymentsOnly || showUnpaidRecordsOnly
             ? 'Нет полисов под выбранные фильтры.'
             : 'Продлённые полисы скрыты. Включите фильтр, чтобы посмотреть их.'}
@@ -430,32 +421,32 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
             >
               <tr>
                 <th className="w-[14%] border border-slate-200 px-3 py-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleSortChange('number')}
                     className="w-full text-left"
                   >
                     Номер полиса
-                  </button>
+                  </Button>
                 </th>
                 <th className="w-[31%] border border-slate-200 px-3 py-2">Основные данные</th>
                 <th className="w-[8%] border border-slate-200 px-3 py-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleSortChange('startDate')}
                     className="w-full text-left"
                   >
                     Начало
-                  </button>
+                  </Button>
                 </th>
                 <th className="w-[8%] border border-slate-200 px-3 py-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleSortChange('endDate')}
                     className="w-full text-left"
                   >
                     Конец
-                  </button>
+                  </Button>
                 </th>
                 <th className="w-[17%] border border-slate-200 px-3 py-2">Платеж</th>
                 <th className="w-[22%] border border-slate-200 px-3 py-2">Финансовые записи</th>
@@ -507,7 +498,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           <div className="space-y-1.5 border-b border-slate-100 pb-2.5">
                             <div className="min-w-0" data-testid={`policy-client-${policy.id}`}>
                               {model.clientId ? (
-                                <button
+                                <Button
                                   type="button"
                                   className="block max-w-full truncate text-left text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 transition hover:text-sky-700 disabled:cursor-wait"
                                   disabled={openingClientId === model.clientId}
@@ -524,7 +515,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                   }}
                                 >
                                   {model.client}
-                                </button>
+                                </Button>
                               ) : (
                                 <p className="truncate text-sm font-semibold text-slate-900">
                                   {model.client}
@@ -540,14 +531,14 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                   Сделка:
                                 </span>
                                 {canOpenDeal ? (
-                                  <button
+                                  <Button
                                     type="button"
                                     onClick={() => handleOpenDeal(policy.dealId)}
                                     className="link-action min-w-0 truncate text-left text-xs"
                                     title={dealTitle}
                                   >
                                     {dealTitle}
-                                  </button>
+                                  </Button>
                                 ) : (
                                   <span className="min-w-0 truncate text-xs font-semibold text-slate-600">
                                     {dealTitle}
@@ -637,54 +628,60 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                           </div>
 
                           <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5">
-                            <button
+                            <Button
                               type="button"
                               onClick={() => onRequestEditPolicy(policy)}
-                              className={`${BTN_SM_PRIMARY} ${POLICY_ACTION_CLASS}`}
+                              variant="primary"
+                              size="sm"
+                              className={POLICY_ACTION_CLASS}
                             >
                               Редактировать
-                            </button>
+                            </Button>
                             {onMovePolicy && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() => setPolicyToMove(policy)}
-                                className={`${BTN_SM_QUIET} ${POLICY_ACTION_CLASS}`}
+                                variant="quiet"
+                                size="sm"
+                                className={POLICY_ACTION_CLASS}
                               >
                                 Перенести
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
                               type="button"
                               onClick={() => {
                                 setEditingPaymentId('new');
                                 setCreatingPaymentPolicyId(policy.id);
                               }}
-                              className={POLICY_PAYMENT_ACTION_CLASS}
+                              variant="success"
+                              size="sm"
+                              className={POLICY_ACTION_CLASS}
                             >
                               + Платеж
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               onClick={() =>
                                 handleUpdatePolicyRenewed(policy, !policy.isRenewed).catch(
                                   () => undefined,
                                 )
                               }
-                              className={
-                                policy.isRenewed
-                                  ? `${BTN_SM_PRIMARY} ${POLICY_ACTION_CLASS}`
-                                  : POLICY_RENEW_ACTION_CLASS
-                              }
+                              variant={policy.isRenewed ? 'primary' : 'warning'}
+                              size="sm"
+                              className={POLICY_ACTION_CLASS}
                             >
                               {policy.isRenewed ? 'Вернуть в активные' : 'Отметить продлённым'}
-                            </button>
-                            <button
+                            </Button>
+                            <Button
                               type="button"
                               onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
-                              className={`${BTN_SM_DANGER} ${POLICY_ACTION_CLASS}`}
+                              variant="danger"
+                              size="sm"
+                              className={POLICY_ACTION_CLASS}
                             >
                               Удалить
-                            </button>
+                            </Button>
                           </div>
                         </div>
                       </td>
@@ -714,20 +711,24 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                 >
                                   Проставить оплату
-                                </button>
+                                </Button>
                               )}
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() =>
                                   onDeletePayment(firstLedgerRow.payment.id).catch(() => undefined)
                                 }
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                variant="quiet"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
                                 disabled={firstLedgerRow.payment.canDelete === false}
                                 title={
                                   firstLedgerRow.payment.canDelete === false
@@ -736,7 +737,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                 }
                               >
                                 Удалить платёж
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         ) : null}
@@ -760,27 +761,31 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                 {!recordRow.record.statementId && !recordRow.record.date ? (
                                   <div className="flex flex-wrap gap-1 pt-1">
                                     {onMarkFinancialRecordPaid ? (
-                                      <button
+                                      <Button
                                         type="button"
                                         onClick={() =>
                                           openMarkRecordPaidPrompt(recordRow.record.id)
                                         }
-                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                        variant="quiet"
+                                        size="sm"
+                                        className="h-7 px-2 text-[11px]"
                                       >
                                         Проставить оплату
-                                      </button>
+                                      </Button>
                                     ) : null}
-                                    <button
+                                    <Button
                                       type="button"
                                       onClick={() =>
                                         onDeleteFinancialRecord(recordRow.record.id).catch(
                                           () => undefined,
                                         )
                                       }
-                                      className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                      variant="quiet"
+                                      size="sm"
+                                      className="h-7 px-2 text-[11px]"
                                     >
                                       Удалить запись
-                                    </button>
+                                    </Button>
                                   </div>
                                 ) : null}
                               </div>
@@ -804,20 +809,24 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                             </div>
                             <div className="flex flex-wrap gap-1">
                               {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <button
+                                <Button
                                   type="button"
                                   onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
-                                  className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                  variant="quiet"
+                                  size="sm"
+                                  className="h-7 px-2 text-[11px]"
                                 >
                                   Проставить оплату
-                                </button>
+                                </Button>
                               )}
-                              <button
+                              <Button
                                 type="button"
                                 onClick={() =>
                                   onDeletePayment(ledgerRow.payment.id).catch(() => undefined)
                                 }
-                                className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                variant="quiet"
+                                size="sm"
+                                className="h-7 px-2 text-[11px]"
                                 disabled={ledgerRow.payment.canDelete === false}
                                 title={
                                   ledgerRow.payment.canDelete === false
@@ -826,7 +835,7 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                 }
                               >
                                 Удалить платёж
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </td>
@@ -849,27 +858,31 @@ export const PoliciesTab: React.FC<PoliciesTabProps> = ({
                                   {!recordRow.record.statementId && !recordRow.record.date ? (
                                     <div className="flex flex-wrap gap-1 pt-1">
                                       {onMarkFinancialRecordPaid ? (
-                                        <button
+                                        <Button
                                           type="button"
                                           onClick={() =>
                                             openMarkRecordPaidPrompt(recordRow.record.id)
                                           }
-                                          className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                          variant="quiet"
+                                          size="sm"
+                                          className="h-7 px-2 text-[11px]"
                                         >
                                           Проставить оплату
-                                        </button>
+                                        </Button>
                                       ) : null}
-                                      <button
+                                      <Button
                                         type="button"
                                         onClick={() =>
                                           onDeleteFinancialRecord(recordRow.record.id).catch(
                                             () => undefined,
                                           )
                                         }
-                                        className={`${BTN_SM_QUIET} h-7 px-2 text-[11px]`}
+                                        variant="quiet"
+                                        size="sm"
+                                        className="h-7 px-2 text-[11px]"
                                       >
                                         Удалить запись
-                                      </button>
+                                      </Button>
                                     </div>
                                   ) : null}
                                 </div>

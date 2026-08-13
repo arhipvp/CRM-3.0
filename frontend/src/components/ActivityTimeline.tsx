@@ -1,6 +1,5 @@
 import type { ActivityLog } from '../types';
 import { ColoredLabel } from './common/ColoredLabel';
-import { PANEL_MUTED_TEXT } from './common/uiClassNames';
 
 interface ActivityTimelineProps {
   activities: ActivityLog[];
@@ -89,7 +88,7 @@ export function ActivityTimeline({ activities, isLoading = false }: ActivityTime
   }
 
   if (activities.length === 0) {
-    return <div className={PANEL_MUTED_TEXT}>Пока нет событий по сделке.</div>;
+    return <div className={'ui-panel-muted-text'}>Пока нет событий по сделке.</div>;
   }
 
   return (

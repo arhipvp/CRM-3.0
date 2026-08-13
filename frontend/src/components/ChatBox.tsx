@@ -2,7 +2,7 @@
 import { ChatMessage, User } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
-import { BTN_PRIMARY, BTN_SM_DANGER, BTN_SM_SECONDARY } from './common/buttonStyles';
+import { Button } from './common/Button';
 import { InlineAlert } from './common/InlineAlert';
 import { Modal } from './Modal';
 
@@ -139,7 +139,7 @@ export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage 
                 </div>
 
                 {showDeleteButton && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => handleDeleteClick(message)}
                     className="icon-btn h-7 w-7 text-rose-600 hover:bg-rose-50 opacity-0 transition group-hover:opacity-100"
@@ -147,7 +147,7 @@ export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage 
                     title="Удалить сообщение"
                   >
                     ×
-                  </button>
+                  </Button>
                 )}
               </div>
             );
@@ -178,13 +178,14 @@ export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage 
               disabled={isSubmitting}
               className="field-textarea flex-1 resize-none"
             />
-            <button
+            <Button
               type="submit"
               disabled={isSubmitting || !newMessage.trim()}
-              className={`${BTN_PRIMARY} flex-shrink-0`}
+              variant="primary"
+              className="flex-shrink-0"
             >
               {isSubmitting ? '...' : 'Отправить'}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -194,21 +195,23 @@ export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage 
           <p className="text-sm text-slate-700">Вы уверены, что хотите удалить это сообщение?</p>
           <p className="mt-2 break-words text-sm text-slate-600">{messageToDelete.body}</p>
           <div className="mt-5 flex justify-end gap-2">
-            <button
+            <Button
               type="button"
               onClick={() => setMessageToDelete(null)}
-              className={BTN_SM_SECONDARY}
+              variant="secondary"
+              size="sm"
             >
               Отмена
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
               onClick={handleConfirmDelete}
               disabled={isDeletingMessage}
-              className={BTN_SM_DANGER}
+              variant="danger"
+              size="sm"
             >
               {isDeletingMessage ? 'Удаление...' : 'Удалить'}
-            </button>
+            </Button>
           </div>
         </Modal>
       )}

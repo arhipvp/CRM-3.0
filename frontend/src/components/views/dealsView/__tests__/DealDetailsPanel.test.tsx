@@ -1,4 +1,4 @@
-﻿import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { Deal, User } from '../../../../types';
@@ -382,6 +382,13 @@ const currentUser: User = {
   roles: ['Admin'],
 };
 
+const flushAsyncEffects = async () => {
+  await act(async () => {
+    await Promise.resolve();
+    await Promise.resolve();
+  });
+};
+
 describe('DealDetailsPanel', () => {
   afterEach(() => {
     vi.useRealTimers();
@@ -612,6 +619,7 @@ describe('DealDetailsPanel', () => {
       />,
     );
 
+    await flushAsyncEffects();
     fireEvent.click(screen.getByRole('button', { name: 'Снять фокус со сделки' }));
     expect(onClearDealFocus).toHaveBeenCalledTimes(1);
   });
@@ -788,7 +796,7 @@ describe('DealDetailsPanel', () => {
     });
   });
 
-  it('closes manual event modal and clears validation error on cancel', () => {
+  it('closes manual event modal and clears validation error on cancel', async () => {
     render(
       <DealDetailsPanel
         deals={[selectedDeal]}
@@ -836,6 +844,7 @@ describe('DealDetailsPanel', () => {
       />,
     );
 
+    await flushAsyncEffects();
     fireEvent.click(screen.getByRole('button', { name: 'Добавить событие' }));
     let dialog = screen.getByRole('dialog', { name: 'Добавить событие' });
     fireEvent.change(within(dialog).getByLabelText('Причина'), {
@@ -1127,7 +1136,7 @@ describe('DealDetailsPanel', () => {
     ]);
   });
 
-  it('passes tasks and quotes loading flags to tab header', () => {
+  it('passes tasks and quotes loading flags to tab header', async () => {
     render(
       <DealDetailsPanel
         deals={[selectedDeal]}
@@ -1177,6 +1186,7 @@ describe('DealDetailsPanel', () => {
       />,
     );
 
+    await flushAsyncEffects();
     expect(screen.getByTestId('tasks-tab-loading')).toBeInTheDocument();
     expect(screen.getByTestId('quotes-tab-loading')).toBeInTheDocument();
   });

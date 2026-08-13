@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import type { ReactElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -55,11 +56,12 @@ describe('ClientsView', () => {
     return render(<MemoryRouter>{ui}</MemoryRouter>);
   };
 
-  it('renders KPI cards and list rows', () => {
+  it('renders KPI cards and list rows', async () => {
     const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
     const deals = [buildDeal(), buildDeal({ id: 'deal-2', clientId: 'client-2' })];
 
     renderView(<ClientsView clients={clients} deals={deals} dealsTotalCount={42} />, clients);
+    await waitFor(() => expect(fetchClientStats).toHaveBeenCalled());
 
     expect(screen.getByText('Клиентов')).toBeInTheDocument();
     expect(screen.getAllByText('2').length).toBeGreaterThan(0);
@@ -69,19 +71,20 @@ describe('ClientsView', () => {
     expect(screen.getByText('Петр Петров')).toBeInTheDocument();
   });
 
-  it('filters clients by search', () => {
+  it('filters clients by search', async () => {
+    const user = userEvent.setup();
     const clients = [buildClient(), buildClient({ id: 'client-2', name: 'Петр Петров' })];
     renderView(<ClientsView clients={clients} deals={[buildDeal()]} />, clients);
 
-    fireEvent.change(screen.getByPlaceholderText('Поиск по имени или телефону...'), {
-      target: { value: 'Петр' },
-    });
+    await waitFor(() => expect(fetchClientStats).toHaveBeenCalled());
+    await user.type(screen.getByPlaceholderText('Поиск по имени или телефону...'), 'Петр');
 
     expect(screen.queryByText('Иван Иванов')).not.toBeInTheDocument();
     expect(screen.getByText('Петр Петров')).toBeInTheDocument();
   });
 
-  it('renders "Объединить похожих" and triggers callback', () => {
+  it('renders "Объединить похожих" and triggers callback', async () => {
+    const user = userEvent.setup();
     const onClientFindSimilar = vi.fn();
     const client = buildClient();
     renderView(
@@ -93,10 +96,11 @@ describe('ClientsView', () => {
       [client],
     );
 
-    fireEvent.click(
+    await waitFor(() => expect(fetchClientStats).toHaveBeenCalled());
+    await user.click(
       screen.getByRole('button', { name: `Дополнительные действия клиента ${client.name}` }),
     );
-    fireEvent.click(screen.getByRole('button', { name: 'Объединить похожих' }));
+    await user.click(screen.getByRole('button', { name: 'Объединить похожих' }));
     expect(onClientFindSimilar).toHaveBeenCalledWith(client);
   });
 });

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type { Deal, Policy } from '../../types';
-import { BTN_SM_QUIET, BTN_SM_SECONDARY } from '../common/buttonStyles';
+import { Button } from '../common/Button';
 import { Modal } from '../Modal';
 
 interface PolicyMoveDialogProps {
@@ -114,7 +114,7 @@ export const PolicyMoveDialog: React.FC<PolicyMoveDialogProps> = ({
                 const isSelected = deal.id === targetDealId;
                 return (
                   <li key={deal.id}>
-                    <button
+                    <Button
                       type="button"
                       className={`flex w-full min-w-0 flex-col gap-1 px-4 py-3 text-left transition-colors ${
                         isSelected
@@ -138,7 +138,7 @@ export const PolicyMoveDialog: React.FC<PolicyMoveDialogProps> = ({
                       <span className="truncate text-xs text-slate-500">
                         {formatDealMeta(deal)}
                       </span>
-                    </button>
+                    </Button>
                   </li>
                 );
               })}
@@ -149,19 +149,26 @@ export const PolicyMoveDialog: React.FC<PolicyMoveDialogProps> = ({
         {error && <p className="text-xs font-semibold text-rose-700">{error}</p>}
 
         <div className="flex justify-end gap-2">
-          <button type="button" className={BTN_SM_QUIET} onClick={onCancel} disabled={isSubmitting}>
-            Отмена
-          </button>
-          <button
+          <Button
             type="button"
-            className={BTN_SM_SECONDARY}
+            variant="quiet"
+            size="sm"
+            onClick={onCancel}
+            disabled={isSubmitting}
+          >
+            Отмена
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
             onClick={() => {
               void handleConfirm();
             }}
             disabled={isSubmitting || !targetDealId}
           >
             {isSubmitting ? 'Перенос...' : 'Перенести'}
-          </button>
+          </Button>
         </div>
       </div>
     </Modal>

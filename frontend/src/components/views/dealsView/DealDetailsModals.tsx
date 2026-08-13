@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Deal } from '../../../types';
 import type { Client, DealSimilarityCandidate, User } from '../../../types';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../../common/buttonStyles';
+import { Button } from '../../common/Button';
 import { Modal } from '../../Modal';
 import { DealForm, DealFormValues } from '../../forms/DealForm';
 import { statusLabels } from './helpers';
@@ -159,27 +159,29 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
         data-testid="deal-merge-modal-actions"
       >
         {mergeStep === 'select' && (
-          <button
+          <Button
             type="button"
             onClick={onPreview}
             disabled={isPreviewLoading || mergeSources.length === 0}
-            className={`${BTN_SECONDARY} rounded-xl`}
+            variant="secondary"
+            className="rounded-xl"
           >
             {isPreviewLoading ? 'Готовим предпросмотр...' : 'Предпросмотр'}
-          </button>
+          </Button>
         )}
         {mergeStep === 'preview' && (
-          <button
+          <Button
             type="button"
             onClick={onBackToSelection}
-            className={`${BTN_SECONDARY} rounded-xl`}
+            variant="secondary"
+            className="rounded-xl"
           >
             Назад к выбору
-          </button>
+          </Button>
         )}
-        <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
+        <Button type="button" onClick={onClose} variant="secondary" className="rounded-xl">
           Отмена
-        </button>
+        </Button>
         {mergeStep === 'preview' && (
           <span
             className={`rounded-xl px-3 py-2 text-xs ${isPreviewConfirmed ? 'text-emerald-700' : 'text-slate-500'}`}
@@ -307,17 +309,18 @@ export const DealSimilarModal: React.FC<DealSimilarModalProps> = ({
       {error && <p className="text-sm font-semibold text-rose-700">{error}</p>}
 
       <div className="flex flex-wrap items-center justify-end gap-3 border-t border-slate-200 pt-4">
-        <button type="button" onClick={onClose} className={`${BTN_SECONDARY} rounded-xl`}>
+        <Button type="button" onClick={onClose} variant="secondary" className="rounded-xl">
           Отмена
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onContinue}
           disabled={selectedIds.length === 0 || isLoading}
-          className={`${BTN_PRIMARY} rounded-xl`}
+          variant="primary"
+          className="rounded-xl"
         >
           Перейти к объединению
-        </button>
+        </Button>
       </div>
     </div>
   </Modal>

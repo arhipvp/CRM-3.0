@@ -3,7 +3,6 @@ import React, { useEffect, useState } from 'react';
 import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../api';
 import type { InsuranceCompany, InsuranceType } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import { BTN_PRIMARY, BTN_SECONDARY } from '../common/buttonStyles';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -226,8 +225,8 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
         isSubmitting={isSubmitting}
         isSubmitDisabled={loadingOptions}
         submitLabel={submitLabel}
-        submitClassName={`${BTN_PRIMARY} rounded-xl`}
-        cancelClassName={`${BTN_SECONDARY} rounded-xl`}
+        submitVariant="primary"
+        cancelVariant="secondary"
       />
 
       {loadingOptions && <p className="mt-2 text-xs text-slate-500">Загружаю справочники...</p>}

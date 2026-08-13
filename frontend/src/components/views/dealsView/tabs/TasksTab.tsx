@@ -1,7 +1,6 @@
 ﻿import { useMemo, useState } from 'react';
 import type { Deal, Task } from '../../../../types';
-import { BTN_PRIMARY, BTN_SM_SECONDARY } from '../../../common/buttonStyles';
-import { PANEL_MUTED_TEXT } from '../../../common/uiClassNames';
+import { Button } from '../../../common/Button';
 import { TaskTable } from '../../../tasks/TaskTable';
 
 interface TasksTabProps {
@@ -26,7 +25,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
   completingTaskIds,
 }) => {
   const renderStatusMessage = (message: string) => (
-    <div className={PANEL_MUTED_TEXT}>{message}</div>
+    <div className={'ui-panel-muted-text'}>{message}</div>
   );
 
   const [showDeletedTasks, setShowDeletedTasks] = useState(false);
@@ -52,13 +51,14 @@ export const TasksTab: React.FC<TasksTabProps> = ({
     return (
       <section className="app-panel p-6 shadow-none space-y-4">
         {renderStatusMessage('Задач по сделке пока нет.')}
-        <button
+        <Button
           type="button"
           onClick={onCreateTaskClick}
-          className={`${BTN_PRIMARY} rounded-xl self-start`}
+          variant="primary"
+          className="rounded-xl self-start"
         >
           Создать задачу
-        </button>
+        </Button>
       </section>
     );
   }
@@ -82,9 +82,9 @@ export const TasksTab: React.FC<TasksTabProps> = ({
           </label>
         </div>
 
-        <button type="button" onClick={onCreateTaskClick} className={BTN_SM_SECONDARY}>
+        <Button type="button" onClick={onCreateTaskClick} variant="secondary" size="sm">
           + Создать задачу
-        </button>
+        </Button>
       </div>
 
       <TaskTable

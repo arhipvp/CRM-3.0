@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Button } from './common/Button';
 
 import type { DealTimelineEvent } from '../types';
 import { ColoredLabel } from './common/ColoredLabel';
-import { PANEL_MUTED_TEXT } from './common/uiClassNames';
 
 interface DealEventTimelineProps {
   events: DealTimelineEvent[];
@@ -282,7 +282,7 @@ export function DealEventTimeline({
   }
 
   if (visibleEvents.length === 0) {
-    return <div className={PANEL_MUTED_TEXT}>Пока нет событий по сделке.</div>;
+    return <div className={'ui-panel-muted-text'}>Пока нет событий по сделке.</div>;
   }
 
   return (
@@ -346,21 +346,21 @@ export function DealEventTimeline({
                 </span>
                 {canManage && !isEditing && (
                   <div className="flex flex-wrap gap-2">
-                    <button
+                    <Button
                       type="button"
                       className="btn btn-sm btn-quiet"
                       onClick={() => startEditing(event)}
                     >
                       Изменить
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       className="btn btn-sm btn-danger"
                       onClick={() => void deleteEvent(event.id)}
                       disabled={deletingEventId === event.id}
                     >
                       {deletingEventId === event.id ? 'Удаляем…' : 'Удалить'}
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -373,17 +373,17 @@ export function DealEventTimeline({
                     onChange={(inputEvent) => setEditingDate(inputEvent.target.value)}
                     aria-label="Дата события"
                   />
-                  <button
+                  <Button
                     type="button"
                     className="btn btn-sm btn-primary"
                     onClick={() => void saveEditing(event.id)}
                     disabled={savingEventId === event.id}
                   >
                     {savingEventId === event.id ? 'Сохраняем…' : 'Сохранить'}
-                  </button>
-                  <button type="button" className="btn btn-sm btn-quiet" onClick={cancelEditing}>
+                  </Button>
+                  <Button type="button" className="btn btn-sm btn-quiet" onClick={cancelEditing}>
                     Отмена
-                  </button>
+                  </Button>
                 </div>
               )}
               {!isEditing && event.description && (

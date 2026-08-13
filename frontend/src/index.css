@@ -4,6 +4,7 @@
   color-scheme: light;
   --app-brand-50: #eff6ff;
   --app-brand-100: #dbeafe;
+  --app-brand-200: #bfdbfe;
   --app-brand-600: #1872d9;
   --app-brand-700: #155fb5;
   --app-bg: #f1f5f9;
@@ -21,6 +22,39 @@
   --app-success: #059669;
   --app-warning: #d97706;
   --app-info: #0284c7;
+  --app-neutral-surface: #f8fafc;
+  --app-neutral-border: #dbe3ee;
+  --app-neutral-text: #475569;
+  --app-success-surface: #ecfdf5;
+  --app-success-border: #a7f3d0;
+  --app-success-text: #065f46;
+  --app-warning-surface: #fffbeb;
+  --app-warning-border: #fde68a;
+  --app-warning-text: #92400e;
+  --app-danger-surface: #fff1f2;
+  --app-danger-border: #fecdd3;
+  --app-danger-text: #9f1239;
+  --app-info-surface: #f0f9ff;
+  --app-info-border: #bae6fd;
+  --app-info-text: #075985;
+  --app-income-surface: #ecfdf5;
+  --app-income-border: #a7f3d0;
+  --app-income-text: #047857;
+  --app-expense-surface: #fff1f2;
+  --app-expense-border: #fecdd3;
+  --app-expense-text: #be123c;
+  --app-balance-surface: #f5f3ff;
+  --app-balance-border: #ddd6fe;
+  --app-balance-text: #6d28d9;
+  --app-due-surface: #fffbeb;
+  --app-due-border: #fde68a;
+  --app-due-text: #92400e;
+  --app-overdue-surface: #fff1f2;
+  --app-overdue-border: #fecdd3;
+  --app-overdue-text: #be123c;
+  --app-selected-surface: #eff6ff;
+  --app-selected-border: #93c5fd;
+  --app-selected-text: #155fb5;
   --app-space-1: 0.25rem;
   --app-space-2: 0.5rem;
   --app-space-3: 0.75rem;
@@ -99,6 +133,135 @@ textarea {
     border-color: var(--app-border);
   }
 
+  .kpi-card {
+    @apply min-w-0 border p-4;
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-sm);
+  }
+
+  .kpi-card-neutral {
+    background: var(--app-neutral-surface);
+    border-color: var(--app-neutral-border);
+    color: var(--app-text);
+  }
+  .kpi-card-brand,
+  .kpi-card-selected {
+    background: var(--app-selected-surface);
+    border-color: var(--app-selected-border);
+    color: var(--app-selected-text);
+  }
+  .kpi-card-success,
+  .kpi-card-income {
+    background: var(--app-income-surface);
+    border-color: var(--app-income-border);
+    color: var(--app-income-text);
+  }
+  .kpi-card-warning,
+  .kpi-card-due {
+    background: var(--app-due-surface);
+    border-color: var(--app-due-border);
+    color: var(--app-due-text);
+  }
+  .kpi-card-danger,
+  .kpi-card-expense,
+  .kpi-card-overdue {
+    background: var(--app-expense-surface);
+    border-color: var(--app-expense-border);
+    color: var(--app-expense-text);
+  }
+  .kpi-card-info {
+    background: var(--app-info-surface);
+    border-color: var(--app-info-border);
+    color: var(--app-info-text);
+  }
+  .kpi-card-balance {
+    background: var(--app-balance-surface);
+    border-color: var(--app-balance-border);
+    color: var(--app-balance-text);
+  }
+
+  .spinner {
+    @apply inline-block animate-spin rounded-full border-current border-r-transparent;
+    color: var(--app-primary);
+  }
+
+  .loading-state {
+    @apply flex items-center justify-center gap-2 text-sm;
+    color: var(--app-text-muted);
+  }
+
+  .loading-state-default {
+    @apply min-h-28 border bg-white px-4 py-8;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-md);
+  }
+
+  .loading-state-compact {
+    @apply px-2 py-1;
+  }
+
+  .table-sort-button {
+    @apply w-full justify-start gap-1 text-[11px] tracking-wide text-slate-600 no-underline hover:no-underline;
+  }
+
+  .ui-panel-muted-text {
+    @apply border px-4 py-3 text-sm text-slate-600;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-surface-muted);
+  }
+  .ui-panel-section {
+    @apply border bg-white p-6;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-lg);
+  }
+  .ui-section-header {
+    @apply flex flex-wrap items-center justify-between gap-3;
+  }
+  .ui-section-meta {
+    @apply text-xs text-slate-500;
+  }
+  .ui-section-help {
+    @apply whitespace-nowrap text-sm text-slate-500;
+  }
+  .ui-checkbox-label-xs {
+    @apply flex items-center gap-2 text-xs font-semibold text-slate-500;
+  }
+  .ui-segmented {
+    @apply flex w-full flex-nowrap gap-1 overflow-x-auto border bg-slate-100 p-1;
+    border-color: var(--app-border);
+    border-radius: var(--app-radius-md);
+  }
+  .ui-segmented-button {
+    @apply min-h-8 shrink-0 px-3 py-1.5 text-xs transition;
+    border-radius: var(--app-radius-sm);
+  }
+  .ui-loading-spinner-sm {
+    @apply inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent;
+    color: var(--app-primary);
+  }
+  .ui-modal-input-shell {
+    @apply mt-1 flex items-center gap-2 rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-white px-3 py-2 shadow-sm;
+  }
+  .ui-content-divider {
+    @apply space-y-3 border-t border-[var(--app-border)] pt-4;
+  }
+  .ui-load-more {
+    @apply rounded-[var(--app-radius-md)] border-t border-[var(--app-border)] bg-[var(--app-surface-muted)] px-4 py-3 text-center;
+  }
+  .ui-result-card {
+    @apply space-y-3 rounded-[var(--app-radius-md)] border border-[var(--app-border)] bg-[var(--app-surface-muted)] p-3 text-xs;
+  }
+  .ui-status-danger-text-xs {
+    @apply text-xs;
+    color: var(--app-danger-text);
+  }
+  .ui-status-danger-badge-xs {
+    @apply rounded-[var(--app-radius-sm)] p-2 text-xs;
+    background: var(--app-danger-surface);
+    color: var(--app-danger-text);
+  }
+
   .app-page {
     @apply min-w-0 space-y-4;
   }
@@ -130,11 +293,39 @@ textarea {
   }
 
   .app-alert-danger {
-    @apply border-rose-200 bg-rose-50 text-rose-800;
+    background: var(--app-danger-surface);
+    border-color: var(--app-danger-border);
+    color: var(--app-danger-text);
   }
 
   .app-alert-success {
-    @apply border-emerald-200 bg-emerald-50 text-emerald-800;
+    background: var(--app-success-surface);
+    border-color: var(--app-success-border);
+    color: var(--app-success-text);
+  }
+
+  .app-alert-neutral {
+    background: var(--app-neutral-surface);
+    border-color: var(--app-neutral-border);
+    color: var(--app-neutral-text);
+  }
+
+  .app-alert-brand {
+    background: var(--app-brand-50);
+    border-color: var(--app-brand-200);
+    color: var(--app-brand-700);
+  }
+
+  .app-alert-warning {
+    background: var(--app-warning-surface);
+    border-color: var(--app-warning-border);
+    color: var(--app-warning-text);
+  }
+
+  .app-alert-info {
+    background: var(--app-info-surface);
+    border-color: var(--app-info-border);
+    color: var(--app-info-text);
   }
 
   .field {
@@ -237,6 +428,16 @@ textarea {
     @apply bg-emerald-600 text-white hover:bg-emerald-700;
   }
 
+  .btn-warning {
+    background: var(--app-warning-surface);
+    border-color: var(--app-warning-border);
+    color: var(--app-warning-text);
+  }
+
+  .btn-warning:hover {
+    background: color-mix(in srgb, var(--app-warning-surface) 75%, var(--app-warning-border));
+  }
+
   .btn-quiet {
     @apply bg-slate-100 text-slate-700 hover:bg-slate-200;
   }
@@ -244,6 +445,23 @@ textarea {
   .btn-outline {
     @apply border border-dashed bg-transparent text-slate-700 hover:bg-white;
     border-color: var(--app-border);
+  }
+
+  .btn-link,
+  .btn-link-danger {
+    @apply min-h-0 border-0 bg-transparent p-0 shadow-none hover:underline;
+  }
+
+  .btn-link {
+    color: var(--app-primary);
+  }
+
+  .btn-link:hover {
+    color: var(--app-primary-hover);
+  }
+
+  .btn-link-danger {
+    color: var(--app-danger);
   }
 
   .link-action {

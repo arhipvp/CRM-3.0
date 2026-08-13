@@ -48,6 +48,13 @@ const SettingsView = lazy(async () => {
   return { default: module.SettingsView };
 });
 
+const UiCatalogPage = import.meta.env.DEV
+  ? lazy(async () => {
+      const module = await import('../dev/UiCatalogPage');
+      return { default: module.UiCatalogPage };
+    })
+  : null;
+
 export const AppRoutes: React.FC<AppRoutesProps> = ({
   data,
   dealsActions,
@@ -272,6 +279,16 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
           </Suspense>
         }
       />
+      {UiCatalogPage && (
+        <Route
+          path="/dev/ui-kit"
+          element={
+            <Suspense fallback={<RouteSkeleton />}>
+              <UiCatalogPage />
+            </Suspense>
+          }
+        />
+      )}
       <Route path="*" element={<Navigate to="/deals" replace />} />
     </Routes>
   );

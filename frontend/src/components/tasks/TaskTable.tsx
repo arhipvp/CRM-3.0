@@ -1,6 +1,6 @@
 import type { Task } from '../../types';
 import { AppIcon } from '../common/AppIcon';
-import { IconButton } from '../common/Button';
+import { IconButton, Button } from '../common/Button';
 import { ColoredLabel } from '../common/ColoredLabel';
 import { TableHeadCell } from '../common/TableHeadCell';
 import {
@@ -220,14 +220,14 @@ export function TaskTable({
                           <span className="font-medium text-slate-700">
                             {task.dealTitle || task.dealId}
                           </span>
-                          <button
+                          <Button
                             type="button"
                             className="link-action text-left text-[11px] font-semibold"
                             onClick={() => handleDealClick(task)}
                             aria-label={`Перейти в сделку ${task.dealTitle || task.dealId}`}
                           >
                             Перейти
-                          </button>
+                          </Button>
                         </div>
                       ) : (
                         '-'
@@ -300,7 +300,7 @@ export function TaskTable({
                     <td className={`${TABLE_CELL_CLASS_SM} align-top text-right text-xs`}>
                       <div className={TABLE_ACTIONS_CLASS_ROW_SM}>
                         {onMarkTaskDone && task.status !== 'done' && (
-                          <button
+                          <Button
                             type="button"
                             onClick={() => openCompletionPrompt(task.id)}
                             disabled={completingTaskIds.includes(task.id)}
@@ -313,7 +313,7 @@ export function TaskTable({
                             ) : (
                               <AppIcon name="check" size={16} />
                             )}
-                          </button>
+                          </Button>
                         )}
                         {onEditTask && (
                           <IconButton

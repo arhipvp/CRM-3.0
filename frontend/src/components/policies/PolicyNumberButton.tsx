@@ -1,4 +1,5 @@
 import React from 'react';
+import { Button } from '../common/Button';
 
 import { useNotification } from '../../contexts/NotificationContext';
 import { copyToClipboard } from '../../utils/clipboard';
@@ -27,7 +28,7 @@ export const PolicyNumberButton: React.FC<PolicyNumberButtonProps> = ({
   }
 
   return (
-    <button
+    <Button
       type="button"
       className={className}
       onClick={async (event) => {
@@ -41,6 +42,6 @@ export const PolicyNumberButton: React.FC<PolicyNumberButtonProps> = ({
       title={title}
     >
       {normalized}
-    </button>
+    </Button>
   );
 };

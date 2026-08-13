@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -839,7 +839,9 @@ describe('AppContent hotkeys integration', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
 
-    await new Promise((resolve) => setTimeout(resolve, 350));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
     expect(refreshDealsMock).toHaveBeenCalledTimes(1);
   });
 

@@ -1,5 +1,5 @@
 ﻿import React, { useEffect, useRef, useState } from 'react';
-import { BTN_SM_SECONDARY } from './common/buttonStyles';
+import { Button } from './common/Button';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import {
   buildFallbackKey,
@@ -413,14 +413,15 @@ export function FileUploadManager({
       </label>
 
       <div className="flex flex-wrap items-center justify-center gap-2">
-        <button
+        <Button
           type="button"
-          className={BTN_SM_SECONDARY}
+          variant="secondary"
+          size="sm"
           onClick={handleClipboardButtonClick}
           disabled={isUploading || disabled}
         >
           Добавить из буфера
-        </button>
+        </Button>
       </div>
 
       {uploadProgress > 0 && uploadProgress < 100 && (

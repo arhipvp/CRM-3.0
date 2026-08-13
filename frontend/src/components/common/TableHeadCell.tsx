@@ -1,5 +1,7 @@
 import React from 'react';
 
+import { Button } from './Button';
+
 export type TableHeadCellPadding = 'sm' | 'md' | 'lg';
 export type TableHeadCellAlign = 'left' | 'center' | 'right';
 
@@ -49,3 +51,28 @@ export const TableHeadCell: React.FC<TableHeadCellProps> = ({
     </th>
   );
 };
+
+export interface SortButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  direction?: 'asc' | 'desc' | null;
+  children: React.ReactNode;
+}
+
+export function SortButton({ direction = null, children, ...props }: SortButtonProps) {
+  const directionLabel = direction === 'asc' ? 'по возрастанию' : 'по убыванию';
+
+  return (
+    <Button
+      variant="link"
+      size="sm"
+      {...props}
+      className={['table-sort-button', props.className].filter(Boolean).join(' ')}
+    >
+      <span>{children}</span>
+      {direction && (
+        <span aria-label={directionLabel} aria-hidden="true">
+          {direction === 'asc' ? '↑' : '↓'}
+        </span>
+      )}
+    </Button>
+  );
+}

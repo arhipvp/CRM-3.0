@@ -317,7 +317,7 @@ describe('PoliciesTab', () => {
     expect(editButton).toHaveClass('btn-primary');
     expect(moveButton).toHaveClass('btn-quiet');
     expect(paymentButton).toHaveClass('btn-success');
-    expect(renewButton).toHaveClass('bg-amber-50');
+    expect(renewButton).toHaveClass('btn-warning');
     expect(deleteButton).toHaveClass('btn-danger');
 
     fireEvent.click(screen.getByRole('button', { name: longClientName }));
