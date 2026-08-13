@@ -174,6 +174,7 @@ export const DealMergeModal: React.FC<DealMergeModalProps> = ({
             type="button"
             onClick={onBackToSelection}
             variant="secondary"
+            icon="chevronLeft"
             className="rounded-xl"
           >
             Назад к выбору

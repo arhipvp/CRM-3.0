@@ -366,6 +366,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   type="button"
                   variant="secondary"
                   size="sm"
+                  icon="chevronLeft"
                   disabled={requestedPage <= 1 || isLoading}
                   onClick={() => setRequestedPage(requestedPage - 1)}
                 >
@@ -375,6 +376,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
                   type="button"
                   variant="secondary"
                   size="sm"
+                  icon="chevronRight"
+                  iconPosition="end"
                   disabled={requestedPage >= Math.ceil(totalCount / TASKS_PAGE_SIZE) || isLoading}
                   onClick={() => setRequestedPage(requestedPage + 1)}
                 >

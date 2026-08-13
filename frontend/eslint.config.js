@@ -47,13 +47,37 @@ export default defineConfig([
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/components/common/**/*', 'src/**/__tests__/**/*', 'src/**/*.test.*'],
+    ignores: [
+      'src/components/common/**/*',
+      'src/components/views/sellerDashboard/DashboardCharts.tsx',
+      'src/**/__tests__/**/*',
+      'src/**/*.test.*',
+    ],
     rules: {
       'no-restricted-syntax': [
         'error',
         {
           selector: "JSXOpeningElement[name.name='button']",
           message: 'Используйте Button, IconButton или другой общий интерактивный примитив.',
+        },
+      ],
+    },
+  },
+  {
+    files: ['src/**/*.tsx'],
+    ignores: [
+      'src/components/common/AppIcon.tsx',
+      'src/components/views/sellerDashboard/DashboardCharts.tsx',
+      'src/**/__tests__/**/*',
+      'src/**/*.test.*',
+    ],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "JSXOpeningElement[name.name='svg']",
+          message:
+            'Используйте AppIcon; inline SVG разрешены только в AppIcon и документированных графиках.',
         },
       ],
     },

@@ -1,4 +1,4 @@
-import { Button } from '../../common/Button';
+import { Button, IconButton } from '../../common/Button';
 import { DateInput } from '../../common/forms/DateInput';
 import { FormActions } from '../../common/forms/FormActions';
 import { FormField } from '../../common/forms/FormField';
@@ -269,15 +269,15 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
                 : 'border-blue-500 ring-2 ring-blue-400/30'
             }`}
           >
-            <Button
+            <IconButton
               type="button"
+              icon="close"
+              label="Снять фокус со сделки"
+              size="sm"
               onClick={onClearDealFocus}
-              className="icon-btn absolute right-3 top-3 z-10 h-8 w-8"
-              aria-label="Снять фокус со сделки"
+              className="absolute right-3 top-3 z-10"
               title="Снять фокус со сделки"
-            >
-              ✕
-            </Button>
+            />
             <div className="flex flex-col gap-4">
               <DealHeader
                 deal={selectedDeal}

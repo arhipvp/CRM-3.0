@@ -132,8 +132,9 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
           onClick={() => onRequestAddPolicy(selectedDeal.id)}
           variant="secondary"
           size="sm"
+          icon="plus"
         >
-          + Создать полис
+          Создать полис
         </Button>
       </div>
 

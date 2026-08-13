@@ -122,6 +122,7 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                   disabled={isPreviewRenameDisabled}
                   variant="primary"
                   size="sm"
+                  icon="edit"
                 >
                   Переименовать
                 </Button>
@@ -131,6 +132,7 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                   disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
                   variant="secondary"
                   size="sm"
+                  icon="download"
                 >
                   {isDownloading ? 'Скачиваю...' : 'Скачать'}
                 </Button>
@@ -151,6 +153,7 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                   disabled={isDownloading || isTrashing || isDriveLoading || !!driveError}
                   variant="danger"
                   size="sm"
+                  icon="delete"
                 >
                   {isTrashing ? 'Удаляю...' : 'Удалить'}
                 </Button>
@@ -164,6 +167,7 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                 disabled={!canGoPrev || isPreviewLoading}
                 variant="secondary"
                 size="sm"
+                icon="chevronLeft"
               >
                 Назад
               </Button>
@@ -178,6 +182,8 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                 disabled={!canGoNext || isPreviewLoading}
                 variant="secondary"
                 size="sm"
+                icon="chevronRight"
+                iconPosition="end"
               >
                 Вперёд
               </Button>
@@ -250,6 +256,7 @@ export function FilePreviewDialogs(props: FilePreviewDialogsProps) {
                 disabled={isRenaming}
                 variant="primary"
                 size="block"
+                icon="check"
               >
                 {isRenaming ? 'Сохраняем...' : 'Сохранить'}
               </Button>

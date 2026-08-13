@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { PolicyRecognitionResult } from '../../../../types';
+import type { AppIconName } from '../../../common/AppIcon';
 import { Button } from '../../../common/Button';
 import type { ButtonSize, ButtonVariant } from '../../../common/buttonClassName';
 import { formatRecognitionSummary } from '../helpers';
@@ -22,6 +23,7 @@ interface HeaderActionButtonProps {
   className?: string;
   variant?: ButtonVariant;
   size?: ButtonSize;
+  icon?: AppIconName;
   children: ReactNode;
 }
 
@@ -31,6 +33,7 @@ export function HeaderActionButton({
   className,
   variant,
   size,
+  icon,
   children,
 }: HeaderActionButtonProps) {
   return (
@@ -41,6 +44,7 @@ export function HeaderActionButton({
       className={className}
       variant={variant}
       size={size}
+      icon={icon}
     >
       {children}
     </Button>

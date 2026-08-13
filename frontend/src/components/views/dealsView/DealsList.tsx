@@ -1,6 +1,6 @@
 import React from 'react';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
-import { Button } from '../../common/Button';
+import { Button, IconButton } from '../../common/Button';
 
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { TableHeadCell } from '../../common/TableHeadCell';
@@ -223,7 +223,7 @@ export const DealsList: React.FC<DealsListProps> = ({
                         <td className={`${TABLE_CELL_CLASS_LG} ${deletedTextClass}`}>
                           <div className="flex items-start gap-2">
                             {canPin && (
-                              <Button
+                              <IconButton
                                 type="button"
                                 onClick={(event) => {
                                   event.stopPropagation();
@@ -236,25 +236,18 @@ export const DealsList: React.FC<DealsListProps> = ({
                                     void onPinDeal(deal.id);
                                   }
                                 }}
-                                aria-label={isPinned ? 'Открепить сделку' : 'Закрепить сделку'}
+                                icon={isPinned ? 'pinOff' : 'pin'}
+                                label={isPinned ? 'Открепить сделку' : 'Закрепить сделку'}
                                 title={isPinned ? 'Открепить' : 'Закрепить'}
                                 disabled={isDealSelectionBlocked}
-                                className={`icon-btn h-7 w-7 ${
+                                tone={isPinned ? 'danger' : 'neutral'}
+                                size="sm"
+                                className={
                                   isPinned
-                                    ? 'border-rose-200 text-rose-600 hover:bg-rose-50'
+                                    ? 'text-rose-600'
                                     : 'border-slate-200 text-slate-500 hover:bg-rose-50 hover:text-rose-600'
-                                }`}
-                              >
-                                <svg
-                                  xmlns="http://www.w3.org/2000/svg"
-                                  viewBox="0 0 24 24"
-                                  className="h-4 w-4"
-                                  fill="currentColor"
-                                  aria-hidden="true"
-                                >
-                                  <path d="M14.8 3.3a1 1 0 0 1 1.4 0l2.5 2.5a1 1 0 0 1 0 1.4l-2 2 2.2 2.2c.4.4.4 1 0 1.4l-1.4 1.4a1 1 0 0 1-1.4 0l-2.2-2.2-5.8 5.8a1 1 0 0 1-.7.3H6v3a1 1 0 1 1-2 0v-3a1 1 0 0 1 1-1h2.3a1 1 0 0 1 .7.3l5.8-5.8-2.2-2.2a1 1 0 0 1 0-1.4l1.4-1.4a1 1 0 0 1 1.4 0l2.2 2.2 2-2a1 1 0 0 1 0-1.4l-2.5-2.5a1 1 0 0 1 0-1.4z" />
-                                </svg>
-                              </Button>
+                                }
+                              />
                             )}
                             <div className="space-y-1">
                               <p
@@ -290,11 +283,14 @@ export const DealsList: React.FC<DealsListProps> = ({
                                     onClick={(event) =>
                                       handleClientDealsCountClick(event, deal.clientName)
                                     }
-                                    className="font-semibold text-sky-700 underline decoration-dotted underline-offset-2 transition hover:text-sky-900 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 focus-visible:ring-offset-1"
+                                    variant="quiet"
+                                    size="sm"
+                                    icon="deals"
+                                    className="h-7 min-h-7 px-2 font-semibold text-sky-700 hover:text-sky-900"
                                     aria-label={`Показать все сделки клиента ${deal.clientName}`}
                                     title={`Показать сделки клиента ${deal.clientName}`}
                                   >
-                                    ({activeDealsCount})
+                                    {activeDealsCount}
                                   </Button>
                                 </>
                               )}

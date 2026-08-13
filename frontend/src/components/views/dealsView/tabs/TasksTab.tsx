@@ -55,6 +55,7 @@ export const TasksTab: React.FC<TasksTabProps> = ({
           type="button"
           onClick={onCreateTaskClick}
           variant="primary"
+          icon="plus"
           className="rounded-xl self-start"
         >
           Создать задачу
@@ -82,8 +83,8 @@ export const TasksTab: React.FC<TasksTabProps> = ({
           </label>
         </div>
 
-        <Button type="button" onClick={onCreateTaskClick} variant="secondary" size="sm">
-          + Создать задачу
+        <Button type="button" onClick={onCreateTaskClick} variant="secondary" size="sm" icon="plus">
+          Создать задачу
         </Button>
       </div>
 

@@ -471,7 +471,7 @@ describe('AddPolicyForm', () => {
     expect(await screen.findByDisplayValue('Расход исполнителю Alisa')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
-    fireEvent.click(screen.getByRole('button', { name: '+ Добавить платёж' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить платёж' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
     const financeCards = await screen.findAllByTestId('policy-finance-payment-card');
@@ -552,7 +552,7 @@ describe('AddPolicyForm', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
-    fireEvent.click(screen.getByRole('button', { name: '+ Добавить платёж' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить платёж' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
     const financeCards = await screen.findAllByTestId('policy-finance-payment-card');

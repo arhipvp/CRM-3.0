@@ -2,7 +2,7 @@
 import { ChatMessage, User } from '../types';
 import { formatErrorMessage } from '../utils/formatErrorMessage';
 import { getUserColor } from '../utils/userColor';
-import { Button } from './common/Button';
+import { Button, IconButton } from './common/Button';
 import { InlineAlert } from './common/InlineAlert';
 import { Modal } from './Modal';
 
@@ -139,15 +139,16 @@ export function ChatBox({ messages, currentUser, onSendMessage, onDeleteMessage 
                 </div>
 
                 {showDeleteButton && (
-                  <Button
+                  <IconButton
                     type="button"
+                    icon="delete"
+                    label="Удалить сообщение"
+                    tone="danger"
+                    size="sm"
                     onClick={() => handleDeleteClick(message)}
-                    className="icon-btn h-7 w-7 text-rose-600 hover:bg-rose-50 opacity-0 transition group-hover:opacity-100"
-                    aria-label="Удалить сообщение"
+                    className="opacity-0 transition group-hover:opacity-100"
                     title="Удалить сообщение"
-                  >
-                    ×
-                  </Button>
+                  />
                 )}
               </div>
             );

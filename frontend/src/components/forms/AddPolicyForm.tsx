@@ -269,6 +269,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
               type="button"
               onClick={handlePreviousStep}
               variant="secondary"
+              icon="chevronLeft"
               disabled={isSubmitting}
             >
               Назад
@@ -279,6 +280,8 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
               type="button"
               onClick={handleNextStep}
               variant="primary"
+              icon="chevronRight"
+              iconPosition="end"
               disabled={isSubmitting}
             >
               Далее
@@ -289,6 +292,7 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
               onMouseDown={markFinalSubmitIntent}
               onClick={markFinalSubmitIntent}
               variant="primary"
+              icon="check"
               disabled={isSubmitting}
             >
               {isSubmitting ? 'Сохраняем...' : submitLabel}

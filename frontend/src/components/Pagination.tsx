@@ -66,6 +66,7 @@ export function Pagination({ currentPage, totalItems, pageSize, onPageChange }: 
           disabled={currentPage === 1}
           variant="secondary"
           size="sm"
+          icon="chevronLeft"
           aria-label="Предыдущая страница"
         >
           Назад
@@ -98,6 +99,8 @@ export function Pagination({ currentPage, totalItems, pageSize, onPageChange }: 
           disabled={currentPage === totalPages}
           variant="secondary"
           size="sm"
+          icon="chevronRight"
+          iconPosition="end"
           aria-label="Следующая страница"
         >
           Вперёд

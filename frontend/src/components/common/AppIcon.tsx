@@ -18,8 +18,20 @@ export type AppIconName =
   | 'refresh'
   | 'search'
   | 'file'
+  | 'folder'
   | 'upload'
+  | 'download'
+  | 'copy'
   | 'check'
+  | 'pin'
+  | 'pinOff'
+  | 'duplicate'
+  | 'normalize'
+  | 'chevronLeft'
+  | 'chevronRight'
+  | 'arrowRight'
+  | 'sortAsc'
+  | 'sortDesc'
   | 'commands'
   | 'whatsapp'
   | 'telegram';
@@ -138,6 +150,12 @@ const iconPaths: Record<AppIconName, ReactElement> = {
       <path d="M14 4v4h4" />
     </>
   ),
+  folder: (
+    <>
+      <path d="M3.5 6.5h6l2 2h9v10.5h-17z" />
+      <path d="M3.5 9h17" />
+    </>
+  ),
   upload: (
     <>
       <path d="M12 16V4" />
@@ -145,7 +163,78 @@ const iconPaths: Record<AppIconName, ReactElement> = {
       <path d="M5 20h14" />
     </>
   ),
+  download: (
+    <>
+      <path d="M12 4v12" />
+      <path d="m7 11 5 5 5-5" />
+      <path d="M5 20h14" />
+    </>
+  ),
+  copy: (
+    <>
+      <rect x="8" y="8" width="11" height="11" rx="2" />
+      <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" />
+    </>
+  ),
   check: <path d="m5 12 4 4 10-10" />,
+  pin: (
+    <>
+      <path d="m14 4 6 6" />
+      <path d="m16.5 6.5-3.8 3.8.8 3.7-2 2-3.7-.8L4 19" />
+      <path d="m10 8 6 6" />
+    </>
+  ),
+  pinOff: (
+    <>
+      <path d="m14 4 6 6" />
+      <path d="m16.5 6.5-2.2 2.2" />
+      <path d="m12 11-.8-.8" />
+      <path d="m13.5 14-2 2-3.7-.8L4 19" />
+      <path d="M3 3l18 18" />
+    </>
+  ),
+  duplicate: (
+    <>
+      <rect x="8" y="8" width="11" height="11" rx="2" />
+      <path d="M16 5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2" />
+    </>
+  ),
+  normalize: (
+    <>
+      <path d="m4 20 10.5-10.5" />
+      <path d="m13 6 5 5" />
+      <path d="M6 4v4" />
+      <path d="M4 6h4" />
+      <path d="M18 15v5" />
+      <path d="M15.5 17.5h5" />
+    </>
+  ),
+  chevronLeft: <path d="m15 18-6-6 6-6" />,
+  chevronRight: <path d="m9 18 6-6-6-6" />,
+  arrowRight: (
+    <>
+      <path d="M5 12h14" />
+      <path d="m14 7 5 5-5 5" />
+    </>
+  ),
+  sortAsc: (
+    <>
+      <path d="M8 18V6" />
+      <path d="m4 10 4-4 4 4" />
+      <path d="M15 8h5" />
+      <path d="M15 12h4" />
+      <path d="M15 16h3" />
+    </>
+  ),
+  sortDesc: (
+    <>
+      <path d="M8 6v12" />
+      <path d="m4 14 4 4 4-4" />
+      <path d="M15 8h3" />
+      <path d="M15 12h4" />
+      <path d="M15 16h5" />
+    </>
+  ),
   commands: (
     <>
       <path d="M9 6a3 3 0 1 0-3 3h3V6Z" />

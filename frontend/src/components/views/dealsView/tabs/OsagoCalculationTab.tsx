@@ -478,6 +478,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
             <Button
               type="button"
               className="app-button-secondary"
+              icon="chevronLeft"
               disabled={isSaving || isRecognizing}
               onClick={() => setCurrentStep(1)}
             >
@@ -486,6 +487,7 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
             <Button
               type="button"
               className="app-button-primary"
+              icon="check"
               disabled={isSaving || isRecognizing}
               onClick={() => void handleSave()}
             >

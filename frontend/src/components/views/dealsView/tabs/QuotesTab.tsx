@@ -171,8 +171,9 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
           onClick={() => onRequestAddQuote(selectedDeal.id)}
           variant="secondary"
           size="sm"
+          icon="plus"
         >
-          + Добавить расчёт
+          Добавить расчёт
         </Button>
       </div>
       <DataTableShell>

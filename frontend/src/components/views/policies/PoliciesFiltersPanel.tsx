@@ -3,7 +3,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { FilterParams } from '../../../api';
 import type { PoliciesKPI } from '../../../types';
 import { FilterBar } from '../../FilterBar';
-import { Button } from '../../common/Button';
+import { Button, IconButton } from '../../common/Button';
 import { DateInput } from '../../common/forms/DateInput';
 import type { PolicyFilterPreset } from './policiesViewTypes';
 
@@ -105,14 +105,15 @@ export const PoliciesFiltersPanel = ({
             >
               {preset.name}
             </Button>
-            <Button
+            <IconButton
               type="button"
-              className="rounded-md px-2 py-1 text-xs text-rose-600 hover:bg-rose-50"
+              icon="delete"
+              label={`Удалить пресет ${preset.name}`}
+              tone="danger"
+              size="sm"
               onClick={() => void handleDeletePreset(preset)}
               disabled={deletingPresetId === preset.id}
-            >
-              ×
-            </Button>
+            />
           </div>
         ))}
       </div>

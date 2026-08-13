@@ -207,7 +207,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                     variant="quiet"
                     size="sm"
                     icon="plus"
-                    aria-label="+ Добавить доход"
+                    aria-label="Добавить доход"
                     onClick={() => onAddRecord(paymentIndex, 'incomes')}
                   >
                     Добавить доход
@@ -235,7 +235,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
                     variant="quiet"
                     size="sm"
                     icon="plus"
-                    aria-label="+ Добавить расход"
+                    aria-label="Добавить расход"
                     onClick={() => onAddRecord(paymentIndex, 'expenses')}
                   >
                     Добавить расход

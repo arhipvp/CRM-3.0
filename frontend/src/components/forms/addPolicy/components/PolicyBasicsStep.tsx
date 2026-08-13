@@ -188,9 +188,10 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
             <Button
               type="button"
               onClick={onRequestAddClient}
+              icon="plus"
               className="btn btn-sm btn-secondary whitespace-nowrap"
             >
-              + Добавить клиента
+              Добавить клиента
             </Button>
           </div>
         </div>

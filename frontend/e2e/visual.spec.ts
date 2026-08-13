@@ -49,6 +49,61 @@ async function mockWorkspace(page: Page) {
   });
 }
 
+async function mockDealsIconWorkspace(page: Page) {
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/auth/me/')) {
+      await route.fulfill({
+        json: {
+          id: '00000000-0000-0000-0000-000000000001',
+          username: 'visual-seller',
+          is_authenticated: true,
+          roles: ['Продавец'],
+          capabilities: ['settings.profile'],
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/deals/')) {
+      await route.fulfill({
+        json: {
+          count: 2,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: '00000000-0000-0000-0000-000000000010',
+              title: 'Закреплённая сделка',
+              client: '00000000-0000-0000-0000-000000000101',
+              client_name: 'Калитинова Виктория Александровна',
+              client_active_deals_count: 2,
+              seller: '00000000-0000-0000-0000-000000000001',
+              executor_name: 'Иван Петров',
+              status: 'open',
+              is_pinned: true,
+              quotes: [],
+            },
+            {
+              id: '00000000-0000-0000-0000-000000000011',
+              title: 'Новая сделка',
+              client: '00000000-0000-0000-0000-000000000102',
+              client_name: 'Синицин Дмитрий Алексеевич',
+              client_active_deals_count: 1,
+              seller: '00000000-0000-0000-0000-000000000001',
+              executor_name: 'Анна Смирнова',
+              status: 'open',
+              is_pinned: false,
+              quotes: [],
+            },
+          ],
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: emptyPage });
+  });
+}
+
 test('login page visual baseline', async ({ page }) => {
   await page.goto('/login');
   await expect(page.getByRole('heading', { name: 'Insure Desk' })).toBeVisible();
@@ -72,6 +127,17 @@ test('empty primary routes visual baselines', async ({ page }) => {
     await expect(page.getByRole('heading', { level: 1, name: heading })).toBeVisible();
     await expect(page).toHaveScreenshot(`${name}-empty.png`, { fullPage: true });
   }
+});
+
+test('deal pin actions and client counters visual baseline', async ({ page }) => {
+  await authenticate(page);
+  await mockDealsIconWorkspace(page);
+  await page.goto('/deals');
+
+  await expect(page.getByText('Закреплённая сделка').first()).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Открепить сделку' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Закрепить сделку' })).toBeVisible();
+  await expect(page).toHaveScreenshot('deals-icons.png', { fullPage: true });
 });
 
 test('dev UI catalog and modal visual baselines', async ({ page }) => {

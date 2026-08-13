@@ -100,6 +100,7 @@
 - `src/components/common/modal/PromptDialog.tsx`
 - `src/components/common/InlineAlert.tsx`
 - `src/components/common/forms/formClassNames.ts`
+- `src/components/common/AppIcon.tsx` — единый типизированный набор navigation/action-иконок; ручные SVG в прикладных компонентах запрещены.
 
 ## Дополнительная декомпозиция P1
 

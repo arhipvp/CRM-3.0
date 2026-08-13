@@ -78,6 +78,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
             disabled={isStatementDriveLoading}
             variant="secondary"
             size="sm"
+            icon="refresh"
           >
             {isStatementDriveLoading ? 'Обновляю...' : 'Обновить'}
           </Button>
@@ -109,6 +110,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
           }
           variant="secondary"
           size="sm"
+          icon="download"
         >
           {isStatementDriveDownloading ? 'Скачиваю...' : 'Скачать'}
         </Button>
@@ -125,6 +127,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
           }
           variant="danger"
           size="sm"
+          icon="delete"
         >
           {isStatementDriveTrashing ? 'Удаляю...' : 'Удалить'}
         </Button>
@@ -190,6 +193,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                   !!statementDriveError
                 }
                 className={`${'link-action text-xs'} disabled:text-slate-300`}
+                icon="download"
               >
                 Скачать
               </Button>
@@ -204,6 +208,7 @@ export const StatementFilesTab: React.FC<StatementFilesTabProps> = ({
                   !!statementDriveError
                 }
                 className={`${'link-action text-xs'} disabled:text-slate-300`}
+                icon="delete"
               >
                 Удалить
               </Button>

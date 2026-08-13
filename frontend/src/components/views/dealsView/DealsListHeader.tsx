@@ -1,5 +1,5 @@
 import type { User } from '../../../types';
-import { Button } from '../../common/Button';
+import { Button, IconButton } from '../../common/Button';
 import { getUserDisplayName } from './helpers';
 
 interface DealsListHeaderProps {
@@ -68,23 +68,24 @@ export function DealsListHeader({
                   className="field field-input pr-10"
                 />
                 {search && (
-                  <Button
+                  <IconButton
                     type="button"
+                    icon="close"
+                    label="Очистить поиск сделок"
+                    size="sm"
                     onClick={() => onSearchSubmit('')}
-                    aria-label="Очистить поиск сделок"
                     className="search-clear-btn"
-                  >
-                    ×
-                  </Button>
+                  />
                 )}
               </div>
-              <Button type="submit" variant="quiet" size="sm">
+              <Button type="submit" variant="quiet" size="sm" icon="search">
                 Найти
               </Button>
               <Button
                 type="button"
                 variant="quiet"
                 size="sm"
+                icon="refresh"
                 onClick={() => void onRefresh?.()}
                 disabled={!onRefresh || isRefreshing}
               >

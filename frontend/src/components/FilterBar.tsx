@@ -243,6 +243,7 @@ export function FilterBar({
               onClick={handleClearFilters}
               variant="secondary"
               size="sm"
+              icon="close"
               className="whitespace-nowrap"
             >
               Сбросить фильтры

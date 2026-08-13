@@ -451,6 +451,8 @@ export const DealForm: React.FC<DealFormProps> = ({
                     <Button
                       key={user.id}
                       type="button"
+                      icon="close"
+                      iconPosition="end"
                       onClick={() =>
                         setVisibleUserIds((prev) => prev.filter((id) => id !== user.id))
                       }
@@ -465,7 +467,6 @@ export const DealForm: React.FC<DealFormProps> = ({
                           {getUserFullName(user)}
                         </span>
                       </span>
-                      <span className="text-slate-400">×</span>
                     </Button>
                   );
                 })

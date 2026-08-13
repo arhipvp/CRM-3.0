@@ -6,7 +6,7 @@ import {
   type FinancialRecordsSummary,
 } from '../../../api';
 import type { DriveFile, SalesChannel, Statement } from '../../../types';
-import { ActionLink, Button } from '../../common/Button';
+import { ActionLink, Button, IconButton } from '../../common/Button';
 import { InlineAlert } from '../../common/InlineAlert';
 import { Combobox } from '../../common/forms/Combobox';
 
@@ -280,27 +280,34 @@ export function AllRecordsPanel({
                 className="field field-input pr-10"
               />
               {allRecordsSearchInput && (
-                <Button
+                <IconButton
                   type="button"
+                  icon="close"
+                  label="Очистить поиск финансовых записей"
+                  size="sm"
                   onClick={() => {
                     onSearchChange('');
                     onSearchSubmit('');
                   }}
-                  aria-label="Очистить поиск финансовых записей"
                   className="search-clear-btn"
                   disabled={isAllRecordsLoading}
-                >
-                  ×
-                </Button>
+                />
               )}
             </div>
-            <Button type="submit" variant="quiet" size="sm" disabled={isAllRecordsLoading}>
+            <Button
+              type="submit"
+              variant="quiet"
+              size="sm"
+              icon="search"
+              disabled={isAllRecordsLoading}
+            >
               Найти
             </Button>
             <Button
               type="button"
               variant="quiet"
               size="sm"
+              icon="refresh"
               onClick={onRetryLoad}
               disabled={isAllRecordsLoading}
             >

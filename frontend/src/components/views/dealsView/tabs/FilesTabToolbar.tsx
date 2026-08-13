@@ -95,6 +95,7 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
             disabled={!props.selectedDeal.driveFolderId || props.isDriveLoading}
             variant="secondary"
             size="sm"
+            icon="refresh"
           >
             {props.isDriveLoading ? 'Обновляю...' : 'Обновить'}
           </HeaderActionButton>
@@ -145,6 +146,7 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
           disabled={disabled}
           variant="secondary"
           size="sm"
+          icon="download"
         >
           {props.isDownloading ? 'Скачиваю...' : 'Скачать'}
         </Button>
@@ -154,6 +156,7 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
           disabled={disabled}
           variant="danger"
           size="sm"
+          icon="delete"
         >
           {props.isTrashing ? 'Удаляю...' : 'Удалить'}
         </Button>

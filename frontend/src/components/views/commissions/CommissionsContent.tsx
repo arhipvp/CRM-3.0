@@ -180,8 +180,9 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                     onClick={() => setStatementModalOpen(true)}
                     variant="secondary"
                     size="sm"
+                    icon="plus"
                   >
-                    + Создать ведомость
+                    Создать ведомость
                   </Button>
                   <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
                     <input
@@ -328,6 +329,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                               onClick={() => handleEditStatementOpen(selectedStatement)}
                               disabled={isSelectedStatementPaid}
                               variant="primary"
+                              icon="edit"
                             >
                               Редактировать
                             </Button>
@@ -338,6 +340,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                               onClick={() => void handleReopenStatement()}
                               disabled={isReopeningStatement}
                               variant="danger"
+                              icon="close"
                             >
                               {isReopeningStatement ? 'Отменяем…' : 'Отменить выплату'}
                             </Button>
@@ -353,6 +356,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                               onClick={() => setDeletingStatement(selectedStatement)}
                               disabled={isSelectedStatementPaid}
                               variant="danger"
+                              icon="delete"
                             >
                               Удалить
                             </Button>

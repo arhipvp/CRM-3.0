@@ -24,6 +24,7 @@
 
 - Страницы: `PageShell`, `PageHeader`, `Toolbar`, `Panel`, `SectionHeader`.
 - Действия: `Button`, `IconButton`, `SortButton`; состояние запроса задаётся `isLoading`, а не ручной заменой разметки. Для текстовых действий используются варианты `link` и `linkDanger`.
+- Иконки: только `AppIcon` и типизированное свойство `icon`. Прикладные action-кнопки не содержат собственные `<svg>` или текстовые псевдоиконки; SVG внутри графиков остаются допустимым исключением.
 - Навигация: `Tabs` для ARIA-вкладок, `SegmentedControl` для выбора режима без tabpanel.
 - Формы: `FormField`, `FormSection`, `FormActions`, `CheckboxField`, `DateInput` и классы `.field*`.
 - Состояния: `StatusBadge`, `InlineAlert`, `EmptyState`, `LoadingState`, `Spinner`, `KpiCard`, `PanelMessage`.

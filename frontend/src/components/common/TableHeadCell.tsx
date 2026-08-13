@@ -64,15 +64,13 @@ export function SortButton({ direction = null, children, ...props }: SortButtonP
     <Button
       variant="link"
       size="sm"
+      icon={direction === 'asc' ? 'sortAsc' : direction === 'desc' ? 'sortDesc' : undefined}
+      iconPosition="end"
       {...props}
       className={['table-sort-button', props.className].filter(Boolean).join(' ')}
     >
       <span>{children}</span>
-      {direction && (
-        <span aria-label={directionLabel} aria-hidden="true">
-          {direction === 'asc' ? '↑' : '↓'}
-        </span>
-      )}
+      {direction && <span className="sr-only">{directionLabel}</span>}
     </Button>
   );
 }

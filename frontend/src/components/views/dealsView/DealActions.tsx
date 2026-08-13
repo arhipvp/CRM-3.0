@@ -42,7 +42,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
 }) => (
   <div className="flex flex-wrap items-center justify-between gap-3 app-panel-muted p-3 shadow-none">
     <div className="flex flex-wrap items-center gap-2">
-      <Button type="button" onClick={onEdit} disabled={isSelectedDealDeleted} variant="primary">
+      <Button
+        type="button"
+        onClick={onEdit}
+        disabled={isSelectedDealDeleted}
+        variant="primary"
+        icon="edit"
+      >
         Редактировать
       </Button>
     </div>
@@ -55,6 +61,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           isSelectedDealDeleted || isDealClosedStatus || isClosingDeal || !isCurrentUserSeller
         }
         variant="success"
+        icon="check"
       >
         {isClosingDeal ? 'Закрываем...' : 'Закрыть'}
       </Button>
@@ -73,7 +80,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
       <details className="relative">
         <DisclosureSummary className="cursor-pointer list-none">Ещё</DisclosureSummary>
         <div className="absolute right-0 z-20 mt-2 flex min-w-52 flex-col gap-1 rounded-xl border border-slate-200 bg-white p-2 shadow-lg">
-          <Button type="button" onClick={onRefresh} disabled={isRefreshing} variant="quiet">
+          <Button
+            type="button"
+            onClick={onRefresh}
+            disabled={isRefreshing}
+            variant="quiet"
+            icon="refresh"
+          >
             {isRefreshing ? 'Обновляем...' : 'Обновить данные'}
           </Button>
           <Button
@@ -84,7 +97,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
           >
             Похожие сделки
           </Button>
-          <Button type="button" onClick={onMerge} disabled={isSelectedDealDeleted} variant="quiet">
+          <Button
+            type="button"
+            onClick={onMerge}
+            disabled={isSelectedDealDeleted}
+            variant="quiet"
+            icon="duplicate"
+          >
             Объединить сделки
           </Button>
           {isSelectedDealDeleted ? (
@@ -92,7 +111,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
               {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить сделку'}
             </Button>
           ) : (
-            <Button type="button" onClick={onDelete} disabled={isDeletingDeal} variant="danger">
+            <Button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeletingDeal}
+              variant="danger"
+              icon="delete"
+            >
               {isDeletingDeal ? 'Удаляем...' : 'Удалить сделку'}
             </Button>
           )}

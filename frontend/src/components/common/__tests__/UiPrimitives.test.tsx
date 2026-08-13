@@ -2,7 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-import { AppIcon } from '../AppIcon';
+import { AppIcon, type AppIconName } from '../AppIcon';
 import { ActionLink, Button, DisclosureSummary, IconButton } from '../Button';
 import { KpiCard } from '../KpiCard';
 import { LoadingState, Spinner } from '../LoadingState';
@@ -67,6 +67,54 @@ describe('ui primitives', () => {
     render(<AppIcon name="settings" title="Настройки" />);
 
     expect(screen.getByTitle('Настройки')).toBeInTheDocument();
+  });
+
+  it('renders the complete action icon set with accessible titles', () => {
+    const actionIcons: AppIconName[] = [
+      'pin',
+      'pinOff',
+      'folder',
+      'duplicate',
+      'normalize',
+      'chevronLeft',
+      'chevronRight',
+      'arrowRight',
+      'sortAsc',
+      'sortDesc',
+      'download',
+      'copy',
+    ];
+
+    render(
+      <div>
+        {actionIcons.map((name) => (
+          <AppIcon key={name} name={name} size={24} title={name} data-testid={`icon-${name}`} />
+        ))}
+      </div>,
+    );
+
+    for (const name of actionIcons) {
+      const icon = screen.getByTestId(`icon-${name}`);
+      expect(icon).toHaveAttribute('width', '24');
+      expect(icon).toHaveAttribute('height', '24');
+      expect(icon).toHaveAttribute('aria-labelledby', `${name}-icon-title`);
+      expect(screen.getByTitle(name)).toBeInTheDocument();
+    }
+  });
+
+  it('hides decorative icons and labels icon buttons', () => {
+    render(
+      <div>
+        <AppIcon name="copy" data-testid="decorative-icon" />
+        <IconButton icon="pin" label="Закрепить" size="sm" />
+      </div>,
+    );
+
+    expect(screen.getByTestId('decorative-icon')).toHaveAttribute('aria-hidden', 'true');
+    const button = screen.getByRole('button', { name: 'Закрепить' });
+    expect(button).toHaveAttribute('title', 'Закрепить');
+    expect(button).toHaveClass('h-7', 'w-7');
+    expect(button.querySelector('svg')).toHaveAttribute('width', '14');
   });
 
   it('exposes a busy state and prevents repeated button submission', () => {

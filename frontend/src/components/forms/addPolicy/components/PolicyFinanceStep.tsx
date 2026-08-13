@@ -331,7 +331,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                           variant="quiet"
                           size="sm"
                           icon="plus"
-                          aria-label="+ Добавить доход"
+                          aria-label="Добавить доход"
                           onClick={() => onAddRecord(sourceIndex, 'incomes')}
                         >
                           Добавить доход
@@ -359,7 +359,7 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                           variant="quiet"
                           size="sm"
                           icon="plus"
-                          aria-label="+ Добавить расход"
+                          aria-label="Добавить расход"
                           onClick={() => onAddRecord(sourceIndex, 'expenses')}
                         >
                           Добавить расход

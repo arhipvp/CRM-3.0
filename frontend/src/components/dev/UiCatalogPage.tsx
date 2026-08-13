@@ -1,6 +1,7 @@
 import { useState } from 'react';
 
 import { Modal } from '../Modal';
+import { AppIcon, type AppIconName } from '../common/AppIcon';
 import { Button, IconButton, type ButtonVariant } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { InlineAlert, type InlineAlertTone } from '../common/InlineAlert';
@@ -48,6 +49,42 @@ const semanticTones: SemanticTone[] = [
   'overdue',
   'selected',
 ];
+const iconNames = [
+  'dashboard',
+  'deals',
+  'clients',
+  'policies',
+  'finance',
+  'tasks',
+  'settings',
+  'plus',
+  'logout',
+  'collapse',
+  'expand',
+  'close',
+  'edit',
+  'delete',
+  'refresh',
+  'search',
+  'file',
+  'folder',
+  'upload',
+  'download',
+  'copy',
+  'check',
+  'pin',
+  'pinOff',
+  'duplicate',
+  'normalize',
+  'chevronLeft',
+  'chevronRight',
+  'arrowRight',
+  'sortAsc',
+  'sortDesc',
+  'commands',
+  'whatsapp',
+  'telegram',
+] as const satisfies readonly AppIconName[];
 
 export function UiCatalogPage() {
   const [activeTab, setActiveTab] = useState<'overview' | 'details'>('overview');
@@ -78,6 +115,38 @@ export function UiCatalogPage() {
           <Button disabled>Недоступна</Button>
           <IconButton icon="edit" label="Редактировать" />
           <IconButton icon="delete" label="Удалить" tone="danger" />
+        </div>
+      </Panel>
+
+      <Panel className="space-y-4">
+        <SectionHeader
+          title="Иконки"
+          description="Полный монохромный набор и примеры семантических действий."
+        />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-6">
+          {iconNames.map((name) => (
+            <div
+              key={name}
+              className="flex min-h-16 items-center gap-3 rounded-lg border border-[var(--app-border)] bg-white px-3 py-2"
+            >
+              <AppIcon name={name} size={20} title={name} className="shrink-0 text-slate-700" />
+              <code className="truncate text-xs text-slate-600">{name}</code>
+            </div>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <IconButton icon="pin" label="Закрепить" />
+          <IconButton icon="delete" label="Удалить" tone="danger" />
+          <IconButton icon="edit" label="Редактировать недоступно" disabled />
+          <Button icon="plus" variant="primary">
+            Создать
+          </Button>
+          <Button icon="arrowRight" iconPosition="end">
+            Перейти
+          </Button>
+          <Button icon="delete" variant="danger">
+            Удалить
+          </Button>
         </div>
       </Panel>
 

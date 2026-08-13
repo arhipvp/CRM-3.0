@@ -174,7 +174,7 @@ export const PolicyPaymentsStep: React.FC<PolicyPaymentsStepProps> = ({
             variant="secondary"
             size="sm"
             icon="plus"
-            aria-label="+ Добавить платёж"
+            aria-label="Добавить платёж"
             onClick={onAddPayment}
           >
             Добавить платёж
