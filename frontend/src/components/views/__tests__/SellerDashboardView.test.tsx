@@ -107,9 +107,15 @@ describe('SellerDashboardView', () => {
 
     render(<SellerDashboardView />);
 
-    expect(
-      await screen.findByRole('link', { name: 'Открыть полисы выбранного периода' }),
-    ).toHaveAttribute('href', '/policies?start_date_from=2025-01-01&start_date_to=2025-01-31');
+    const policyLink = await screen.findByRole('link', {
+      name: 'Открыть полисы выбранного периода',
+    });
+    await waitFor(() => {
+      expect(policyLink).toHaveAttribute(
+        'href',
+        '/policies?start_date_from=2025-01-01&start_date_to=2025-01-31',
+      );
+    });
     expect(screen.getByRole('link', { name: 'Открыть текущие задачи' })).toHaveAttribute(
       'href',
       '/tasks?only_my_tasks=true',

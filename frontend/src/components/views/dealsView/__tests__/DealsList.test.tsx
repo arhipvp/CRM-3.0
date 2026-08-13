@@ -319,7 +319,7 @@ describe('DealsList dealRowFocusRequest', () => {
 
     renderDealsList({ onRefreshDealsList });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Обновить' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить сделки' }));
 
     expect(onRefreshDealsList).toHaveBeenCalledTimes(1);
   });
@@ -330,7 +330,7 @@ describe('DealsList dealRowFocusRequest', () => {
       isRefreshingDealsList: true,
     });
 
-    expect(screen.getByRole('button', { name: 'Обновляем...' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Обновляем сделки' })).toBeDisabled();
   });
 
   it('selects deal from the mobile card list', () => {
