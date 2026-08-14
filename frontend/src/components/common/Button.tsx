@@ -18,7 +18,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 export type IconButtonProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
   icon: AppIconName;
   label: string;
-  tone?: 'neutral' | 'primary' | 'danger' | 'success';
+  tone?: 'neutral' | 'primary' | 'success' | 'warning' | 'danger';
   size?: 'sm' | 'md';
 };
 
@@ -37,8 +37,9 @@ export type DisclosureSummaryProps = HTMLAttributes<HTMLElement> & {
 const iconToneClassName: Record<NonNullable<IconButtonProps['tone']>, string> = {
   neutral: 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
   primary: 'border-sky-200 text-sky-700 hover:bg-sky-50',
-  danger: 'border-rose-200 text-rose-700 hover:bg-rose-50',
   success: 'border-emerald-200 text-emerald-700 hover:bg-emerald-50',
+  warning: 'border-amber-200 text-amber-700 hover:bg-amber-50',
+  danger: 'border-rose-200 text-rose-700 hover:bg-rose-50',
 };
 
 const iconSizeClassName: Record<NonNullable<IconButtonProps['size']>, string> = {

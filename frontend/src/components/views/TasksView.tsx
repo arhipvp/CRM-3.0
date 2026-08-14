@@ -411,6 +411,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
                 onClick={() => navigate('/deals')}
                 variant="secondary"
                 size="sm"
+                icon="arrowRight"
+                iconPosition="end"
               >
                 Перейти к сделкам
               </Button>

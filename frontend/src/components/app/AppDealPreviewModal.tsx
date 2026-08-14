@@ -47,7 +47,13 @@ export const AppDealPreviewModal: React.FC<AppDealPreviewModalProps> = ({
       <div className="space-y-3">
         {previewDeal && (
           <div className="flex justify-end">
-            <Button onClick={() => onOpenFull(previewDeal.id)} variant="primary" size="sm">
+            <Button
+              onClick={() => onOpenFull(previewDeal.id)}
+              variant="primary"
+              size="sm"
+              icon="arrowRight"
+              iconPosition="end"
+            >
               Открыть полностью
             </Button>
           </div>

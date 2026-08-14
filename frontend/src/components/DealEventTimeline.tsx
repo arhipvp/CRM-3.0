@@ -350,6 +350,7 @@ export function DealEventTimeline({
                       type="button"
                       className="btn btn-sm btn-quiet"
                       onClick={() => startEditing(event)}
+                      icon="edit"
                     >
                       Изменить
                     </Button>
@@ -358,6 +359,7 @@ export function DealEventTimeline({
                       className="btn btn-sm btn-danger"
                       onClick={() => void deleteEvent(event.id)}
                       disabled={deletingEventId === event.id}
+                      icon="delete"
                     >
                       {deletingEventId === event.id ? 'Удаляем…' : 'Удалить'}
                     </Button>
@@ -378,10 +380,16 @@ export function DealEventTimeline({
                     className="btn btn-sm btn-primary"
                     onClick={() => void saveEditing(event.id)}
                     disabled={savingEventId === event.id}
+                    icon="check"
                   >
                     {savingEventId === event.id ? 'Сохраняем…' : 'Сохранить'}
                   </Button>
-                  <Button type="button" className="btn btn-sm btn-quiet" onClick={cancelEditing}>
+                  <Button
+                    type="button"
+                    className="btn btn-sm btn-quiet"
+                    onClick={cancelEditing}
+                    icon="close"
+                  >
                     Отмена
                   </Button>
                 </div>

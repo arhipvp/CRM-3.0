@@ -371,6 +371,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               onClick={() => onRequestEditPolicy(policy)}
                               variant="primary"
                               size="sm"
+                              icon="edit"
                               className={POLICY_ACTION_CLASS}
                             >
                               Редактировать
@@ -381,6 +382,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                 onClick={() => setPolicyToMove(policy)}
                                 variant="quiet"
                                 size="sm"
+                                icon="arrowRight"
                                 className={POLICY_ACTION_CLASS}
                               >
                                 Перенести
@@ -394,6 +396,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               }}
                               variant="success"
                               size="sm"
+                              icon="plus"
                               className={POLICY_ACTION_CLASS}
                             >
                               + Платеж
@@ -407,6 +410,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               }
                               variant={policy.isRenewed ? 'primary' : 'warning'}
                               size="sm"
+                              icon="refresh"
                               className={POLICY_ACTION_CLASS}
                             >
                               {policy.isRenewed ? 'Вернуть в активные' : 'Отметить продлённым'}
@@ -416,6 +420,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               onClick={() => onDeletePolicy(policy.id).catch(() => undefined)}
                               variant="danger"
                               size="sm"
+                              icon="delete"
                               className={POLICY_ACTION_CLASS}
                             >
                               Удалить

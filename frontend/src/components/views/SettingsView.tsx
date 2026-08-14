@@ -348,6 +348,7 @@ export const SettingsView: React.FC = () => {
                 <Button
                   onClick={handleDriveRefresh}
                   variant="outline"
+                  icon="refresh"
                   disabled={driveLoading || driveReconnectBusy}
                 >
                   Обновить статус
@@ -356,6 +357,8 @@ export const SettingsView: React.FC = () => {
                   <Button
                     onClick={handleDriveReconnect}
                     variant="primary"
+                    icon="arrowRight"
+                    iconPosition="end"
                     disabled={driveReconnectBusy}
                   >
                     {driveReconnectBusy ? 'Переходим в Google...' : 'Переподключить Google Drive'}
@@ -435,7 +438,7 @@ export const SettingsView: React.FC = () => {
         </div>
 
         <div className="flex items-center justify-end pt-2">
-          <Button type="submit" variant="primary" disabled={loading}>
+          <Button type="submit" variant="primary" icon="check" disabled={loading}>
             {loading ? 'Сохраняем...' : 'Обновить пароль'}
           </Button>
         </div>

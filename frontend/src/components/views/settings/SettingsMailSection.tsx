@@ -93,6 +93,7 @@ export const SettingsMailSection: React.FC<SettingsMailSectionProps> = ({ contro
         <Button
           onClick={handleMailboxCreate}
           variant="primary"
+          icon="plus"
           disabled={mailboxCreating || !mailboxLocalPart.trim()}
         >
           {mailboxCreating ? 'Создаём...' : 'Создать'}
@@ -104,7 +105,7 @@ export const SettingsMailSection: React.FC<SettingsMailSectionProps> = ({ contro
           <div>
             Пароль для нового ящика: <span className="font-semibold">{mailboxCreatedPassword}</span>
           </div>
-          <Button onClick={handlePasswordCopy} variant="secondary">
+          <Button onClick={handlePasswordCopy} variant="secondary" icon="copy">
             {mailboxPasswordCopied ? 'Скопировано' : 'Скопировать'}
           </Button>
         </div>
@@ -140,6 +141,7 @@ export const SettingsMailSection: React.FC<SettingsMailSectionProps> = ({ contro
                         onClick={() => handleMailboxSelect(mailbox.id)}
                         variant="secondary"
                         size="sm"
+                        icon="folder"
                       >
                         Письма
                       </Button>
@@ -147,6 +149,7 @@ export const SettingsMailSection: React.FC<SettingsMailSectionProps> = ({ contro
                         onClick={() => void handleMailboxDelete(mailbox.id)}
                         variant="outline"
                         size="sm"
+                        icon="delete"
                         disabled={deletingMailboxId === mailbox.id}
                       >
                         {deletingMailboxId === mailbox.id ? 'Удаляем...' : 'Удалить'}
@@ -164,6 +167,7 @@ export const SettingsMailSection: React.FC<SettingsMailSectionProps> = ({ contro
                 onClick={handleMailboxRefresh}
                 variant="outline"
                 size="sm"
+                icon="refresh"
                 disabled={!selectedMailboxId || mailMessagesLoading}
               >
                 Обновить

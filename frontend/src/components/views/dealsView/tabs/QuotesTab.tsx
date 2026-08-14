@@ -11,7 +11,7 @@ import {
   TABLE_ROW_CLASS_PLAIN,
   TABLE_THEAD_CLASS,
 } from '../../../common/tableStyles';
-import { Button } from '../../../common/Button';
+import { Button, IconButton } from '../../../common/Button';
 
 type QuoteSortKey =
   | 'insuranceType'
@@ -271,24 +271,24 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top whitespace-nowrap`}>
                     <div className={TABLE_ACTIONS_CLASS_ROW}>
-                      <Button
-                        className={'link-action text-xs'}
+                      <IconButton
                         onClick={() => onRequestEditQuote(quote)}
-                        type="button"
-                      >
-                        Редактировать
-                      </Button>
-                      <Button
-                        className="link-danger text-xs"
+                        icon="edit"
+                        label="Редактировать"
+                        tone="primary"
+                        size="sm"
+                      />
+                      <IconButton
                         onClick={() =>
                           onDeleteQuote(String(selectedDeal.id), String(quote.id)).catch(
                             () => undefined,
                           )
                         }
-                        type="button"
-                      >
-                        Удалить
-                      </Button>
+                        icon="delete"
+                        label="Удалить"
+                        tone="danger"
+                        size="sm"
+                      />
                     </div>
                   </td>
                 </tr>

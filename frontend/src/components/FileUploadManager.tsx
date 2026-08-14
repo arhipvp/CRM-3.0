@@ -417,6 +417,7 @@ export function FileUploadManager({
           type="button"
           variant="secondary"
           size="sm"
+          icon="copy"
           onClick={handleClipboardButtonClick}
           disabled={isUploading || disabled}
         >

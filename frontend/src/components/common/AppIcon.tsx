@@ -200,12 +200,12 @@ const iconPaths: Record<AppIconName, ReactElement> = {
   ),
   normalize: (
     <>
-      <path d="m4 20 10.5-10.5" />
-      <path d="m13 6 5 5" />
-      <path d="M6 4v4" />
-      <path d="M4 6h4" />
-      <path d="M18 15v5" />
-      <path d="M15.5 17.5h5" />
+      <path d="m4 20 10-10" />
+      <path d="m12.5 5.5 6 6" />
+      <path d="M16 3v4" />
+      <path d="M14 5h4" />
+      <path d="M20 14v4" />
+      <path d="M18 16h4" />
     </>
   ),
   chevronLeft: <path d="m15 18-6-6 6-6" />,

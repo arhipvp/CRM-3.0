@@ -49,6 +49,98 @@ async function mockWorkspace(page: Page) {
   });
 }
 
+async function mockActionIconsWorkspace(page: Page) {
+  const clientId = '00000000-0000-0000-0000-000000000101';
+
+  await page.route('**/api/v1/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname.endsWith('/auth/me/')) {
+      await route.fulfill({
+        json: {
+          id: '00000000-0000-0000-0000-000000000001',
+          username: 'visual-seller',
+          is_authenticated: true,
+          roles: ['Продавец'],
+          capabilities: ['settings.profile'],
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/clients/duplicate-hints/')) {
+      await route.fulfill({
+        json: {
+          results: {
+            [clientId]: {
+              client_id: clientId,
+              candidate_count: 2,
+              max_score: 91,
+              confidence: 'high',
+              reasons: ['Похожее ФИО'],
+              needs_name_normalization: true,
+              normalized_name: 'Соколова Тамара Андреевна',
+            },
+          },
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/clients/stats/')) {
+      await route.fulfill({ json: { total: 1, created_last_30_days: 1 } });
+      return;
+    }
+    if (url.pathname.endsWith('/clients/')) {
+      await route.fulfill({
+        json: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: clientId,
+              name: 'СОКОЛОВА ТАМАРА АНДРЕЕВНА',
+              phone: '+79990000000',
+              created_at: '2026-08-01T10:00:00Z',
+              updated_at: '2026-08-01T10:00:00Z',
+              deal_count: 1,
+            },
+          ],
+        },
+      });
+      return;
+    }
+    if (url.pathname.endsWith('/tasks/')) {
+      await route.fulfill({
+        json: {
+          count: 1,
+          next: null,
+          previous: null,
+          results: [
+            {
+              id: '00000000-0000-0000-0000-000000000201',
+              title: 'Проверить документы клиента',
+              description: 'Задача завершена для visual-проверки.',
+              client_name: 'Соколова Тамара Андреевна',
+              created_by_name: 'Vova',
+              assignee_name: 'Alisa',
+              status: 'done',
+              priority: 'normal',
+              due_at: null,
+              checklist: [],
+              checklist_count: 0,
+              created_at: '2026-08-01T10:00:00Z',
+              completed_at: '2026-08-02T12:00:00Z',
+              completed_by_name: 'Alisa',
+              completion_comment: 'Готово',
+            },
+          ],
+        },
+      });
+      return;
+    }
+    await route.fulfill({ json: emptyPage });
+  });
+}
+
 async function mockDealsIconWorkspace(page: Page) {
   await page.route('**/api/v1/**', async (route) => {
     const url = new URL(route.request().url());
@@ -138,6 +230,23 @@ test('deal pin actions and client counters visual baseline', async ({ page }) =>
   await expect(page.getByRole('button', { name: 'Открепить сделку' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Закрепить сделку' })).toBeVisible();
   await expect(page).toHaveScreenshot('deals-icons.png', { fullPage: true });
+});
+
+test('client indicators and completed task visual baselines', async ({ page }) => {
+  await authenticate(page);
+  await mockActionIconsWorkspace(page);
+
+  await page.goto('/clients');
+  await expect(page.getByRole('button', { name: /Нормализовать ФИО клиента/ })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Показать возможные дубли клиента/ }),
+  ).toBeVisible();
+  await expect(page).toHaveScreenshot('clients-action-icons.png', { fullPage: true });
+
+  await page.goto('/tasks?show_completed=true');
+  await expect(page.getByText('Проверить документы клиента')).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Завершена', exact: true })).toBeVisible();
+  await expect(page).toHaveScreenshot('tasks-action-icons.png', { fullPage: true });
 });
 
 test('dev UI catalog and modal visual baselines', async ({ page }) => {

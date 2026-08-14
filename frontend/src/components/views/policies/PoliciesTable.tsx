@@ -253,6 +253,7 @@ export const PoliciesTable = ({
                               onClick={() => onRequestEditPolicy(policy)}
                               variant="quiet"
                               size="sm"
+                              icon="edit"
                               className="h-7 px-2 text-[11px]"
                               aria-label={`Редактировать полис ${model.number}`}
                             >
@@ -265,6 +266,7 @@ export const PoliciesTable = ({
                               onClick={() => setPolicyToMove(policy)}
                               variant="quiet"
                               size="sm"
+                              icon="arrowRight"
                               className="h-7 px-2 text-[11px]"
                             >
                               Перенести
@@ -304,6 +306,7 @@ export const PoliciesTable = ({
                                 onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
                                 variant="quiet"
                                 size="sm"
+                                icon="check"
                                 className="h-7 px-2 text-[11px]"
                               >
                                 Проставить оплату
@@ -317,6 +320,7 @@ export const PoliciesTable = ({
                                 }
                                 variant="quiet"
                                 size="sm"
+                                icon="delete"
                                 className="h-7 px-2 text-[11px]"
                                 disabled={firstLedgerRow.payment.canDelete === false}
                                 title={

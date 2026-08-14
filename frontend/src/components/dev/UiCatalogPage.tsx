@@ -135,6 +135,20 @@ export function UiCatalogPage() {
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <IconButton icon="pin" label="Закрепить" />
+          <IconButton
+            icon="duplicate"
+            label="Показать возможные дубли"
+            tone="warning"
+            size="md"
+            className="rounded-full"
+          />
+          <IconButton
+            icon="normalize"
+            label="Нормализовать ФИО"
+            tone="primary"
+            size="md"
+            className="rounded-full"
+          />
           <IconButton icon="delete" label="Удалить" tone="danger" />
           <IconButton icon="edit" label="Редактировать недоступно" disabled />
           <Button icon="plus" variant="primary">

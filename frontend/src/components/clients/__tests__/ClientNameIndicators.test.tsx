@@ -41,9 +41,12 @@ describe('ClientNameIndicators', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('button', { name: `Показать возможные дубли клиента ${client.name}` }),
-    ).toBeInTheDocument();
+    const button = screen.getByRole('button', {
+      name: `Показать возможные дубли клиента ${client.name}`,
+    });
+    expect(button).toHaveAttribute('title', 'Возможные дубли: 2');
+    expect(button).toHaveClass('rounded-full', 'text-amber-700');
+    expect(button.querySelector('svg')).toHaveAttribute('width', '16');
   });
 
   it('opens duplicate candidates without triggering parent row click', () => {
@@ -88,5 +91,9 @@ describe('ClientNameIndicators', () => {
     );
 
     expect(onNormalizeName).toHaveBeenCalledWith(client, 'Иванов Иван');
+    expect(screen.getByRole('button', { name: /Нормализовать ФИО клиента/ })).toHaveClass(
+      'rounded-full',
+      'text-sky-700',
+    );
   });
 });

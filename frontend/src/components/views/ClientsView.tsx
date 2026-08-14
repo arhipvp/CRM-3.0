@@ -16,7 +16,7 @@ import {
 import { formatDateRu } from '../../utils/formatting';
 import { buildWhatsAppLink } from '../../utils/links';
 import { DataTableShell } from '../common/table/DataTableShell';
-import { Button } from '../common/Button';
+import { Button, IconButton } from '../common/Button';
 import { EmptyTableState } from '../common/table/EmptyTableState';
 import { ClientNameIndicators } from '../clients/ClientNameIndicators';
 import { PageHeader, PageShell, Panel } from '../common/layoutPrimitives';
@@ -286,6 +286,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                       onClick={() => setFilesModalClient(client)}
                       variant="secondary"
                       size="sm"
+                      icon="folder"
                       aria-label={`Файлы клиента ${client.name}`}
                     >
                       Файлы
@@ -295,15 +296,13 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {onClientEdit || onClientDelete || onClientMerge || onClientFindSimilar ? (
                       <div className={TABLE_ACTIONS_CLASS_COL}>
                         {onClientEdit && (
-                          <Button
-                            type="button"
+                          <IconButton
                             onClick={() => onClientEdit(client)}
-                            variant="quiet"
                             size="sm"
-                            aria-label={`Редактировать клиента ${client.name}`}
-                          >
-                            Редактировать
-                          </Button>
+                            icon="edit"
+                            label={`Редактировать клиента ${client.name}`}
+                            tone="primary"
+                          />
                         )}
                         <div className="relative">
                           <Button

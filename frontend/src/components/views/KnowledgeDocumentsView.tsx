@@ -100,6 +100,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               type="button"
               variant="secondary"
               size="sm"
+              icon="check"
               onClick={handleRenameNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
@@ -109,6 +110,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
               type="button"
               variant="danger"
               size="sm"
+              icon="delete"
               onClick={handleDeleteNotebook}
               disabled={!selectedNotebookId || isNotebookBusy}
             >
@@ -130,6 +132,7 @@ export const KnowledgeDocumentsView: React.FC = () => {
             type="button"
             variant="primary"
             size="sm"
+            icon="plus"
             onClick={handleCreateNotebook}
             disabled={isNotebookBusy}
           >

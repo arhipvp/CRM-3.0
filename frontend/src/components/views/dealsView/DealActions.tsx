@@ -72,6 +72,7 @@ export const DealActions: React.FC<DealActionsProps> = ({
           onClick={onReopen}
           disabled={isSelectedDealDeleted || !canReopenClosedDeal || isReopeningDeal}
           variant="quiet"
+          icon="refresh"
         >
           {isReopeningDeal ? 'Восстанавливаем...' : 'Восстановить'}
         </Button>
@@ -107,7 +108,13 @@ export const DealActions: React.FC<DealActionsProps> = ({
             Объединить сделки
           </Button>
           {isSelectedDealDeleted ? (
-            <Button type="button" onClick={onRestore} disabled={isRestoringDeal} variant="quiet">
+            <Button
+              type="button"
+              onClick={onRestore}
+              disabled={isRestoringDeal}
+              variant="quiet"
+              icon="refresh"
+            >
               {isRestoringDeal ? 'Восстанавливаем...' : 'Восстановить сделку'}
             </Button>
           ) : (

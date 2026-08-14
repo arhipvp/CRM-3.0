@@ -18,12 +18,14 @@ describe('ui primitives', () => {
           Добавить
         </Button>
         <IconButton icon="close" label="Закрыть" />
+        <IconButton icon="duplicate" label="Дубли" tone="warning" />
       </div>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Добавить' }));
     expect(onClick).toHaveBeenCalledTimes(1);
     expect(screen.getByRole('button', { name: 'Закрыть' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Дубли' })).toHaveClass('text-amber-700');
   });
 
   it('supports typed link variants and semantic tones', () => {

@@ -63,6 +63,7 @@ export const KnowledgeDocumentsDialogs: React.FC<KnowledgeDocumentsDialogsProps>
                 type="button"
                 variant="primary"
                 size="sm"
+                icon="plus"
                 onClick={handleCreateSession}
                 disabled={!selectedNotebookId}
               >
@@ -97,6 +98,7 @@ export const KnowledgeDocumentsDialogs: React.FC<KnowledgeDocumentsDialogsProps>
                             type="button"
                             variant="primary"
                             size="sm"
+                            icon="check"
                             onClick={handleSaveSessionTitle}
                           >
                             Сохранить
@@ -105,6 +107,7 @@ export const KnowledgeDocumentsDialogs: React.FC<KnowledgeDocumentsDialogsProps>
                             type="button"
                             variant="secondary"
                             size="sm"
+                            icon="close"
                             onClick={handleCancelEditSession}
                           >
                             Отмена
@@ -143,6 +146,7 @@ export const KnowledgeDocumentsDialogs: React.FC<KnowledgeDocumentsDialogsProps>
                               type="button"
                               variant="danger"
                               size="sm"
+                              icon="delete"
                               onClick={() => handleDeleteSession(session.id)}
                             >
                               Удалить
