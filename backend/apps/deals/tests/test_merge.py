@@ -134,6 +134,69 @@ class DealMergeServiceTestCase(TestCase):
         self.assertEqual(policy.client_id, external_client.id)
         self.assertEqual(policy.insured_client_id, external_client.id)
 
+    def test_merge_recalculates_deadline_from_moved_policy(self):
+        Policy.objects.create(
+            number="P-DEADLINE",
+            insurance_company=InsuranceCompany.objects.create(name="Deadline Comp"),
+            insurance_type=InsuranceType.objects.create(name="Deadline Type"),
+            deal=self.source,
+            end_date=datetime.date(2027, 4, 12),
+        )
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged deadline deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+                "expected_close": None,
+            },
+            actor=self.user,
+        ).merge()
+
+        self.assertEqual(
+            result["result_deal"].expected_close, datetime.date(2027, 4, 12)
+        )
+
+    def test_merge_recalculates_deadline_from_moved_unpaid_payment(self):
+        Payment.objects.create(
+            amount=100,
+            deal=self.source,
+            scheduled_date=datetime.date(2027, 4, 12),
+        )
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged payment deadline deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+                "expected_close": None,
+            },
+            actor=self.user,
+        ).merge()
+
+        self.assertEqual(
+            result["result_deal"].expected_close, datetime.date(2027, 4, 12)
+        )
+
+    def test_merge_leaves_deadline_empty_without_deadline_sources(self):
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged without deadline",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+                "expected_close": datetime.date(2027, 4, 12),
+            },
+            actor=self.user,
+        ).merge()
+
+        self.assertIsNone(result["result_deal"].expected_close)
+
     def test_merge_does_not_duplicate_ids_block_when_already_present(self):
         ids_block = f"Предыдущие ID сделок: {self.target.id}, {self.source.id}"
         result = DealMergeService(

@@ -26,6 +26,7 @@ from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
 
+from .deadline_service import recalculate_deal_deadline
 from .models import Deal, DealPin, DealViewer, Quote
 
 logger = logging.getLogger(__name__)
@@ -552,6 +553,8 @@ class DealMergeService:
                 moved_counts[alias] = manager.filter(
                     deal_id__in=self._all_merge_ids
                 ).update(deal=result_deal)
+
+            result_deal.expected_close = recalculate_deal_deadline(result_deal.id)
 
             pinned_user_ids = set(
                 DealPin.objects.filter(deal_id__in=self._all_merge_ids).values_list(
