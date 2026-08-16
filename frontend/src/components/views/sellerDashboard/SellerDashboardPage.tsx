@@ -12,6 +12,20 @@ import { LineChart, StackedBarChart } from './DashboardCharts';
 import { FinancialCellView } from './FinancialCellView';
 import { useSellerDashboardViewModel } from './useSellerDashboardViewModel';
 
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
+
+const calendarDateFormatter = new Intl.DateTimeFormat('ru-RU', {
+  day: 'numeric',
+  month: 'long',
+  timeZone: 'UTC',
+});
+
+const formatCalendarDate = (value: string) => {
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  return calendarDateFormatter.format(date);
+};
+
 export const SellerDashboardView: React.FC = () => {
   const {
     dashboard,
@@ -34,6 +48,7 @@ export const SellerDashboardView: React.FC = () => {
   } = useSellerDashboardController();
 
   const {
+    calendarMax,
     calendarWeeks,
     executorSeries,
     financialMatrix,
@@ -472,6 +487,13 @@ export const SellerDashboardView: React.FC = () => {
               <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
               Следующие контакты
             </span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-2 py-1 text-sky-800">
+              <span
+                aria-hidden="true"
+                className="h-2 w-8 rounded-full bg-gradient-to-r from-sky-50 to-sky-500"
+              />
+              Общая нагрузка: меньше → больше
+            </span>
           </div>
         </div>
         {isLoading ? (
@@ -493,45 +515,50 @@ export const SellerDashboardView: React.FC = () => {
                   {week.map((day) => {
                     const total = day.policyExpirations + day.nextContacts;
                     const isEmpty = total === 0;
+                    const intensity = calendarMax > 0 ? clamp(total / calendarMax, 0, 1) : 0;
+                    const heatmapColor =
+                      day.isInRange && !isEmpty
+                        ? `rgba(14, 165, 233, ${0.06 + intensity * 0.24})`
+                        : undefined;
                     return (
                       <div
                         key={day.date}
                         title={`П: ${day.policyExpirations} / К: ${day.nextContacts}`}
-                        className={`min-h-[104px] rounded-[var(--app-radius-md)] border px-3 py-2 text-xs ${
+                        className={`min-h-[132px] rounded-[var(--app-radius-md)] border px-3 py-3 text-sm ${
                           day.isInRange
                             ? isEmpty
                               ? 'border-slate-100 text-slate-400'
-                              : 'border-[var(--app-border)] bg-white text-slate-700 shadow-sm'
+                              : 'border-[var(--app-border)] text-slate-700 shadow-sm'
                             : 'border-transparent text-slate-300'
                         }`}
                         style={{
-                          backgroundColor: day.isInRange && isEmpty ? '#f8fafc' : undefined,
+                          backgroundColor: heatmapColor ?? '#f8fafc',
                         }}
                       >
                         <div
-                          className={`flex items-center justify-between text-xs ${
+                          className={`flex items-center justify-between gap-2 ${
                             day.isWeekend ? 'text-rose-500' : 'text-slate-500'
                           }`}
                         >
-                          <span>{day.day}</span>
+                          <span className="font-semibold">{formatCalendarDate(day.date)}</span>
                           {total > 0 && (
                             <span
-                              className="app-counter h-5 min-w-5 px-1.5"
+                              className="app-counter h-6 shrink-0 px-2 text-xs"
                               aria-label={`Всего: ${total}`}
                             >
-                              {total}
+                              Всего: {total}
                             </span>
                           )}
                         </div>
                         {total > 0 && (
                           <div className="mt-3 grid gap-1.5">
-                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-danger-surface)] px-2 py-1 text-[10px] font-semibold text-[var(--app-danger-text)]">
-                              <span>Окончания</span>
-                              <span>{day.policyExpirations}</span>
+                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-danger-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--app-danger-text)]">
+                              <span>Окончания полисов</span>
+                              <span className="text-sm">{day.policyExpirations}</span>
                             </div>
-                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-info-surface)] px-2 py-1 text-[10px] font-semibold text-[var(--app-info-text)]">
+                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-info-surface)] px-2.5 py-1.5 text-xs font-semibold text-[var(--app-info-text)]">
                               <span>Контакты</span>
-                              <span>{day.nextContacts}</span>
+                              <span className="text-sm">{day.nextContacts}</span>
                             </div>
                           </div>
                         )}

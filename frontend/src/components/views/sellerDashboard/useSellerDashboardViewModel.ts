@@ -85,6 +85,10 @@ export function useSellerDashboardViewModel({
     }
     return weeks;
   }, [calendarDays]);
+  const calendarMax = useMemo(
+    () => Math.max(...calendarDays.map((day) => day.policyExpirations + day.nextContacts), 0),
+    [calendarDays],
+  );
   const financialTotals = dashboard?.financialTotals ?? {
     incomeTotal: '0',
     expenseTotal: '0',
@@ -110,6 +114,7 @@ export function useSellerDashboardViewModel({
   );
   return {
     calendarDays,
+    calendarMax,
     calendarWeeks,
     executorSeries,
     financialMatrix,

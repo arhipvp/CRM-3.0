@@ -108,9 +108,11 @@ describe('SellerDashboardView', () => {
     render(<SellerDashboardView />);
 
     const calendarDay = await screen.findByTitle('П: 1 / К: 1');
-    expect(within(calendarDay).getByLabelText('Всего: 2')).toHaveTextContent('2');
-    expect(calendarDay).toHaveTextContent(/Окончания\s*1/);
+    expect(calendarDay).toHaveTextContent('10 января');
+    expect(within(calendarDay).getByLabelText('Всего: 2')).toHaveTextContent('Всего: 2');
+    expect(calendarDay).toHaveTextContent(/Окончания полисов\s*1/);
     expect(calendarDay).toHaveTextContent(/Контакты\s*1/);
+    expect(screen.getByText('Общая нагрузка: меньше → больше')).toBeInTheDocument();
   });
 
   it('links key KPI cards to filtered workflows', async () => {
