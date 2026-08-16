@@ -7,6 +7,7 @@ from apps.common.drive import DriveOperationError
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import (
     Deal,
+    DealEvent,
     InsuranceCompany,
     InsuranceType,
     Quote,
@@ -196,6 +197,160 @@ class DealMergeServiceTestCase(TestCase):
         ).merge()
 
         self.assertIsNone(result["result_deal"].expected_close)
+
+    def test_merge_copies_manual_deadline_events_and_preserves_provenance(self):
+        second_source = Deal.objects.create(
+            title="Second source deal",
+            client=self.client_obj,
+            seller=self.user,
+            status="open",
+            stage_name="initial",
+        )
+        second_user = User.objects.create_user(username="second-merge-user")
+        target_event = DealEvent.objects.create(
+            deal=self.target,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=datetime.date(2027, 4, 20),
+            title="Target manual deadline",
+            description="Target description",
+            actor=self.user,
+            metadata={"reason": "target"},
+        )
+        source_event = DealEvent.objects.create(
+            deal=self.source,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=datetime.date(2027, 4, 12),
+            title="Source manual deadline",
+            description="Source description",
+            actor=second_user,
+            metadata={"reason": "source"},
+        )
+        second_source_event = DealEvent.objects.create(
+            deal=second_source,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=datetime.date(2027, 4, 16),
+            title="Second source manual deadline",
+            actor=self.user,
+        )
+        Policy.objects.create(
+            number="P-MANUAL-DEADLINE",
+            insurance_company=InsuranceCompany.objects.create(name="Manual Comp"),
+            insurance_type=InsuranceType.objects.create(name="Manual Type"),
+            deal=self.source,
+            end_date=datetime.date(2027, 4, 15),
+        )
+        Payment.objects.create(
+            amount=100,
+            deal=self.source,
+            scheduled_date=datetime.date(2027, 4, 10),
+        )
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source, second_source],
+            final_deal_data={
+                "title": "Merged manual deadline deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
+            actor=self.user,
+        ).merge()
+
+        result_deal = result["result_deal"]
+        copied_events = list(
+            DealEvent.objects.filter(deal=result_deal).order_by("event_date")
+        )
+        self.assertEqual(len(copied_events), 3)
+        copied_by_source_id = {event.source_id: event for event in copied_events}
+        for source_event_value in [target_event, source_event, second_source_event]:
+            copied = copied_by_source_id[str(source_event_value.id)]
+            self.assertNotEqual(copied.id, source_event_value.id)
+            self.assertEqual(copied.event_date, source_event_value.event_date)
+            self.assertEqual(copied.title, source_event_value.title)
+            self.assertEqual(copied.description, source_event_value.description)
+            self.assertEqual(copied.actor_id, source_event_value.actor_id)
+            self.assertEqual(copied.source_type, "deal_merge")
+            self.assertEqual(
+                copied.metadata["source_deal_id"], str(source_event_value.deal_id)
+            )
+            self.assertEqual(
+                copied.metadata["source_event_id"], str(source_event_value.id)
+            )
+
+        self.assertEqual(
+            copied_by_source_id[str(source_event.id)].metadata["source_event_metadata"],
+            {"reason": "source"},
+        )
+        self.assertEqual(target_event.deal_id, self.target.id)
+        self.assertEqual(source_event.deal_id, self.source.id)
+        self.assertEqual(second_source_event.deal_id, second_source.id)
+        self.assertEqual(result_deal.manual_expected_close, datetime.date(2027, 4, 12))
+        self.assertEqual(result_deal.expected_close, datetime.date(2027, 4, 10))
+
+    def test_merge_materializes_legacy_manual_deadline_without_matching_event(self):
+        self.source.manual_expected_close = datetime.date(2027, 4, 12)
+        self.source.save(update_fields=["manual_expected_close"])
+        DealEvent.objects.create(
+            deal=self.source,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=datetime.date(2027, 4, 13),
+            title="Different manual deadline",
+        )
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged legacy manual deadline deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
+            actor=self.user,
+        ).merge()
+
+        legacy_event = DealEvent.objects.get(
+            deal=result["result_deal"],
+            event_date=datetime.date(2027, 4, 12),
+        )
+        self.assertEqual(legacy_event.title, "Крайний срок из старых данных")
+        self.assertEqual(legacy_event.source_type, "deal_merge")
+        self.assertEqual(legacy_event.source_id, str(self.source.id))
+        self.assertEqual(
+            legacy_event.metadata["origin"],
+            "deal_merge_legacy_manual_expected_close",
+        )
+        self.assertEqual(
+            result["result_deal"].manual_expected_close, datetime.date(2027, 4, 12)
+        )
+
+    def test_merge_does_not_duplicate_legacy_deadline_with_matching_event(self):
+        self.source.manual_expected_close = datetime.date(2027, 4, 12)
+        self.source.save(update_fields=["manual_expected_close"])
+        source_event = DealEvent.objects.create(
+            deal=self.source,
+            event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+            event_date=datetime.date(2027, 4, 12),
+            title="Existing manual deadline",
+        )
+
+        result = DealMergeService(
+            target_deal=self.target,
+            source_deals=[self.source],
+            final_deal_data={
+                "title": "Merged matching legacy deadline deal",
+                "client_id": self.client_obj.id,
+                "seller_id": self.user.id,
+            },
+            actor=self.user,
+        ).merge()
+
+        copied_events = DealEvent.objects.filter(deal=result["result_deal"])
+        self.assertEqual(copied_events.count(), 1)
+        copied_event = copied_events.get()
+        self.assertEqual(copied_event.source_id, str(source_event.id))
+        self.assertEqual(
+            copied_event.metadata["origin"], "deal_merge_manual_expected_close"
+        )
 
     def test_merge_does_not_duplicate_ids_block_when_already_present(self):
         ids_block = f"Предыдущие ID сделок: {self.target.id}, {self.source.id}"

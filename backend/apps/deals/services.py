@@ -26,8 +26,11 @@ from apps.tasks.models import Task
 from apps.users.models import User
 from django.db import transaction
 
-from .deadline_service import recalculate_deal_deadline
-from .models import Deal, DealPin, DealViewer, Quote
+from .deadline_service import (
+    recalculate_deal_deadline,
+    sync_manual_expected_close_from_events,
+)
+from .models import Deal, DealEvent, DealPin, DealViewer, Quote
 
 logger = logging.getLogger(__name__)
 _DRIVE_RETRY_ATTEMPTS = 3
@@ -554,7 +557,12 @@ class DealMergeService:
                     deal_id__in=self._all_merge_ids
                 ).update(deal=result_deal)
 
+            self._copy_manual_deadline_events(result_deal)
+            sync_manual_expected_close_from_events(result_deal.id)
             result_deal.expected_close = recalculate_deal_deadline(result_deal.id)
+            result_deal.refresh_from_db(
+                fields=["manual_expected_close", "expected_close"]
+            )
 
             pinned_user_ids = set(
                 DealPin.objects.filter(deal_id__in=self._all_merge_ids).values_list(
@@ -608,6 +616,59 @@ class DealMergeService:
             "moved_counts": moved_counts,
             "warnings": list(self._warnings),
         }
+
+    def _copy_manual_deadline_events(self, result_deal: Deal) -> None:
+        source_events = list(
+            DealEvent.objects.filter(
+                deal_id__in=self._all_merge_ids,
+                event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+                event_date__isnull=False,
+            ).order_by("event_date", "created_at", "id")
+        )
+        source_dates = defaultdict(set)
+        copied_events = []
+
+        for event in source_events:
+            source_dates[event.deal_id].add(event.event_date)
+            copied_events.append(
+                DealEvent(
+                    deal=result_deal,
+                    event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+                    event_date=event.event_date,
+                    title=event.title,
+                    description=event.description,
+                    source_type="deal_merge",
+                    source_id=str(event.id),
+                    actor_id=event.actor_id,
+                    metadata={
+                        "origin": "deal_merge_manual_expected_close",
+                        "source_deal_id": str(event.deal_id),
+                        "source_event_id": str(event.id),
+                        "source_event_metadata": dict(event.metadata or {}),
+                    },
+                )
+            )
+
+        for deal in self._all_deals:
+            manual_deadline = deal.manual_expected_close
+            if not manual_deadline or manual_deadline in source_dates[deal.id]:
+                continue
+            copied_events.append(
+                DealEvent(
+                    deal=result_deal,
+                    event_type=DealEvent.EventType.MANUAL_EXPECTED_CLOSE,
+                    event_date=manual_deadline,
+                    title="Крайний срок из старых данных",
+                    source_type="deal_merge",
+                    source_id=str(deal.id),
+                    metadata={
+                        "origin": "deal_merge_legacy_manual_expected_close",
+                        "source_deal_id": str(deal.id),
+                    },
+                )
+            )
+
+        DealEvent.objects.bulk_create(copied_events)
 
     def _prepare_drive_folders(self, target_client: Client | None) -> None:
         if not target_client:
