@@ -12,8 +12,6 @@ import { LineChart, StackedBarChart } from './DashboardCharts';
 import { FinancialCellView } from './FinancialCellView';
 import { useSellerDashboardViewModel } from './useSellerDashboardViewModel';
 
-const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(value, max));
-
 export const SellerDashboardView: React.FC = () => {
   const {
     dashboard,
@@ -23,8 +21,6 @@ export const SellerDashboardView: React.FC = () => {
     setStartDate,
     endDate,
     setEndDate,
-    calendarMode,
-    setCalendarMode,
     financialSearch,
     setFinancialSearch,
     financialSort,
@@ -38,9 +34,6 @@ export const SellerDashboardView: React.FC = () => {
   } = useSellerDashboardController();
 
   const {
-    calendarMax,
-    calendarMaxContacts,
-    calendarMaxPolicy,
     calendarWeeks,
     executorSeries,
     financialMatrix,
@@ -463,7 +456,7 @@ export const SellerDashboardView: React.FC = () => {
       </section>
 
       <section className="app-panel space-y-4 border-none p-6 shadow-none">
-        <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="ui-section-header">
           <div>
             <h2 className="text-sm font-semibold text-slate-700">Календарь нагрузки</h2>
             <p className="text-xs text-slate-500">
@@ -471,34 +464,14 @@ export const SellerDashboardView: React.FC = () => {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-2 py-1">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--app-danger-surface)] px-2 py-1 text-[var(--app-danger-text)]">
               <span className="inline-block h-2 w-2 rounded-full bg-rose-500" />
               Окончания полисов
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-2 py-1">
-              <span className="inline-block h-2 w-2 rounded-full bg-rose-700" />
+            <span className="inline-flex items-center gap-2 rounded-full bg-[var(--app-info-surface)] px-2 py-1 text-[var(--app-info-text)]">
+              <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
               Следующие контакты
             </span>
-            <div className="ml-1 inline-flex items-center gap-1 rounded-full bg-slate-100 p-1">
-              <Button
-                type="button"
-                onClick={() => setCalendarMode('sum')}
-                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
-                  calendarMode === 'sum' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                Сумма
-              </Button>
-              <Button
-                type="button"
-                onClick={() => setCalendarMode('split')}
-                className={`rounded-full px-2 py-1 text-[11px] font-medium ${
-                  calendarMode === 'split' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'
-                }`}
-              >
-                Раздельно
-              </Button>
-            </div>
           </div>
         </div>
         {isLoading ? (
@@ -519,35 +492,20 @@ export const SellerDashboardView: React.FC = () => {
                 <React.Fragment key={`week-${weekIndex}`}>
                   {week.map((day) => {
                     const total = day.policyExpirations + day.nextContacts;
-                    const intensity = calendarMax > 0 ? clamp(total / calendarMax, 0, 1) : 0;
                     const isEmpty = total === 0;
-                    const heatmapColor =
-                      calendarMode === 'sum' && day.isInRange && !isEmpty
-                        ? `rgba(244, 63, 94, ${0.08 + intensity * 0.35})`
-                        : undefined;
-                    const policyWidth =
-                      calendarMaxPolicy > 0
-                        ? clamp(day.policyExpirations / calendarMaxPolicy, 0, 1)
-                        : 0;
-                    const contactsWidth =
-                      calendarMaxContacts > 0
-                        ? clamp(day.nextContacts / calendarMaxContacts, 0, 1)
-                        : 0;
                     return (
                       <div
                         key={day.date}
                         title={`П: ${day.policyExpirations} / К: ${day.nextContacts}`}
-                        className={`rounded-xl border px-3 py-2 text-xs ${
+                        className={`min-h-[104px] rounded-[var(--app-radius-md)] border px-3 py-2 text-xs ${
                           day.isInRange
                             ? isEmpty
                               ? 'border-slate-100 text-slate-400'
-                              : 'border-slate-200 text-slate-700'
+                              : 'border-[var(--app-border)] bg-white text-slate-700 shadow-sm'
                             : 'border-transparent text-slate-300'
                         }`}
                         style={{
-                          backgroundColor: day.isInRange
-                            ? (heatmapColor ?? (isEmpty ? '#f8fafc' : '#ffffff'))
-                            : '#f8fafc',
+                          backgroundColor: day.isInRange && isEmpty ? '#f8fafc' : undefined,
                         }}
                       >
                         <div
@@ -556,45 +514,24 @@ export const SellerDashboardView: React.FC = () => {
                           }`}
                         >
                           <span>{day.day}</span>
-                          {calendarMode === 'sum' && total > 0 && (
-                            <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] text-slate-600">
+                          {total > 0 && (
+                            <span
+                              className="app-counter h-5 min-w-5 px-1.5"
+                              aria-label={`Всего: ${total}`}
+                            >
                               {total}
                             </span>
                           )}
                         </div>
-                        {calendarMode === 'sum' ? (
-                          <div className="mt-3 text-center text-sm font-semibold text-slate-900">
-                            {total > 0 ? `Всего: ${total}` : ''}
-                          </div>
-                        ) : (
-                          <div className="mt-3 space-y-2">
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-400">
-                                Полисов:
-                              </span>
-                              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                                <div
-                                  className="h-1.5 rounded-full bg-rose-500"
-                                  style={{ width: `${policyWidth * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-[11px] font-semibold text-slate-700">
-                                {day.policyExpirations}
-                              </span>
+                        {total > 0 && (
+                          <div className="mt-3 grid gap-1.5">
+                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-danger-surface)] px-2 py-1 text-[10px] font-semibold text-[var(--app-danger-text)]">
+                              <span>Окончания</span>
+                              <span>{day.policyExpirations}</span>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-400">
-                                Контактов:
-                              </span>
-                              <div className="h-1.5 flex-1 rounded-full bg-slate-100">
-                                <div
-                                  className="h-1.5 rounded-full bg-rose-700"
-                                  style={{ width: `${contactsWidth * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-[11px] font-semibold text-slate-700">
-                                {day.nextContacts}
-                              </span>
+                            <div className="flex items-center justify-between gap-2 rounded-[var(--app-radius-sm)] bg-[var(--app-info-surface)] px-2 py-1 text-[10px] font-semibold text-[var(--app-info-text)]">
+                              <span>Контакты</span>
+                              <span>{day.nextContacts}</span>
                             </div>
                           </div>
                         )}

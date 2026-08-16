@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SellerDashboardView } from '../SellerDashboardView';
@@ -23,7 +23,7 @@ const createDashboardPayload = () => ({
     { date: '2025-01-05', executorId: 'u1', executorName: 'Иван', count: 2 },
   ],
   policyExpirationsByDay: [{ date: '2025-01-10', count: 1 }],
-  nextContactsByDay: [{ date: '2025-01-11', count: 1 }],
+  nextContactsByDay: [{ date: '2025-01-10', count: 1 }],
   financialTotals: {
     incomeTotal: '50000',
     expenseTotal: '12000',
@@ -100,6 +100,17 @@ describe('SellerDashboardView', () => {
     expect(
       await screen.findByText('В этом периоде у вас нет полисов с началом в выбранном диапазоне.'),
     ).toBeInTheDocument();
+  });
+
+  it('shows total, policy expirations and contacts together for a busy calendar day', async () => {
+    mockedFetchSellerDashboard.mockResolvedValueOnce(createDashboardPayload());
+
+    render(<SellerDashboardView />);
+
+    const calendarDay = await screen.findByTitle('П: 1 / К: 1');
+    expect(within(calendarDay).getByLabelText('Всего: 2')).toHaveTextContent('2');
+    expect(calendarDay).toHaveTextContent(/Окончания\s*1/);
+    expect(calendarDay).toHaveTextContent(/Контакты\s*1/);
   });
 
   it('links key KPI cards to filtered workflows', async () => {

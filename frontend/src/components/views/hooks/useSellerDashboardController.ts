@@ -18,7 +18,6 @@ export const useSellerDashboardController = () => {
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [calendarMode, setCalendarMode] = useState<'sum' | 'split'>('sum');
   const [financialSearch, setFinancialSearch] = useState('');
   const [financialSort, setFinancialSort] = useState<SellerDashboardFinancialSort>('net_desc');
   const [hideZeroRowsCols, setHideZeroRowsCols] = useState(true);
@@ -81,7 +80,6 @@ export const useSellerDashboardController = () => {
   }, [endDate, loadDashboard, startDate]);
 
   return {
-    calendarMode,
     dashboard,
     endDate,
     error,
@@ -92,7 +90,6 @@ export const useSellerDashboardController = () => {
     isLoading,
     loadDashboard,
     resetFinancialControls,
-    setCalendarMode,
     setEndDate,
     setFinancialSearch,
     setFinancialSort,
