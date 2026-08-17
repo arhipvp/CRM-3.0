@@ -71,6 +71,9 @@ const readCsvParam = (params: URLSearchParams, key: string) => [
   ),
 ];
 
+const areStringArraysEqual = (left: string[], right: string[]) =>
+  left.length === right.length && left.every((value, index) => value === right[index]);
+
 const buildFiltersCacheKey = (filters: FilterParams) =>
   JSON.stringify(
     Object.entries(filters)
@@ -309,7 +312,10 @@ export const useAllRecordsController = ({
     setAllRecordsSortKey(readSortKeyParam(params));
     setAllRecordsSortDirection(params.get(QUERY_KEYS.sortDirection) === 'desc' ? 'desc' : 'asc');
     setTargetStatementId(params.get(QUERY_KEYS.targetStatement) ?? '');
-    setSalesChannelFilter(readCsvParam(params, QUERY_KEYS.salesChannel));
+    const salesChannels = readCsvParam(params, QUERY_KEYS.salesChannel);
+    setSalesChannelFilter((current) =>
+      areStringArraysEqual(current, salesChannels) ? current : salesChannels,
+    );
     setPaymentScheduledDateFrom(params.get(QUERY_KEYS.scheduledFrom) ?? '');
     setPaymentScheduledDateTo(params.get(QUERY_KEYS.scheduledTo) ?? '');
   }, [routerSearchParams]);
