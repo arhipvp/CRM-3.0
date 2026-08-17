@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import {
   fetchFinanceStatementLookup,
@@ -25,8 +25,8 @@ interface AllRecordsPanelProps {
   onToggleShowPaidRecords: (nextValue: boolean) => void;
   showZeroSaldo: boolean;
   onToggleShowZeroSaldo: (nextValue: boolean) => void;
-  salesChannelFilter: string;
-  onSalesChannelFilterChange: (channelId: string) => void;
+  salesChannelFilter: string[];
+  onSalesChannelFilterChange: (channelIds: string[]) => void;
   salesChannels: SalesChannel[];
   paymentScheduledDateFrom: string;
   onPaymentScheduledDateFromChange: (value: string) => void;
@@ -115,6 +115,90 @@ function RecordTypeButton({
     >
       {children}
     </Button>
+  );
+}
+
+function SalesChannelMultiSelect({
+  value,
+  onChange,
+  salesChannels,
+  normalizeText,
+}: {
+  value: string[];
+  onChange: (channelIds: string[]) => void;
+  salesChannels: SalesChannel[];
+  normalizeText: (value?: string | null) => string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedChannelIds = new Set(value);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [isOpen]);
+
+  const toggleChannel = (channelId: string, checked: boolean) => {
+    onChange(
+      checked
+        ? [...value, channelId]
+        : value.filter((selectedChannelId) => selectedChannelId !== channelId),
+    );
+  };
+
+  const buttonLabel = value.length ? `Выбрано: ${value.length}` : 'Все каналы продаж';
+
+  return (
+    <div ref={containerRef} className="relative min-w-[220px]">
+      <Button
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="w-full justify-between"
+        aria-expanded={isOpen}
+        aria-controls="sales-channel-filter-options"
+        onClick={() => setIsOpen((previous) => !previous)}
+      >
+        {buttonLabel}
+      </Button>
+      {isOpen && (
+        <fieldset
+          id="sales-channel-filter-options"
+          className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg"
+        >
+          <legend className="sr-only">Каналы продаж</legend>
+          <div className="mb-1 flex justify-end">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              disabled={!value.length}
+              className="text-xs font-medium text-blue-600 hover:text-blue-700 disabled:cursor-not-allowed disabled:text-slate-400"
+            >
+              Сбросить
+            </button>
+          </div>
+          {salesChannels.map((channel) => (
+            <label
+              key={channel.id}
+              className="flex cursor-pointer items-center gap-2 rounded px-2 py-1.5 text-sm hover:bg-slate-50"
+            >
+              <input
+                type="checkbox"
+                checked={selectedChannelIds.has(channel.id)}
+                onChange={(event) => toggleChannel(channel.id, event.target.checked)}
+              />
+              {normalizeText(channel.name)}
+            </label>
+          ))}
+        </fieldset>
+      )}
+    </div>
   );
 }
 
@@ -383,18 +467,12 @@ export function AllRecordsPanel({
               Все
             </RecordTypeButton>
           </div>
-          <select
+          <SalesChannelMultiSelect
             value={salesChannelFilter}
-            onChange={(event) => onSalesChannelFilterChange(event.target.value)}
-            className="field field-input h-10 min-w-[220px] text-sm"
-          >
-            <option value="">Все каналы продаж</option>
-            {salesChannels.map((channel) => (
-              <option key={channel.id} value={channel.id}>
-                {normalizeText(channel.name)}
-              </option>
-            ))}
-          </select>
+            onChange={onSalesChannelFilterChange}
+            salesChannels={salesChannels}
+            normalizeText={normalizeText}
+          />
           <label className="flex min-w-[170px] flex-col gap-1 text-[11px] font-semibold text-slate-500">
             Дата платежа от
             <input

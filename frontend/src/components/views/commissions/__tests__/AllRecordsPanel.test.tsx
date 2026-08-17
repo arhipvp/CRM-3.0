@@ -20,7 +20,7 @@ const renderPanel = (overrides: Partial<ComponentProps<typeof AllRecordsPanel>> 
     onToggleShowPaidRecords: vi.fn(),
     showZeroSaldo: false,
     onToggleShowZeroSaldo: vi.fn(),
-    salesChannelFilter: '',
+    salesChannelFilter: [],
     onSalesChannelFilterChange: vi.fn(),
     salesChannels: [],
     paymentScheduledDateFrom: '',
@@ -75,16 +75,24 @@ describe('AllRecordsPanel', () => {
     expect(onRetryLoad).toHaveBeenCalledTimes(1);
   });
 
-  it('changes sales channel and payment date filters', () => {
+  it('selects multiple sales channels and changes payment date filters', () => {
     const onSalesChannelFilterChange = vi.fn();
     const onPaymentScheduledDateFromChange = vi.fn();
     const onPaymentScheduledDateToChange = vi.fn();
 
     renderPanel({
+      salesChannelFilter: ['channel-1'],
       salesChannels: [
         {
           id: 'channel-1',
           name: 'Перебоева',
+          description: '',
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+        {
+          id: 'channel-2',
+          name: 'Чернышов, Сбер',
           description: '',
           createdAt: '2026-01-01T00:00:00Z',
           updatedAt: '2026-01-01T00:00:00Z',
@@ -95,9 +103,8 @@ describe('AllRecordsPanel', () => {
       onPaymentScheduledDateToChange,
     });
 
-    fireEvent.change(screen.getByDisplayValue('Все каналы продаж'), {
-      target: { value: 'channel-1' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: 'Выбрано: 1' }));
+    fireEvent.click(screen.getByLabelText('Чернышов, Сбер'));
     fireEvent.change(screen.getByLabelText('Дата платежа от'), {
       target: { value: '2026-03-01' },
     });
@@ -105,9 +112,23 @@ describe('AllRecordsPanel', () => {
       target: { value: '2026-03-31' },
     });
 
-    expect(onSalesChannelFilterChange).toHaveBeenCalledWith('channel-1');
+    expect(onSalesChannelFilterChange).toHaveBeenCalledWith(['channel-1', 'channel-2']);
     expect(onPaymentScheduledDateFromChange).toHaveBeenCalledWith('2026-03-01');
     expect(onPaymentScheduledDateToChange).toHaveBeenCalledWith('2026-03-31');
+  });
+
+  it('clears selected sales channels', () => {
+    const onSalesChannelFilterChange = vi.fn();
+
+    renderPanel({
+      salesChannelFilter: ['channel-1', 'channel-2'],
+      onSalesChannelFilterChange,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Выбрано: 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сбросить' }));
+
+    expect(onSalesChannelFilterChange).toHaveBeenCalledWith([]);
   });
 
   it('resets filters and shows active filters count', () => {

@@ -1,9 +1,10 @@
 import { act, renderHook as renderHookBase } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  exportFinancialRecordsXlsx,
   fetchFinancialRecordsSummary,
   fetchFinancialRecordsWithPagination,
 } from '../../../../../api';
@@ -13,6 +14,7 @@ vi.mock('../../../../../api', async () => {
   const actual = await vi.importActual<typeof import('../../../../../api')>('../../../../../api');
   return {
     ...actual,
+    exportFinancialRecordsXlsx: vi.fn(),
     fetchFinancialRecordsWithPagination: vi.fn(),
     fetchFinancialRecordsSummary: vi.fn(),
   };
@@ -20,9 +22,27 @@ vi.mock('../../../../../api', async () => {
 
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
 const mockedFetchFinancialRecordsSummary = vi.mocked(fetchFinancialRecordsSummary);
+const mockedExportFinancialRecordsXlsx = vi.mocked(exportFinancialRecordsXlsx);
+let routerSearch = '';
+
+const RouterLocationMirror = ({ children }: { children: ReactNode }) => {
+  routerSearch = useLocation().search;
+  return children;
+};
+
 const renderHook: typeof renderHookBase = (callback, options) =>
   renderHookBase(callback, {
     wrapper: ({ children }: { children: ReactNode }) => <MemoryRouter>{children}</MemoryRouter>,
+    ...options,
+  });
+
+const renderHookAtCurrentLocation: typeof renderHookBase = (callback, options) =>
+  renderHookBase(callback, {
+    wrapper: ({ children }: { children: ReactNode }) => (
+      <MemoryRouter initialEntries={[`${window.location.pathname}${window.location.search}`]}>
+        <RouterLocationMirror>{children}</RouterLocationMirror>
+      </MemoryRouter>
+    ),
     ...options,
   });
 
@@ -45,8 +65,10 @@ const deferred = <T,>() => {
 
 describe('useAllRecordsController', () => {
   beforeEach(() => {
+    routerSearch = '';
     mockedFetchFinancialRecordsWithPagination.mockReset();
     mockedFetchFinancialRecordsSummary.mockReset();
+    mockedExportFinancialRecordsXlsx.mockReset();
     mockedFetchFinancialRecordsSummary.mockResolvedValue({
       recordsCount: 0,
       incomeTotal: 0,
@@ -198,7 +220,7 @@ describe('useAllRecordsController', () => {
     );
   });
 
-  it('sends sales channel, payment date range, and payment date ordering to server filters', async () => {
+  it('sends selected sales channels, payment date range, and payment date ordering to server filters', async () => {
     mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
 
     const { result } = renderHook(() =>
@@ -213,7 +235,7 @@ describe('useAllRecordsController', () => {
     });
 
     await act(async () => {
-      result.current.setSalesChannelFilter('channel-1');
+      result.current.setSalesChannelFilter(['channel-1', 'channel-2']);
       result.current.setPaymentScheduledDateFrom('2026-03-01');
       result.current.setPaymentScheduledDateTo('2026-03-31');
       result.current.toggleAllRecordsSort('paymentDate');
@@ -223,13 +245,70 @@ describe('useAllRecordsController', () => {
     expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
       expect.objectContaining({
         page: 1,
-        sales_channel: 'channel-1',
+        sales_channel_ids: 'channel-1,channel-2',
         payment_scheduled_date_from: '2026-03-01',
         payment_scheduled_date_to: '2026-03-31',
         ordering: 'payment_scheduled_date_is_null,payment_scheduled_date,-created_at',
       }),
       expect.any(Object),
     );
+  });
+
+  it('reads and writes sales channel ids as CSV in the URL and clears them on reset', async () => {
+    window.history.replaceState(null, '', '/?fr_sales_channel=channel-1,channel-2,channel-1');
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHookAtCurrentLocation(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.salesChannelFilter).toEqual(['channel-1', 'channel-2']);
+
+    await act(async () => {
+      result.current.setSalesChannelFilter(['channel-2', 'channel-3']);
+      await Promise.resolve();
+    });
+
+    expect(routerSearch).toContain('fr_sales_channel=channel-2%2Cchannel-3');
+
+    await act(async () => {
+      result.current.resetAllRecordsFilters();
+      await Promise.resolve();
+    });
+
+    expect(result.current.salesChannelFilter).toEqual([]);
+    expect(routerSearch).not.toContain('fr_sales_channel');
+  });
+
+  it('uses selected sales channels for XLSX export', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+    mockedExportFinancialRecordsXlsx.mockResolvedValue({} as never);
+
+    const { result } = renderHook(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+      result.current.setSalesChannelFilter(['channel-1', 'channel-2']);
+    });
+    await act(async () => {
+      await result.current.exportAllRecords();
+    });
+
+    expect(mockedExportFinancialRecordsXlsx).toHaveBeenCalledWith({
+      sales_channel_ids: 'channel-1,channel-2',
+    });
   });
 
   it('keeps empty search result when an older request resolves later', async () => {

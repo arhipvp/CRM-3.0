@@ -62,6 +62,15 @@ const readSortKeyParam = (params: URLSearchParams): AllRecordsSortKey => {
   return SORT_KEY_VALUES.has(value) ? (value as AllRecordsSortKey) : 'none';
 };
 
+const readCsvParam = (params: URLSearchParams, key: string) => [
+  ...new Set(
+    (params.get(key) ?? '')
+      .split(',')
+      .map((value) => value.trim())
+      .filter(Boolean),
+  ),
+];
+
 const buildFiltersCacheKey = (filters: FilterParams) =>
   JSON.stringify(
     Object.entries(filters)
@@ -106,8 +115,8 @@ export const useAllRecordsController = ({
   const [targetStatementId, setTargetStatementId] = useState(
     () => initialQueryParams.get(QUERY_KEYS.targetStatement) ?? '',
   );
-  const [salesChannelFilter, setSalesChannelFilter] = useState(
-    () => initialQueryParams.get(QUERY_KEYS.salesChannel) ?? '',
+  const [salesChannelFilter, setSalesChannelFilter] = useState<string[]>(() =>
+    readCsvParam(initialQueryParams, QUERY_KEYS.salesChannel),
   );
   const [paymentScheduledDateFrom, setPaymentScheduledDateFrom] = useState(
     () => initialQueryParams.get(QUERY_KEYS.scheduledFrom) ?? '',
@@ -183,8 +192,8 @@ export const useAllRecordsController = ({
     if (recordTypeFilter !== 'all') {
       filters.record_type = recordTypeFilter;
     }
-    if (salesChannelFilter) {
-      filters.sales_channel = salesChannelFilter;
+    if (salesChannelFilter.length) {
+      filters.sales_channel_ids = salesChannelFilter.join(',');
     }
     if (paymentScheduledDateFrom) {
       filters.payment_scheduled_date_from = paymentScheduledDateFrom;
@@ -254,8 +263,8 @@ export const useAllRecordsController = ({
     if (targetStatementId) {
       params.set(QUERY_KEYS.targetStatement, targetStatementId);
     }
-    if (salesChannelFilter) {
-      params.set(QUERY_KEYS.salesChannel, salesChannelFilter);
+    if (salesChannelFilter.length) {
+      params.set(QUERY_KEYS.salesChannel, salesChannelFilter.join(','));
     }
     if (paymentScheduledDateFrom) {
       params.set(QUERY_KEYS.scheduledFrom, paymentScheduledDateFrom);
@@ -300,7 +309,7 @@ export const useAllRecordsController = ({
     setAllRecordsSortKey(readSortKeyParam(params));
     setAllRecordsSortDirection(params.get(QUERY_KEYS.sortDirection) === 'desc' ? 'desc' : 'asc');
     setTargetStatementId(params.get(QUERY_KEYS.targetStatement) ?? '');
-    setSalesChannelFilter(params.get(QUERY_KEYS.salesChannel) ?? '');
+    setSalesChannelFilter(readCsvParam(params, QUERY_KEYS.salesChannel));
     setPaymentScheduledDateFrom(params.get(QUERY_KEYS.scheduledFrom) ?? '');
     setPaymentScheduledDateTo(params.get(QUERY_KEYS.scheduledTo) ?? '');
   }, [routerSearchParams]);
@@ -314,7 +323,7 @@ export const useAllRecordsController = ({
       !showZeroSaldo,
       recordTypeFilter !== 'all',
       Boolean(targetStatementId),
-      Boolean(salesChannelFilter),
+      salesChannelFilter.length > 0,
       Boolean(paymentScheduledDateFrom),
       Boolean(paymentScheduledDateTo),
     ].filter(Boolean).length;
@@ -378,7 +387,7 @@ export const useAllRecordsController = ({
     setAllRecordsSortKey('none');
     setAllRecordsSortDirection('asc');
     setTargetStatementId('');
-    setSalesChannelFilter('');
+    setSalesChannelFilter([]);
     setPaymentScheduledDateFrom('');
     setPaymentScheduledDateTo('');
   }, []);

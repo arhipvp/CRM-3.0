@@ -1,5 +1,8 @@
+from uuid import UUID
+
 from apps.finances.models import FinancialRecord, Statement
 from django.db.models import Q
+from rest_framework.exceptions import ValidationError
 
 from .permissions import parse_bool
 
@@ -17,6 +20,29 @@ def _parse_nullable_bool(value):
     return None
 
 
+def parse_sales_channel_ids(value):
+    """Return validated, unique sales-channel UUIDs from a CSV value."""
+    if value is None:
+        return []
+
+    values = []
+    seen = set()
+    for item in str(value).split(","):
+        normalized = item.strip()
+        if not normalized:
+            continue
+        try:
+            channel_id = str(UUID(normalized))
+        except (AttributeError, TypeError, ValueError) as error:
+            raise ValidationError(
+                {"sales_channel_ids": "Каждый канал продаж должен быть UUID."}
+            ) from error
+        if channel_id not in seen:
+            values.append(channel_id)
+            seen.add(channel_id)
+    return values
+
+
 def apply_financial_record_filters(queryset, params):
     payment_id = params.get("payment")
     if payment_id:
@@ -32,9 +58,18 @@ def apply_financial_record_filters(queryset, params):
     if policy_id:
         queryset = queryset.filter(payment__policy_id=policy_id)
 
-    sales_channel_id = params.get("sales_channel")
-    if sales_channel_id:
-        queryset = queryset.filter(payment__policy__sales_channel_id=sales_channel_id)
+    sales_channel_ids = parse_sales_channel_ids(params.get("sales_channel_ids"))
+    if sales_channel_ids:
+        queryset = queryset.filter(
+            payment__policy__sales_channel_id__in=sales_channel_ids
+        )
+    else:
+        # Keep the original single-value parameter for existing API clients.
+        sales_channel_id = params.get("sales_channel")
+        if sales_channel_id:
+            queryset = queryset.filter(
+                payment__policy__sales_channel_id=sales_channel_id
+            )
 
     scheduled_date_from = params.get("payment_scheduled_date_from")
     if scheduled_date_from:

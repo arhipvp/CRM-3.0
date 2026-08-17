@@ -1364,6 +1364,72 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertNotIn(str(other_record.id), record_ids)
         self.assertNotIn(str(self.income_record.id), record_ids)
 
+    def test_filter_by_multiple_sales_channels(self):
+        first_channel = SalesChannel.objects.create(name="First channel")
+        second_channel = SalesChannel.objects.create(name="Second channel")
+        excluded_channel = SalesChannel.objects.create(name="Excluded channel")
+        self.policy.sales_channel = first_channel
+        self.policy.save(update_fields=["sales_channel", "updated_at"])
+
+        second_policy = Policy.objects.create(
+            number="SECOND-CHANNEL", deal=self.deal, sales_channel=second_channel
+        )
+        excluded_policy = Policy.objects.create(
+            number="EXCLUDED-CHANNEL", deal=self.deal, sales_channel=excluded_channel
+        )
+        second_record = FinancialRecord.objects.create(
+            payment=Payment.objects.create(
+                policy=second_policy, amount=Decimal("900.00")
+            ),
+            amount=Decimal("90.00"),
+        )
+        excluded_record = FinancialRecord.objects.create(
+            payment=Payment.objects.create(
+                policy=excluded_policy, amount=Decimal("800.00")
+            ),
+            amount=Decimal("80.00"),
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {
+                "sales_channel_ids": (
+                    f" {first_channel.id}, {second_channel.id}, {first_channel.id}, "
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record_ids = {item["id"] for item in self._extract_results(response)}
+        self.assertIn(str(self.policy_record.id), record_ids)
+        self.assertIn(str(second_record.id), record_ids)
+        self.assertNotIn(str(excluded_record.id), record_ids)
+        self.assertNotIn(str(self.income_record.id), record_ids)
+
+    def test_filter_by_multiple_sales_channels_rejects_invalid_uuid(self):
+        self.authenticate(self.seller)
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"sales_channel_ids": "not-a-uuid"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("sales_channel_ids", response.json())
+
+    def test_export_xlsx_rejects_invalid_sales_channel_uuid(self):
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            "/api/v1/financial_records/export-xlsx/",
+            {"sales_channel_ids": "not-a-uuid"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("sales_channel_ids", response.json())
+
     def test_filter_by_payment_scheduled_date_range(self):
         early_payment = Payment.objects.create(
             policy=self.policy,
@@ -1738,9 +1804,10 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
             returned_ids_desc.index(str(no_date_record.id)),
         )
 
-    def test_export_xlsx_uses_filters_and_includes_payment_scheduled_date(self):
-        channel = SalesChannel.objects.create(name="Export channel")
-        self.policy.sales_channel = channel
+    def test_export_xlsx_uses_multiple_sales_channel_filters(self):
+        first_channel = SalesChannel.objects.create(name="First export channel")
+        second_channel = SalesChannel.objects.create(name="Second export channel")
+        self.policy.sales_channel = first_channel
         self.policy.save(update_fields=["sales_channel", "updated_at"])
         self.policy_payment.scheduled_date = date(2026, 3, 15)
         self.policy_payment.save(update_fields=["scheduled_date", "updated_at"])
@@ -1748,14 +1815,17 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.authenticate(self.seller)
         response = self.api_client.post(
             "/api/v1/financial_records/export-xlsx/",
-            {"sales_channel": str(channel.id)},
+            {"sales_channel_ids": f"{first_channel.id},{second_channel.id}"},
             format="json",
         )
 
         self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
         job = ExternalJob.objects.get(pk=response.json()["id"])
         self.assertEqual(job.kind, ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT)
-        self.assertEqual(job.payload["filters"]["sales_channel"], str(channel.id))
+        self.assertEqual(
+            job.payload["filters"]["sales_channel_ids"],
+            f"{first_channel.id},{second_channel.id}",
+        )
 
 
 class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):

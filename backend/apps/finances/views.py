@@ -54,7 +54,7 @@ from rest_framework.views import APIView
 from .filters import PaymentFilterSet
 from .models import FinancialRecord, Payment, Statement
 from .permissions import get_deal_from_payment, is_admin_user, user_has_deal_access
-from .record_filters import apply_financial_record_filters
+from .record_filters import apply_financial_record_filters, parse_sales_channel_ids
 from .serializers import (
     FinancialRecordSerializer,
     FinancialRecordTableSerializer,
@@ -314,6 +314,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         filters = request.query_params.dict()
         if isinstance(request.data, dict):
             filters.update(request.data)
+        parse_sales_channel_ids(filters.get("sales_channel_ids"))
         job = create_external_job(
             kind=ExternalJob.Kind.FINANCIAL_RECORDS_EXPORT,
             payload={"filters": filters},
