@@ -31,6 +31,7 @@ vi.mock('../../../api', () => {
 });
 
 import {
+  createClient as createClientRequest,
   excludeClientSimilarity,
   fetchSimilarClients,
   finalizeClientMerge,
@@ -40,6 +41,7 @@ import {
   stepClientMerge,
 } from '../../../api';
 
+const createClientRequestMock = vi.mocked(createClientRequest);
 const previewClientMergeMock = vi.mocked(previewClientMerge);
 const excludeClientSimilarityMock = vi.mocked(excludeClientSimilarity);
 const fetchSimilarClientsMock = vi.mocked(fetchSimilarClients);
@@ -135,6 +137,7 @@ const renderClientActions = (overrides: Partial<ClientActionsOptions> = {}) => {
 
 describe('useClientActions', () => {
   beforeEach(() => {
+    createClientRequestMock.mockReset();
     previewClientMergeMock.mockReset();
     previewClientMergeMock.mockResolvedValue(previewResponse);
     fetchSimilarClientsMock.mockReset();
@@ -167,6 +170,30 @@ describe('useClientActions', () => {
       warnings: [],
       details: {},
     });
+  });
+
+  it('сохраняет цель возврата в сделку до открытия формы клиента', async () => {
+    const createdClient = createClient({
+      id: 'created-client',
+      name: 'Новый контакт',
+    });
+    createClientRequestMock.mockResolvedValue(createdClient);
+    const updateAppData = vi.fn();
+    const { result } = renderClientActions({ updateAppData });
+
+    let handleAddClient: typeof result.current.handleAddClient;
+    act(() => {
+      result.current.openClientModal('deal');
+      handleAddClient = result.current.handleAddClient;
+    });
+
+    await act(async () => {
+      await handleAddClient({ name: createdClient.name });
+    });
+
+    expect(result.current.pendingDealClientId).toBe(createdClient.id);
+    expect(result.current.isClientModalOverlayOpen).toBe(false);
+    expect(updateAppData).toHaveBeenCalledWith(expect.any(Function));
   });
 
   it('fills merge final fields from preview canonical profile', async () => {

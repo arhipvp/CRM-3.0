@@ -91,6 +91,51 @@ describe('DealForm', () => {
     expect(onPreselectedClientConsumed).toHaveBeenCalledTimes(1);
   });
 
+  it('выбирает созданного контакта после обновления справочника и отправляет его id', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    const onPreselectedClientConsumed = vi.fn();
+    const { rerender } = render(
+      <DealForm
+        {...baseProps}
+        clients={[makeClient('client-1', 'Существующий контакт')]}
+        onSubmit={onSubmit}
+        preselectedClientId="created-client"
+        onPreselectedClientConsumed={onPreselectedClientConsumed}
+      />,
+    );
+
+    const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
+    expect(clientInput).toHaveValue('');
+    expect(onPreselectedClientConsumed).not.toHaveBeenCalled();
+
+    rerender(
+      <DealForm
+        {...baseProps}
+        clients={[
+          makeClient('created-client', 'Новый контакт'),
+          makeClient('client-1', 'Существующий контакт'),
+        ]}
+        onSubmit={onSubmit}
+        preselectedClientId="created-client"
+        onPreselectedClientConsumed={onPreselectedClientConsumed}
+      />,
+    );
+
+    await waitFor(() => expect(clientInput).toHaveValue('Новый контакт'));
+    expect(onPreselectedClientConsumed).toHaveBeenCalledTimes(1);
+
+    fireEvent.change(screen.getByPlaceholderText('Например: КАСКО / ОСАГО'), {
+      target: { value: 'Новая сделка' },
+    });
+    fireEvent.submit(screen.getByRole('button', { name: 'Создать сделку' }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ clientId: 'created-client' }),
+      );
+    });
+  });
+
   it('не откатывает вручную выбранного клиента к initial clientId при обновлении списка клиентов', async () => {
     const { rerender } = render(
       <DealForm

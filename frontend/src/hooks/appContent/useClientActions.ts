@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   APIError,
@@ -65,7 +65,8 @@ export const useClientActions = ({
   addNotification,
 }: UseClientActionsParams) => {
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
-  const [clientModalReturnTo, setClientModalReturnTo] = useState<ModalType | null>(null);
+  const isClientModalOverlayOpenRef = useRef(false);
+  const clientModalReturnToRef = useRef<ModalType | null>(null);
   const [pendingDealClientId, setPendingDealClientId] = useState<string | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientDeleteTarget, setClientDeleteTarget] = useState<Client | null>(null);
@@ -93,36 +94,39 @@ export const useClientActions = ({
 
   const openClientModal = useCallback(
     (afterModal: ModalType | null = null) => {
+      clientModalReturnToRef.current = afterModal;
       if (afterModal) {
+        isClientModalOverlayOpenRef.current = true;
         setClientModalOverlayOpen(true);
-        setClientModalReturnTo(afterModal);
         return;
       }
-      setClientModalReturnTo(null);
+      isClientModalOverlayOpenRef.current = false;
       setModal('client');
     },
     [setModal],
   );
 
   const closeClientModal = useCallback(() => {
-    if (isClientModalOverlayOpen) {
+    if (isClientModalOverlayOpenRef.current) {
+      isClientModalOverlayOpenRef.current = false;
       setClientModalOverlayOpen(false);
-      setClientModalReturnTo(null);
+      clientModalReturnToRef.current = null;
       return;
     }
+    clientModalReturnToRef.current = null;
     setModal(null);
-  }, [isClientModalOverlayOpen, setModal]);
+  }, [setModal]);
 
   const handleAddClient = useCallback(
     async (data: ClientFormValues) => {
       const created = await createClient(data);
       updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
-      if (clientModalReturnTo === 'deal') {
+      if (clientModalReturnToRef.current === 'deal') {
         setPendingDealClientId(created.id);
       }
       closeClientModal();
     },
-    [clientModalReturnTo, closeClientModal, updateAppData],
+    [closeClientModal, updateAppData],
   );
 
   const handlePendingDealClientConsumed = useCallback(() => {
