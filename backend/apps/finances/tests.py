@@ -2,7 +2,7 @@ import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, datetime
 from decimal import Decimal
-from io import BytesIO
+from io import BytesIO, StringIO
 from unittest import skipUnless
 from unittest.mock import patch
 
@@ -16,6 +16,7 @@ from apps.policies.models import Policy
 from apps.tasks.models import Task
 from apps.users.models import AuditLog, Role, UserRole
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.db import close_old_connections, connection
 from django.test import TransactionTestCase
 from django.test.utils import CaptureQueriesContext
@@ -558,6 +559,50 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.income_record.refresh_from_db()
         self.assertIsNotNone(self.income_record.statement_id)
 
+    def test_create_paid_statement_recalculates_payment_paid_balance(self):
+        self.authenticate(self.seller)
+        paid_at = timezone.now().date()
+
+        response = self.api_client.post(
+            "/api/v1/finance_statements/",
+            {
+                "name": "Paid Income Sheet",
+                "statement_type": "income",
+                "paid_at": paid_at.isoformat(),
+                "record_ids": [str(self.income_record.id)],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.income_record.refresh_from_db()
+        self.payment.refresh_from_db()
+        self.assertEqual(self.income_record.date, paid_at)
+        self.assertEqual(self.payment.paid_balance, Decimal("150.00"))
+
+    def test_update_draft_statement_to_paid_recalculates_payment_paid_balance(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Draft Income Sheet",
+            statement_type=Statement.TYPE_INCOME,
+            created_by=self.seller,
+        )
+        self.income_record.statement = statement
+        self.income_record.save(update_fields=["statement"])
+        paid_at = timezone.now().date()
+
+        response = self.api_client.patch(
+            f"/api/v1/finance_statements/{statement.id}/",
+            {"paid_at": paid_at.isoformat()},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.income_record.refresh_from_db()
+        self.payment.refresh_from_db()
+        self.assertEqual(self.income_record.date, paid_at)
+        self.assertEqual(self.payment.paid_balance, Decimal("150.00"))
+
     def test_cannot_add_expense_to_income_statement(self):
         self.authenticate(self.seller)
         response = self.api_client.post(
@@ -874,6 +919,8 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.income_record.refresh_from_db()
         self.assertIsNone(statement.paid_at)
         self.assertIsNone(self.income_record.date)
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.paid_balance, Decimal("0.00"))
         self.assertTrue(
             AuditLog.objects.filter(
                 object_type="statement", object_id=str(statement.id), action="reopen"
@@ -1942,6 +1989,60 @@ class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
         self.assertEqual(table.status_code, status.HTTP_200_OK)
         self.assertIn(str(payment.id), table.data["payment_summaries"])
         self.assertNotIn("payment_paid_entries", table.data["results"][0])
+
+    def test_api_returns_paid_income_without_unpaid_expense_in_paid_balance(self):
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("4084.80"),
+            description="Statement balance regression",
+        )
+        paid_income = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("614.35"),
+            date=timezone.now().date(),
+        )
+        unpaid_expense = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-1.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+        )
+
+        self.authenticate(self.seller)
+        response = self.api_client.get("/api/v1/financial_records/")
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        by_id = {item["id"]: item for item in self._extract_results(response)}
+        self.assertEqual(by_id[str(paid_income.id)]["payment_paid_balance"], "614.35")
+        self.assertEqual(
+            by_id[str(unpaid_expense.id)]["payment_paid_balance"], "614.35"
+        )
+
+    def test_recalculate_payment_paid_balances_command_repairs_stale_balance(self):
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("4084.80"),
+            description="Stale statement balance",
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("614.35"),
+            date=timezone.now().date(),
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-1.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+        )
+        Payment.objects.filter(pk=payment.pk).update(paid_balance=Decimal("0.00"))
+
+        output = StringIO()
+        call_command("recalculate_payment_paid_balances", stdout=output)
+        call_command("recalculate_payment_paid_balances", stdout=output)
+
+        payment.refresh_from_db()
+        self.assertEqual(payment.paid_balance, Decimal("614.35"))
 
     def test_export_workbook_uses_denormalized_non_zero_paid_balance(self):
         from apps.finances.services.exports import (

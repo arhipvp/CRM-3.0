@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from .models import FinancialRecord, Payment, Statement
 from .permissions import get_deal_from_payment
+from .services.balances import recalculate_payment_paid_balances
 
 READABLE_RECORD_TYPES = {
     FinancialRecord.RecordType.INCOME: FinancialRecord.RecordType.INCOME.label,
@@ -144,6 +145,11 @@ class StatementSerializer(serializers.ModelSerializer):
             FinancialRecord.objects.filter(
                 statement=statement, deleted_at__isnull=True
             ).update(date=statement.paid_at)
+            recalculate_payment_paid_balances(
+                FinancialRecord.objects.filter(
+                    statement=statement, deleted_at__isnull=True
+                ).values_list("payment_id", flat=True)
+            )
         return statement
 
     def update(self, instance, validated_data):
@@ -163,6 +169,11 @@ class StatementSerializer(serializers.ModelSerializer):
             FinancialRecord.objects.filter(
                 statement=statement, deleted_at__isnull=True
             ).update(date=statement.paid_at)
+            recalculate_payment_paid_balances(
+                FinancialRecord.objects.filter(
+                    statement=statement, deleted_at__isnull=True
+                ).values_list("payment_id", flat=True)
+            )
         return statement
 
 
