@@ -72,4 +72,62 @@ describe('useStatementRecordsController', () => {
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
+
+  it('cycles comment ordering from the default date order to ascending, descending, and back', async () => {
+    mockedFetchStatementFinancialRecordsWithPagination.mockResolvedValue(emptyPage as never);
+
+    const { result } = renderHook(() =>
+      useStatementRecordsController({
+        selectedStatementId: 'statement-1',
+        viewMode: 'statements',
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        'statement-1',
+        { page: 1, page_size: 50, ordering: '-date,-created_at' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+
+    act(() => {
+      result.current.toggleCommentSort();
+    });
+    await waitFor(() => {
+      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        'statement-1',
+        { page: 1, page_size: 50, ordering: 'record_comment_sort,-date,-created_at' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+    expect(result.current.getCommentSortLabel()).toBe('по возрастанию');
+    expect(result.current.getCommentSortIndicator()).toBe('↑');
+
+    act(() => {
+      result.current.toggleCommentSort();
+    });
+    await waitFor(() => {
+      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        'statement-1',
+        { page: 1, page_size: 50, ordering: '-record_comment_sort,-date,-created_at' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+    expect(result.current.getCommentSortLabel()).toBe('по убыванию');
+    expect(result.current.getCommentSortIndicator()).toBe('↓');
+
+    act(() => {
+      result.current.toggleCommentSort();
+    });
+    await waitFor(() => {
+      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        'statement-1',
+        { page: 1, page_size: 50, ordering: '-date,-created_at' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
+    });
+    expect(result.current.getCommentSortLabel()).toBe('не сортируется');
+    expect(result.current.getCommentSortIndicator()).toBe('↕');
+  });
 });

@@ -218,6 +218,9 @@ export const useCommissionsController = ({
     toggleAmountSort,
     getAmountSortIndicator,
     getAmountSortLabel,
+    toggleCommentSort,
+    getCommentSortIndicator,
+    getCommentSortLabel,
   } = useStatementRecordsController({
     selectedStatementId,
     viewMode,
@@ -455,6 +458,9 @@ export const useCommissionsController = ({
       onToggleAmountSort={toggleAmountSort}
       getAmountSortLabel={getAmountSortLabel}
       getAmountSortIndicator={getAmountSortIndicator}
+      onToggleCommentSort={toggleCommentSort}
+      getCommentSortLabel={getCommentSortLabel}
+      getCommentSortIndicator={getCommentSortIndicator}
       getPercentFromSaldo={getPercentFromSaldo}
       getAbsoluteSaldoBase={getAbsoluteSaldoBase}
       onRecordAmountChange={handleRecordAmountChange}

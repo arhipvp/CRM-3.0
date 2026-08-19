@@ -19,6 +19,7 @@ export const useStatementRecordsController = ({
   const [statementRecordsHasMore, setStatementRecordsHasMore] = useState(false);
   const [isStatementRecordsLoadingMore, setIsStatementRecordsLoadingMore] = useState(false);
   const [amountOrdering, setAmountOrdering] = useState<'none' | 'asc' | 'desc'>('none');
+  const [commentOrdering, setCommentOrdering] = useState<'none' | 'asc' | 'desc'>('none');
   const requestRef = useRef(0);
   const pageRef = useRef(1);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -55,11 +56,15 @@ export const useStatementRecordsController = ({
             page: nextPage,
             page_size: 50,
             ordering:
-              amountOrdering === 'none'
-                ? '-date,-created_at'
-                : amountOrdering === 'asc'
-                  ? 'amount,-date'
-                  : '-amount,-date',
+              commentOrdering !== 'none'
+                ? commentOrdering === 'asc'
+                  ? 'record_comment_sort,-date,-created_at'
+                  : '-record_comment_sort,-date,-created_at'
+                : amountOrdering === 'none'
+                  ? '-date,-created_at'
+                  : amountOrdering === 'asc'
+                    ? 'amount,-date'
+                    : '-amount,-date',
           },
           { signal: controller.signal },
         );
@@ -89,7 +94,7 @@ export const useStatementRecordsController = ({
         }
       }
     },
-    [amountOrdering, selectedStatementId, viewMode],
+    [amountOrdering, commentOrdering, selectedStatementId, viewMode],
   );
 
   useEffect(() => {
@@ -110,13 +115,31 @@ export const useStatementRecordsController = ({
     isStatementRecordsLoadingMore,
     loadStatementRecords,
     toggleAmountSort: () =>
-      setAmountOrdering((value) => (value === 'none' ? 'asc' : value === 'asc' ? 'desc' : 'none')),
+      setAmountOrdering((value) => {
+        const nextValue = value === 'none' ? 'asc' : value === 'asc' ? 'desc' : 'none';
+        setCommentOrdering('none');
+        return nextValue;
+      }),
     getAmountSortIndicator: () =>
       amountOrdering === 'asc' ? '↑' : amountOrdering === 'desc' ? '↓' : '↕',
     getAmountSortLabel: () =>
       amountOrdering === 'asc'
         ? 'по возрастанию'
         : amountOrdering === 'desc'
+          ? 'по убыванию'
+          : 'не сортируется',
+    toggleCommentSort: () =>
+      setCommentOrdering((value) => {
+        const nextValue = value === 'none' ? 'asc' : value === 'asc' ? 'desc' : 'none';
+        setAmountOrdering('none');
+        return nextValue;
+      }),
+    getCommentSortIndicator: () =>
+      commentOrdering === 'asc' ? '↑' : commentOrdering === 'desc' ? '↓' : '↕',
+    getCommentSortLabel: () =>
+      commentOrdering === 'asc'
+        ? 'по возрастанию'
+        : commentOrdering === 'desc'
           ? 'по убыванию'
           : 'не сортируется',
   };

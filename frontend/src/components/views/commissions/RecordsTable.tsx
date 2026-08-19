@@ -85,6 +85,9 @@ interface RecordsTableProps {
   onToggleAmountSort: () => void;
   getAmountSortLabel: () => string;
   getAmountSortIndicator: () => string;
+  onToggleCommentSort: () => void;
+  getCommentSortLabel: () => string;
+  getCommentSortIndicator: () => string;
   getPercentFromSaldo: (row: IncomeExpenseRow, absoluteAmount: number) => string;
   getAbsoluteSaldoBase: (row: IncomeExpenseRow) => number;
   onRecordAmountChange: (recordId: string, value: string) => void;
@@ -137,6 +140,9 @@ export const RecordsTable = ({
   onToggleAmountSort,
   getAmountSortLabel,
   getAmountSortIndicator,
+  onToggleCommentSort,
+  getCommentSortLabel,
+  getCommentSortIndicator,
   getPercentFromSaldo,
   getAbsoluteSaldoBase,
   onRecordAmountChange,
@@ -337,7 +343,15 @@ export const RecordsTable = ({
                     </span>
                   </Button>
                 ) : (
-                  <span className={SORT_LABEL_CLASS}>Примечание</span>
+                  <Button
+                    type="button"
+                    onClick={onToggleCommentSort}
+                    aria-label={`Сортировать по примечанию, текущий порядок ${getCommentSortLabel()}`}
+                    className={`${SORT_BUTTON_BASE_CLASS} justify-start`}
+                  >
+                    <span className={SORT_LABEL_CLASS}>Примечание</span>
+                    <span className={SORT_LABEL_CLASS}>{getCommentSortIndicator()}</span>
+                  </Button>
                 )}
               </TableHeadCell>
               <TableHeadCell padding="sm" className="w-[220px]" align="right">

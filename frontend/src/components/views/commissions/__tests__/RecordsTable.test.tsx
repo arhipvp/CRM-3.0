@@ -28,6 +28,9 @@ const buildRow = (overrides: Partial<IncomeExpenseRow> = {}): IncomeExpenseRow =
 const renderTable = ({
   row = buildRow(),
   onToggleAllRecordsSort = vi.fn(),
+  onToggleCommentSort = vi.fn(),
+  getCommentSortLabel = () => 'не сортируется',
+  getCommentSortIndicator = () => '↕',
   onRequestEditPolicy,
   isRecordAmountEditable = false,
   onRecordAmountChange = vi.fn(),
@@ -39,6 +42,9 @@ const renderTable = ({
   onToggleAllRecordsSort?: (
     key: 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount',
   ) => void;
+  onToggleCommentSort?: () => void;
+  getCommentSortLabel?: () => string;
+  getCommentSortIndicator?: () => string;
   onRequestEditPolicy?: (row: IncomeExpenseRow) => void;
   isRecordAmountEditable?: boolean;
   onRecordAmountChange?: (recordId: string, value: string) => void;
@@ -90,6 +96,9 @@ const renderTable = ({
       onToggleAllRecordsSort={onToggleAllRecordsSort}
       getAllRecordsSortLabel={() => 'не сортируется'}
       getAllRecordsSortIndicator={() => '↕'}
+      onToggleCommentSort={onToggleCommentSort}
+      getCommentSortLabel={getCommentSortLabel}
+      getCommentSortIndicator={getCommentSortIndicator}
       onToggleAmountSort={vi.fn()}
       getAmountSortLabel={() => 'не сортируется'}
       getAmountSortIndicator={() => '↕'}
@@ -171,5 +180,26 @@ describe('RecordsTable', () => {
     });
 
     expect(onStatementAmountChange).toHaveBeenCalledWith('1234.56');
+  });
+
+  it('toggles comment sorting in statement mode and exposes its current order', () => {
+    const onToggleCommentSort = vi.fn();
+
+    renderTable({
+      viewMode: 'statements',
+      onToggleCommentSort,
+      getCommentSortLabel: () => 'по возрастанию',
+      getCommentSortIndicator: () => '↑',
+    });
+
+    const sortButton = screen.getByRole('button', {
+      name: 'Сортировать по примечанию, текущий порядок по возрастанию',
+    });
+    expect(sortButton).toHaveTextContent('Примечание');
+    expect(sortButton).toHaveTextContent('↑');
+
+    fireEvent.click(sortButton);
+
+    expect(onToggleCommentSort).toHaveBeenCalledOnce();
   });
 });
