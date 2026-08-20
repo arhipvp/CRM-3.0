@@ -21,6 +21,11 @@ import {
 } from '../../../common/tableStyles';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { PolicyMoveDialog } from '../../../policies/PolicyMoveDialog';
+import {
+  PolicyDataField,
+  PolicyEmptyLedger,
+  PolicyTermCard,
+} from '../../../policies/PolicyTableCards';
 import { getPolicyDocumentsState } from '../../policies/usePolicyDocuments';
 import { PolicyDocumentsList } from '../../policies/PolicyDocumentsList';
 import { POLICY_ACTION_CLASS, type usePoliciesTabController } from './usePoliciesTabController';
@@ -151,7 +156,7 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
       {visiblePolicies.length > 0 && (
         <div className="overflow-x-auto">
           <table
-            className="w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
+            className="w-full min-w-[1180px] table-fixed border-collapse text-left text-sm xl:min-w-0"
             aria-label="Полисы сделки"
           >
             <thead
@@ -167,27 +172,10 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                     Номер полиса
                   </Button>
                 </th>
-                <th className="w-[31%] border border-slate-200 px-3 py-2">Основные данные</th>
-                <th className="w-[8%] border border-slate-200 px-3 py-2">
-                  <Button
-                    type="button"
-                    onClick={() => handleSortChange('startDate')}
-                    className="w-full text-left"
-                  >
-                    Начало
-                  </Button>
-                </th>
-                <th className="w-[8%] border border-slate-200 px-3 py-2">
-                  <Button
-                    type="button"
-                    onClick={() => handleSortChange('endDate')}
-                    className="w-full text-left"
-                  >
-                    Конец
-                  </Button>
-                </th>
-                <th className="w-[17%] border border-slate-200 px-3 py-2">Платеж</th>
-                <th className="w-[22%] border border-slate-200 px-3 py-2">Финансовые записи</th>
+                <th className="w-[34%] border border-slate-200 px-3 py-2">Основные данные</th>
+                <th className="w-[14%] border border-slate-200 px-3 py-2">Срок действия</th>
+                <th className="w-[18%] border border-slate-200 px-3 py-2">Платёж</th>
+                <th className="w-[20%] border border-slate-200 px-3 py-2">Финансовые записи</th>
               </tr>
             </thead>
             <tbody className="bg-white">
@@ -233,136 +221,142 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                       </td>
                       <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         <div className="space-y-3" data-testid={`policy-primary-data-${policy.id}`}>
-                          <div className="space-y-1.5 border-b border-slate-100 pb-2.5">
-                            <div className="min-w-0" data-testid={`policy-client-${policy.id}`}>
-                              {model.clientId ? (
-                                <Button
-                                  type="button"
-                                  className="block max-w-full truncate text-left text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 transition hover:text-sky-700 disabled:cursor-wait"
-                                  disabled={openingClientId === model.clientId}
-                                  title={model.client}
-                                  onClick={() => {
-                                    setOpeningClientId(model.clientId);
-                                    void onOpenClient(model.clientId!)
-                                      .catch(() => undefined)
-                                      .finally(() => {
-                                        setOpeningClientId((current) =>
-                                          current === model.clientId ? null : current,
-                                        );
-                                      });
-                                  }}
-                                >
-                                  {model.client}
-                                </Button>
-                              ) : (
-                                <p className="truncate text-sm font-semibold text-slate-900">
-                                  {model.client}
-                                </p>
-                              )}
-                            </div>
-                            {policy.dealId ? (
-                              <div
-                                className="flex min-w-0 items-baseline gap-2"
-                                data-testid={`policy-deal-${policy.id}`}
-                              >
-                                <span className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                                  Сделка:
-                                </span>
-                                {canOpenDeal ? (
+                          <div className="grid grid-cols-2 gap-1.5">
+                            <PolicyDataField label="Страхователь">
+                              <div className="min-w-0" data-testid={`policy-client-${policy.id}`}>
+                                {model.clientId ? (
                                   <Button
                                     type="button"
-                                    onClick={() => handleOpenDeal(policy.dealId)}
-                                    className="link-action min-w-0 truncate text-left text-xs"
-                                    title={dealTitle}
+                                    className="block max-w-full truncate text-left text-sm font-semibold text-slate-900 underline decoration-dotted underline-offset-2 transition hover:text-sky-700 disabled:cursor-wait"
+                                    disabled={openingClientId === model.clientId}
+                                    title={model.client}
+                                    onClick={() => {
+                                      setOpeningClientId(model.clientId);
+                                      void onOpenClient(model.clientId!)
+                                        .catch(() => undefined)
+                                        .finally(() => {
+                                          setOpeningClientId((current) =>
+                                            current === model.clientId ? null : current,
+                                          );
+                                        });
+                                    }}
                                   >
-                                    {dealTitle}
+                                    {model.client}
                                   </Button>
                                 ) : (
-                                  <span className="min-w-0 truncate text-xs font-semibold text-slate-600">
-                                    {dealTitle}
+                                  <p className="truncate text-sm font-semibold text-slate-900">
+                                    {model.client}
+                                  </p>
+                                )}
+                              </div>
+                            </PolicyDataField>
+                            <PolicyDataField label="Сделка">
+                              {policy.dealId ? (
+                                <div
+                                  className="flex min-w-0 items-baseline gap-2"
+                                  data-testid={`policy-deal-${policy.id}`}
+                                >
+                                  {canOpenDeal ? (
+                                    <Button
+                                      type="button"
+                                      onClick={() => handleOpenDeal(policy.dealId)}
+                                      className="link-action min-w-0 truncate text-left text-xs"
+                                      title={dealTitle}
+                                    >
+                                      {dealTitle}
+                                    </Button>
+                                  ) : (
+                                    <span className="min-w-0 truncate text-xs font-semibold text-slate-600">
+                                      {dealTitle}
+                                    </span>
+                                  )}
+                                </div>
+                              ) : null}
+                            </PolicyDataField>
+                            <PolicyDataField label="Страховая компания">
+                              <div
+                                className="flex flex-wrap items-center gap-1.5"
+                                title={metaTitle}
+                                data-testid={`policy-meta-${policy.id}`}
+                              >
+                                {insuranceCompany ? (
+                                  <ColoredLabel
+                                    value={insuranceCompany}
+                                    showDot
+                                    className="max-w-full truncate text-xs font-semibold text-slate-800"
+                                  />
+                                ) : null}
+                                {!hasMeta && (
+                                  <span className="text-sm font-normal text-slate-400">
+                                    Не указана
                                   </span>
                                 )}
                               </div>
-                            ) : null}
-                          </div>
-
-                          {hasMeta ? (
-                            <div
-                              className="flex flex-wrap items-center gap-1.5"
-                              title={metaTitle}
-                              data-testid={`policy-meta-${policy.id}`}
-                            >
-                              {insuranceCompany ? (
-                                <ColoredLabel
-                                  value={insuranceCompany}
-                                  showDot
-                                  className="max-w-full truncate text-xs font-semibold text-slate-800"
-                                />
-                              ) : null}
+                            </PolicyDataField>
+                            <PolicyDataField label="Продукт">
                               {insuranceType ? (
-                                <span className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-[10px] font-semibold text-violet-700">
+                                <span className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
                                   {insuranceType}
                                 </span>
-                              ) : null}
+                              ) : (
+                                <span className="text-sm font-normal text-slate-400">
+                                  Не указан
+                                </span>
+                              )}
+                            </PolicyDataField>
+                            <PolicyDataField label="Партнёры">
                               {salesChannel ? (
-                                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">
                                   {salesChannel}
                                 </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <p className="text-xs text-slate-400">Страховые данные не указаны</p>
-                          )}
-
-                          <div
-                            className="rounded-lg bg-slate-50 px-2.5 py-2"
-                            title={notePreview.fullText}
-                          >
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                              Примечание
-                            </p>
-                            <p className="mt-0.5 overflow-hidden text-xs text-slate-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                              {notePreview.preview}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-1.5">
-                            {computedStatusBadge && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                  POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
-                                }`}
-                                title={computedStatusBadge.tooltip}
+                              ) : (
+                                <span className="text-sm font-normal text-slate-400">
+                                  Не указаны
+                                </span>
+                              )}
+                            </PolicyDataField>
+                            <PolicyDataField label="Примечание">
+                              <p
+                                className="overflow-hidden font-normal text-slate-600 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]"
+                                title={notePreview.fullText}
                               >
-                                {computedStatusBadge.label}
-                              </span>
-                            )}
-                            {expiryBadge && (
-                              <span
-                                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
-                                  expiryBadge.tone,
-                                )}`}
-                              >
-                                {expiryBadge.label}
-                              </span>
-                            )}
-                            {renewalBadge && (
-                              <span
-                                className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
-                                title={renewalBadge.tooltip}
-                              >
-                                {renewalBadge.label}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-2.5 py-2">
-                            <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                              Оплачено / план
-                            </span>
-                            <span className="whitespace-nowrap text-sm font-semibold text-slate-900">
-                              {model.sum}
-                            </span>
+                                {notePreview.preview}
+                              </p>
+                            </PolicyDataField>
+                            <PolicyDataField label="Статус">
+                              <div className="flex flex-wrap gap-1.5">
+                                {computedStatusBadge && (
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                                      POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]
+                                    }`}
+                                    title={computedStatusBadge.tooltip}
+                                  >
+                                    {computedStatusBadge.label}
+                                  </span>
+                                )}
+                                {expiryBadge && (
+                                  <span
+                                    className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                                      expiryBadge.tone,
+                                    )}`}
+                                  >
+                                    {expiryBadge.label}
+                                  </span>
+                                )}
+                                {renewalBadge && (
+                                  <span
+                                    className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                                    title={renewalBadge.tooltip}
+                                  >
+                                    {renewalBadge.label}
+                                  </span>
+                                )}
+                              </div>
+                            </PolicyDataField>
+                            <PolicyDataField label="Оплачено / План">
+                              <span className="whitespace-nowrap">{model.sum}</span>
+                            </PolicyDataField>
                           </div>
 
                           <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5">
@@ -428,17 +422,12 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                           </div>
                         </div>
                       </td>
-                      <td
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top whitespace-nowrap text-xs font-semibold text-slate-700`}
-                        rowSpan={rowSpan}
-                      >
-                        {model.startDate}
-                      </td>
-                      <td
-                        className={`${TABLE_CELL_CLASS_COMPACT} align-top whitespace-nowrap text-xs font-semibold text-slate-700`}
-                        rowSpan={rowSpan}
-                      >
-                        {model.endDate}
+                      <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`} rowSpan={rowSpan}>
+                        <PolicyTermCard
+                          startDate={model.startDate}
+                          endDate={model.endDate}
+                          endDateValue={policy.endDate}
+                        />
                       </td>
                       <td className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
                         {firstLedgerRow ? (
@@ -534,7 +523,9 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               </div>
                             ))}
                           </div>
-                        ) : null}
+                        ) : (
+                          <PolicyEmptyLedger />
+                        )}
                       </td>
                     </tr>
                     {ledgerRows.slice(1).map((ledgerRow) => (
@@ -631,7 +622,9 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                 </div>
                               ))}
                             </div>
-                          ) : null}
+                          ) : (
+                            <PolicyEmptyLedger />
+                          )}
                         </td>
                       </tr>
                     ))}

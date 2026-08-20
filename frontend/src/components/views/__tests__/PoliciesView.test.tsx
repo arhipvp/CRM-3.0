@@ -312,23 +312,17 @@ describe('PoliciesView', () => {
 
     expect(screen.getByText('Номер полиса')).toBeInTheDocument();
     expect(screen.getByText('Основные данные')).toBeInTheDocument();
+    expect(screen.getByText('Срок действия')).toBeInTheDocument();
     expect(screen.getByText('Платеж')).toBeInTheDocument();
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
-    expect(screen.queryByText('Оплачено / План')).toBeNull();
-    expect(screen.getByText('Начало').className).toContain('w-[8%]');
-    expect(screen.getByText('Конец').className).toContain('w-[8%]');
+    expect(screen.getByText(/Оплачено \/ план/i)).toBeInTheDocument();
     const policiesTable = screen.getByRole('table', { name: 'Список полисов' });
-    expect(policiesTable).not.toHaveClass('min-w-[1900px]');
-    expect(policiesTable).toHaveClass('min-w-[1100px]', 'xl:min-w-0');
+    expect(policiesTable).toHaveClass('table-fixed');
 
     const statusBadge = screen.getByTitle(
       'Есть финансовые записи без даты оплаты по платежам полиса',
     );
     expect(statusBadge).toHaveTextContent('Есть неоплаченные записи');
-
-    const numberCell = screen.getByText('POL-1').closest('td');
-    expect(numberCell).not.toBeNull();
-    expect(numberCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
       (title) => title.includes('25.02.2025') && title.includes('3'),
@@ -358,6 +352,51 @@ describe('PoliciesView', () => {
       expect(fetchPoliciesKPI).toHaveBeenCalled();
     });
   }, 10000);
+
+  it('renders policy details as cards, the term timeline, and an empty financial-record state', async () => {
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <PoliciesView
+            policies={[
+              buildPolicy({
+                clientName: 'Наталья Азизова',
+                dealTitle: 'Ипотека Ж-К',
+                insuranceCompany: 'Зетта Страхование',
+                insuranceType: 'Ипотека. Жизнь',
+                salesChannel: 'Чернышов, Пампаду',
+                note: 'Без примечания',
+                computedStatus: 'active',
+                paymentsPaid: '2 007.54',
+                paymentsTotal: '2 007.54',
+                startDate: '2026-10-06',
+                endDate: '2099-10-05',
+              }),
+            ]}
+            payments={[]}
+            onRequestEditPolicy={vi.fn()}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    [
+      'Страхователь',
+      'Сделка',
+      'Страховая компания',
+      'Продукт',
+      'Партнёры',
+      'Примечание',
+      'Статус',
+    ].forEach((label) => expect(screen.getByText(label)).toBeInTheDocument());
+    expect(screen.getByText(/Оплачено \/ план/i)).toBeInTheDocument();
+    expect(screen.getByTestId('policy-term-card')).toHaveTextContent('Дней до окончания');
+    expect(screen.getByTestId('policy-term-card')).toHaveTextContent(/дн\./);
+    expect(screen.getByTestId('policy-empty-ledger')).toHaveTextContent('Записей пока нет');
+    await waitFor(() => {
+      expect(fetchPoliciesKPI).toHaveBeenCalled();
+    });
+  });
 
   it('shows renewed badge with tooltip in the policies list', async () => {
     render(

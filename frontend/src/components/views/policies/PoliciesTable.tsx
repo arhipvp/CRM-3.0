@@ -16,6 +16,11 @@ import {
   POLICY_STATUS_TONE_CLASS,
 } from '../../policies/policyTableHelpers';
 import { PolicyNumberButton } from '../../policies/PolicyNumberButton';
+import {
+  PolicyDataField,
+  PolicyEmptyLedger,
+  PolicyTermCard,
+} from '../../policies/PolicyTableCards';
 import { ColoredLabel } from '../../common/ColoredLabel';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 import { Button } from '../../common/Button';
@@ -82,7 +87,7 @@ export const PoliciesTable = ({
     {policies.length ? (
       <DataTableShell>
         <table
-          className="deals-table w-full min-w-[1100px] table-fixed border-collapse text-left text-sm xl:min-w-0"
+          className="deals-table w-full min-w-[1180px] table-fixed border-collapse text-left text-sm xl:min-w-0"
           aria-label="Список полисов"
         >
           <thead className={TABLE_THEAD_CLASS}>
@@ -90,19 +95,16 @@ export const PoliciesTable = ({
               <TableHeadCell padding="sm" className="w-[13%]">
                 Номер полиса
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[25%]">
+              <TableHeadCell padding="sm" className="w-[34%]">
                 Основные данные
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[8%]">
-                Начало
+              <TableHeadCell padding="sm" className="w-[14%]">
+                Срок действия
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[8%]">
-                Конец
-              </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[20%]">
+              <TableHeadCell padding="sm" className="w-[18%]">
                 Платеж
               </TableHeadCell>
-              <TableHeadCell padding="sm" className="w-[26%]">
+              <TableHeadCell padding="sm" className="w-[21%]">
                 Финансовые записи
               </TableHeadCell>
             </tr>
@@ -130,7 +132,6 @@ export const PoliciesTable = ({
               const metaTitle = [insuranceCompany, insuranceType, salesChannel]
                 .filter(Boolean)
                 .join(', ');
-              const hasMeta = Boolean(metaTitle);
               const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
               const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
               const policyClient = policy.clientId ? clientsById.get(policy.clientId) : null;
@@ -150,102 +151,130 @@ export const PoliciesTable = ({
                       />
                     </td>
                     <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
-                      <div className="space-y-1.5">
-                        <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-                          <ClientNameIndicators
-                            client={policyClient}
-                            hint={policyClient ? clientDuplicateHints[policyClient.id] : undefined}
-                            onFindSimilar={onClientFindSimilar}
-                            onNormalizeName={onClientNormalizeName}
-                          />
-                          {model.clientId && onClientOpenById ? (
-                            <Button
-                              type="button"
-                              className="underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
-                              disabled={openingClientId === model.clientId}
-                              onClick={() => {
-                                setOpeningClientId(model.clientId);
-                                void onClientOpenById(model.clientId!)
-                                  .catch(() => undefined)
-                                  .finally(() => {
-                                    setOpeningClientId((current) =>
-                                      current === model.clientId ? null : current,
-                                    );
-                                  });
-                              }}
-                            >
-                              {model.client}
-                            </Button>
-                          ) : (
-                            <span>{model.client}</span>
-                          )}
-                        </p>
-                        {policy.dealId ? (
-                          canOpenDeal ? (
-                            <Button
-                              type="button"
-                              onClick={() => handleOpenDeal(policy.dealId)}
-                              className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
-                            >
-                              {dealTitle}
-                            </Button>
-                          ) : (
-                            <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
-                          )
-                        ) : null}
-                        {hasMeta ? (
-                          <p className="text-sm text-slate-700 truncate" title={metaTitle}>
-                            {insuranceCompany ? (
-                              <>
-                                <ColoredLabel
-                                  value={insuranceCompany}
-                                  showDot
-                                  className="text-sm"
-                                />
-                                {(insuranceType || salesChannel) && ', '}
-                              </>
-                            ) : null}
-                            {insuranceType}
-                            {insuranceType && salesChannel ? ', ' : null}
-                            {salesChannel}
-                          </p>
-                        ) : (
-                          <p className="text-sm text-slate-700">—</p>
-                        )}
-                        <p
-                          className="text-xs text-slate-600 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical] overflow-hidden"
-                          title={notePreview.fullText}
+                      <div className="space-y-3">
+                        <div
+                          className="grid grid-cols-2 gap-1.5"
+                          data-testid={`policy-primary-data-${policy.id}`}
                         >
-                          {notePreview.preview}
-                        </p>
-                        <div className="flex flex-wrap gap-1 pt-1">
-                          {computedStatusBadge && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]}`}
-                              title={computedStatusBadge.tooltip}
+                          <PolicyDataField label="Страхователь">
+                            <div className="inline-flex min-w-0 items-center gap-2">
+                              <ClientNameIndicators
+                                client={policyClient}
+                                hint={
+                                  policyClient ? clientDuplicateHints[policyClient.id] : undefined
+                                }
+                                onFindSimilar={onClientFindSimilar}
+                                onNormalizeName={onClientNormalizeName}
+                              />
+                              {model.clientId && onClientOpenById ? (
+                                <Button
+                                  type="button"
+                                  className="underline decoration-dotted underline-offset-2 hover:text-sky-700 disabled:cursor-wait"
+                                  disabled={openingClientId === model.clientId}
+                                  onClick={() => {
+                                    setOpeningClientId(model.clientId);
+                                    void onClientOpenById(model.clientId!)
+                                      .catch(() => undefined)
+                                      .finally(() => {
+                                        setOpeningClientId((current) =>
+                                          current === model.clientId ? null : current,
+                                        );
+                                      });
+                                  }}
+                                >
+                                  {model.client}
+                                </Button>
+                              ) : (
+                                <span>{model.client}</span>
+                              )}
+                            </div>
+                          </PolicyDataField>
+                          <PolicyDataField label="Сделка">
+                            {policy.dealId ? (
+                              canOpenDeal ? (
+                                <Button
+                                  type="button"
+                                  onClick={() => handleOpenDeal(policy.dealId)}
+                                  className="text-xs font-semibold text-sky-700 underline decoration-dotted underline-offset-2 hover:text-sky-900"
+                                >
+                                  {dealTitle}
+                                </Button>
+                              ) : (
+                                <p className="text-xs font-semibold text-slate-600">{dealTitle}</p>
+                              )
+                            ) : (
+                              <span className="font-normal text-slate-400">Не указана</span>
+                            )}
+                          </PolicyDataField>
+                          <PolicyDataField label="Страховая компания">
+                            {insuranceCompany ? (
+                              <ColoredLabel value={insuranceCompany} showDot className="text-sm" />
+                            ) : (
+                              <span className="font-normal text-slate-400">Не указана</span>
+                            )}
+                          </PolicyDataField>
+                          <PolicyDataField label="Продукт">
+                            {insuranceType ? (
+                              <span className="rounded-full border border-violet-100 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700">
+                                {insuranceType}
+                              </span>
+                            ) : (
+                              <span className="font-normal text-slate-400">Не указан</span>
+                            )}
+                          </PolicyDataField>
+                          <PolicyDataField label="Партнёры">
+                            {salesChannel ? (
+                              <span
+                                className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600"
+                                title={metaTitle}
+                              >
+                                {salesChannel}
+                              </span>
+                            ) : (
+                              <span className="font-normal text-slate-400">Не указаны</span>
+                            )}
+                          </PolicyDataField>
+                          <PolicyDataField label="Примечание">
+                            <p
+                              className="overflow-hidden font-normal text-slate-600 [display:-webkit-box] [-webkit-line-clamp:2] [-webkit-box-orient:vertical]"
+                              title={notePreview.fullText}
                             >
-                              {computedStatusBadge.label}
-                            </span>
-                          )}
-                          {expiryBadge && (
-                            <span
-                              className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
-                                expiryBadge.tone,
-                              )}`}
-                            >
-                              {expiryBadge.label}
-                            </span>
-                          )}
-                          {renewalBadge && (
-                            <span
-                              className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
-                              title={renewalBadge.tooltip}
-                            >
-                              {renewalBadge.label}
-                            </span>
-                          )}
+                              {notePreview.preview}
+                            </p>
+                          </PolicyDataField>
+                          <PolicyDataField label="Статус">
+                            <div className="flex flex-wrap gap-1 pt-1">
+                              {computedStatusBadge && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${POLICY_STATUS_TONE_CLASS[computedStatusBadge.tone]}`}
+                                  title={computedStatusBadge.tooltip}
+                                >
+                                  {computedStatusBadge.label}
+                                </span>
+                              )}
+                              {expiryBadge && (
+                                <span
+                                  className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${getPolicyExpiryToneClass(
+                                    expiryBadge.tone,
+                                  )}`}
+                                >
+                                  {expiryBadge.label}
+                                </span>
+                              )}
+                              {renewalBadge && (
+                                <span
+                                  className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-700"
+                                  title={renewalBadge.tooltip}
+                                >
+                                  {renewalBadge.label}
+                                </span>
+                              )}
+                            </div>
+                          </PolicyDataField>
+                          <PolicyDataField label="Оплачено / План">
+                            <span className="whitespace-nowrap">{model.sum}</span>
+                          </PolicyDataField>
                         </div>
-                        <p className="text-sm font-semibold text-slate-900">{model.sum}</p>
                         <div className="flex flex-wrap gap-1">
                           {onRequestEditPolicy && (
                             <Button
@@ -275,17 +304,12 @@ export const PoliciesTable = ({
                         </div>
                       </div>
                     </td>
-                    <td
-                      rowSpan={rowSpan}
-                      className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
-                    >
-                      {model.startDate}
-                    </td>
-                    <td
-                      rowSpan={rowSpan}
-                      className={`${TABLE_CELL_CLASS_COMPACT} align-top text-xs font-semibold text-slate-700 whitespace-nowrap`}
-                    >
-                      {model.endDate}
+                    <td rowSpan={rowSpan} className={`${TABLE_CELL_CLASS_COMPACT} align-top`}>
+                      <PolicyTermCard
+                        startDate={model.startDate}
+                        endDate={model.endDate}
+                        endDateValue={policy.endDate}
+                      />
                     </td>
                     <td className={TABLE_CELL_CLASS_COMPACT}>
                       {firstLedgerRow ? (
@@ -385,7 +409,9 @@ export const PoliciesTable = ({
                             </div>
                           ))}
                         </div>
-                      ) : null}
+                      ) : (
+                        <PolicyEmptyLedger />
+                      )}
                     </td>
                   </tr>
                   {ledgerRows.slice(1).map((ledgerRow) => (
@@ -486,7 +512,9 @@ export const PoliciesTable = ({
                               </div>
                             ))}
                           </div>
-                        ) : null}
+                        ) : (
+                          <PolicyEmptyLedger />
+                        )}
                       </td>
                     </tr>
                   ))}

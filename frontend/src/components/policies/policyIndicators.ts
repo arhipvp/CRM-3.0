@@ -17,6 +17,34 @@ export type PolicyComputedStatusBadge = {
   tone: 'red' | 'orange' | 'green';
 };
 
+export type PolicyTermIndicator = {
+  label: string;
+  tone: 'green' | 'orange' | 'red' | 'neutral';
+};
+
+export const getPolicyTermIndicator = (endDate?: string | null): PolicyTermIndicator => {
+  if (!endDate) {
+    return { label: 'Не указано', tone: 'neutral' };
+  }
+
+  const parsed = new Date(`${endDate}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) {
+    return { label: 'Не указано', tone: 'neutral' };
+  }
+
+  const today = new Date();
+  const todayAtMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const diffDays = Math.ceil((parsed.getTime() - todayAtMidnight.getTime()) / 86_400_000);
+
+  if (diffDays < 0) {
+    return { label: `Просрочен ${Math.abs(diffDays)} дн.`, tone: 'red' };
+  }
+  if (diffDays <= 30) {
+    return { label: diffDays === 0 ? 'Истекает сегодня' : `${diffDays} дн.`, tone: 'orange' };
+  }
+  return { label: `${diffDays} дн.`, tone: 'green' };
+};
+
 export const getPolicyExpiryBadge = (endDate?: string | null): PolicyExpiryBadge | null => {
   if (!endDate) {
     return null;

@@ -234,21 +234,18 @@ describe('PoliciesTab', () => {
 
     expect(screen.getByText('Номер полиса')).toBeInTheDocument();
     expect(screen.getByText('Основные данные')).toBeInTheDocument();
-    expect(screen.getByText('Платеж')).toBeInTheDocument();
+    expect(screen.getByText('Срок действия')).toBeInTheDocument();
+    expect(screen.getByText('Платёж')).toBeInTheDocument();
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
-    expect(screen.queryByText('Оплачено / План')).toBeNull();
+    expect(screen.getByText(/Оплачено \/ план/i)).toBeInTheDocument();
     const policiesTable = screen.getByRole('table', { name: 'Полисы сделки' });
-    expect(policiesTable).not.toHaveClass('min-w-[1900px]');
-    expect(policiesTable).toHaveClass('min-w-[1100px]', 'xl:min-w-0');
+    expect(policiesTable).toHaveClass('table-fixed');
 
     const statusBadge = screen.getByText('Есть неоплаченные записи');
     expect(statusBadge).toHaveAttribute(
       'title',
       'Есть финансовые записи без даты оплаты по платежам полиса',
     );
-
-    const policyCell = screen.getByText('POL-1').closest('td');
-    expect(policyCell?.getAttribute('rowspan')).toBe('2');
 
     const paidPaymentRow = screen.getByTitle(
       (title) => title.includes('28.02.2025') && title.includes('2'),
@@ -305,9 +302,9 @@ describe('PoliciesTab', () => {
     const dealRow = screen.getByTestId('policy-deal-policy-1');
     expect(clientRow).toHaveTextContent(longClientName);
     expect(clientRow).not.toHaveTextContent(dealTitle);
-    expect(dealRow).toHaveTextContent(`Сделка:${dealTitle}`);
+    expect(dealRow).toHaveTextContent(dealTitle);
     expect(screen.getByText('Без примечания')).toBeInTheDocument();
-    expect(screen.getByText('Оплачено / план')).toBeInTheDocument();
+    expect(screen.getByText(/Оплачено \/ план/i)).toBeInTheDocument();
 
     const editButton = screen.getByRole('button', { name: 'Редактировать' });
     const moveButton = screen.getByRole('button', { name: 'Перенести' });
@@ -332,6 +329,41 @@ describe('PoliciesTab', () => {
     expect(setCreatingPaymentPolicyId).toHaveBeenCalledWith('policy-1');
     fireEvent.click(deleteButton);
     expect(onDeletePolicy).toHaveBeenCalledWith('policy-1');
+  });
+
+  it('renders the policy summary as a 2 by 4 data-card grid with term and empty ledger', () => {
+    setup({
+      relatedPayments: [],
+      sortedPolicies: [
+        buildPolicy({
+          clientName: 'Наталья Азизова',
+          dealTitle: 'Ипотека Ж-К',
+          insuranceCompany: 'Зетта Страхование',
+          insuranceType: 'Ипотека. Жизнь',
+          salesChannel: 'Чернышов, Пампаду',
+          note: 'Без примечания',
+          computedStatus: 'active',
+          paymentsPaid: '2 007.54',
+          paymentsTotal: '2 007.54',
+          startDate: '2026-10-06',
+          endDate: '2099-10-05',
+        }),
+      ],
+    });
+
+    [
+      'Страхователь',
+      'Сделка',
+      'Страховая компания',
+      'Продукт',
+      'Партнёры',
+      'Примечание',
+      'Статус',
+    ].forEach((label) => expect(screen.getByText(label)).toBeInTheDocument());
+    expect(screen.getByText(/Оплачено \/ план/i)).toBeInTheDocument();
+    expect(screen.getByTestId('policy-term-card')).toHaveTextContent('Дней до окончания');
+    expect(screen.getByTestId('policy-term-card')).toHaveTextContent(/дн\./);
+    expect(screen.getByTestId('policy-empty-ledger')).toHaveTextContent('Записей пока нет');
   });
 
   it('renders deal title as plain text when no callbacks provided', () => {
