@@ -184,6 +184,7 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               onClientMerge={dealsActions.onClientMerge}
               onClientFindSimilar={dealsActions.onClientFindSimilar}
               onClientNormalizeName={dealsActions.onClientNormalizeName}
+              onShowClientDeals={dealsActions.onShowClientDeals}
             />
           </Suspense>
         }

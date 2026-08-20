@@ -48,6 +48,7 @@ export interface AppRouteDealsActions {
   onClientMerge: (client: Client) => void;
   onClientFindSimilar: (client: Client) => void;
   onClientNormalizeName: (client: Client, normalizedName: string) => Promise<void>;
+  onShowClientDeals?: (clientId: string) => void;
   selectedDealId: string | null;
   isDealFocusCleared?: boolean;
   dealRowFocusRequest?: DealFocusRequest | null;

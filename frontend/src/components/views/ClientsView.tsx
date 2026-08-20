@@ -31,6 +31,7 @@ interface ClientsViewProps {
   onClientMerge?: (client: Client) => void;
   onClientFindSimilar?: (client: Client) => void;
   onClientNormalizeName?: (client: Client, normalizedName: string) => Promise<void>;
+  onShowClientDeals?: (clientId: string) => void;
   clientDuplicateHints?: Record<string, ClientDuplicateHint>;
   dealsTotalCount?: number;
 }
@@ -43,6 +44,7 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
   onClientMerge,
   onClientFindSimilar,
   onClientNormalizeName,
+  onShowClientDeals,
   clientDuplicateHints = {},
   dealsTotalCount,
 }) => {
@@ -278,7 +280,18 @@ export const ClientsView: React.FC<ClientsViewProps> = ({
                     {formatDateRu(client.createdAt)}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right font-semibold text-slate-900`}>
-                    {clientDealsCount}
+                    {clientDealsCount > 0 && onShowClientDeals ? (
+                      <button
+                        type="button"
+                        className="link-action font-semibold"
+                        onClick={() => onShowClientDeals(client.id)}
+                        aria-label={`Показать все сделки клиента ${client.name}`}
+                      >
+                        {clientDealsCount}
+                      </button>
+                    ) : (
+                      clientDealsCount
+                    )}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     <Button

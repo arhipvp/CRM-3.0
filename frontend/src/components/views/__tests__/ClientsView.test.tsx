@@ -83,6 +83,37 @@ describe('ClientsView', () => {
     expect(screen.getByText('Петр Петров')).toBeInTheDocument();
   });
 
+  it('opens all deals for a client by its id', async () => {
+    const user = userEvent.setup();
+    const onShowClientDeals = vi.fn();
+    const client = buildClient();
+    renderView(
+      <ClientsView
+        clients={[client]}
+        deals={[buildDeal()]}
+        onShowClientDeals={onShowClientDeals}
+      />,
+      [client],
+    );
+
+    await waitFor(() => expect(fetchClientStats).toHaveBeenCalled());
+    await user.click(
+      screen.getByRole('button', { name: `Показать все сделки клиента ${client.name}` }),
+    );
+
+    expect(onShowClientDeals).toHaveBeenCalledWith(client.id);
+  });
+
+  it('does not make a zero deal count clickable', async () => {
+    const client = buildClient({ id: 'client-without-deals' });
+    renderView(<ClientsView clients={[client]} deals={[]} onShowClientDeals={vi.fn()} />, [client]);
+
+    await waitFor(() => expect(fetchClientStats).toHaveBeenCalled());
+    expect(
+      screen.queryByRole('button', { name: `Показать все сделки клиента ${client.name}` }),
+    ).not.toBeInTheDocument();
+  });
+
   it('renders "Объединить похожих" and triggers callback', async () => {
     const user = userEvent.setup();
     const onClientFindSimilar = vi.fn();

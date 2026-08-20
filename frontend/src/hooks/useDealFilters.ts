@@ -5,17 +5,49 @@ import type { FilterParams } from '../api';
 export const useDealFilters = () => {
   const [dealSearchInput, setDealSearchInput] = useState('');
   const [dealSearchApplied, setDealSearchApplied] = useState('');
-  const [dealExecutorFilter, setDealExecutorFilter] = useState('');
-  const [dealShowDeleted, setDealShowDeleted] = useState(false);
-  const [dealShowClosed, setDealShowClosed] = useState(false);
-  const [dealOrdering, setDealOrdering] = useState<string | undefined>(undefined);
+  const [dealExecutorFilter, setDealExecutorFilterState] = useState('');
+  const [dealShowDeleted, setDealShowDeletedState] = useState(false);
+  const [dealShowClosed, setDealShowClosedState] = useState(false);
+  const [dealOrdering, setDealOrderingState] = useState<string | undefined>(undefined);
+  const [dealClientFilter, setDealClientFilter] = useState('');
 
   const applyDealSearch = (nextSearch?: string) => {
     const rawValue = nextSearch ?? dealSearchInput;
+    setDealClientFilter('');
     if (nextSearch !== undefined) {
       setDealSearchInput(rawValue);
     }
     setDealSearchApplied(rawValue.trim());
+  };
+
+  const setDealExecutorFilter = (value: string) => {
+    setDealClientFilter('');
+    setDealExecutorFilterState(value);
+  };
+
+  const setDealShowDeleted = (value: boolean) => {
+    setDealClientFilter('');
+    setDealShowDeletedState(value);
+  };
+
+  const setDealShowClosed = (value: boolean) => {
+    setDealClientFilter('');
+    setDealShowClosedState(value);
+  };
+
+  const setDealOrdering = (value: string | undefined) => {
+    setDealClientFilter('');
+    setDealOrderingState(value);
+  };
+
+  const showClientDeals = (clientId: string) => {
+    setDealSearchInput('');
+    setDealSearchApplied('');
+    setDealExecutorFilterState('');
+    setDealShowDeletedState(false);
+    setDealShowClosedState(true);
+    setDealOrderingState(undefined);
+    setDealClientFilter(clientId);
   };
 
   const filters = useMemo<FilterParams>(() => {
@@ -35,8 +67,18 @@ export const useDealFilters = () => {
     if (dealOrdering) {
       result.ordering = dealOrdering;
     }
+    if (dealClientFilter) {
+      result.client = dealClientFilter;
+    }
     return result;
-  }, [dealSearchApplied, dealExecutorFilter, dealShowDeleted, dealShowClosed, dealOrdering]);
+  }, [
+    dealSearchApplied,
+    dealExecutorFilter,
+    dealShowDeleted,
+    dealShowClosed,
+    dealOrdering,
+    dealClientFilter,
+  ]);
 
   return {
     dealSearchInput,
@@ -50,6 +92,7 @@ export const useDealFilters = () => {
     setDealShowClosed,
     dealOrdering,
     setDealOrdering,
+    showClientDeals,
     filters,
   };
 };

@@ -220,6 +220,7 @@ export const useAppContentController = () => {
     setDealShowClosed,
     dealOrdering,
     setDealOrdering,
+    showClientDeals,
     filters: dealFilters,
   } = useDealFilters();
 
@@ -621,6 +622,15 @@ export const useAppContentController = () => {
     ],
   );
 
+  const handleShowClientDeals = useCallback(
+    (clientId: string) => {
+      dealPreview.resetDealSelection();
+      showClientDeals(clientId);
+      navigate('/deals');
+    },
+    [dealPreview, navigate, showClientDeals],
+  );
+
   const routeDealsActions = useMemo<AppRouteDealsActions>(
     () => ({
       onClientEdit: handleClientEditRequest,
@@ -629,6 +639,7 @@ export const useAppContentController = () => {
       onClientMerge: handleClientMergeRequest,
       onClientFindSimilar: handleClientFindSimilarRequest,
       onClientNormalizeName: handleNormalizeClientName,
+      onShowClientDeals: handleShowClientDeals,
       selectedDealId: effectiveSelectedDealId,
       isDealFocusCleared: dealPreview.isDealFocusCleared,
       dealRowFocusRequest: dealPreview.dealRowFocusRequest,
@@ -692,6 +703,7 @@ export const useAppContentController = () => {
       handleClientFindSimilarRequest,
       handleClientMergeRequest,
       handleNormalizeClientName,
+      handleShowClientDeals,
       handleCloseDeal,
       handleCreateDealMailbox,
       handleCreateTask,
