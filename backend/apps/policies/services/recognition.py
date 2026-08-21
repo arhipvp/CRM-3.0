@@ -13,7 +13,9 @@ from ..ai_service import (
     PolicyRecognitionError,
     extract_text_from_bytes,
     is_extracted_policy_text_poor,
+    is_image_filename,
     is_pdf_filename,
+    is_policy_image_filename,
     is_policy_recognition_result_poor,
     is_policy_text_likely_tabular,
     policy_vision_fallback_enabled,
@@ -92,23 +94,41 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
             )
             continue
 
+        if is_image_filename(file_info["name"]) and not is_policy_image_filename(
+            file_info["name"]
+        ):
+            results.append(
+                {
+                    "fileId": file_id,
+                    "fileName": file_info["name"],
+                    "status": "error",
+                    "message": (
+                        "Неподдерживаемый формат изображения для распознавания "
+                        "полиса. Поддерживаются JPG, JPEG и PNG."
+                    ),
+                }
+            )
+            continue
+
         extracted_text = ""
-        try:
-            extracted_text = extract_text_from_bytes(content, file_info["name"])
-        except PolicyRecognitionError as exc:
-            if not (
-                policy_vision_fallback_enabled() and is_pdf_filename(file_info["name"])
-            ):
-                results.append(
-                    {
-                        "fileId": file_id,
-                        "fileName": file_info["name"],
-                        "status": "error",
-                        "message": str(exc),
-                        "transcript": exc.transcript,
-                    }
-                )
-                continue
+        if not is_policy_image_filename(file_info["name"]):
+            try:
+                extracted_text = extract_text_from_bytes(content, file_info["name"])
+            except PolicyRecognitionError as exc:
+                if not (
+                    policy_vision_fallback_enabled()
+                    and is_pdf_filename(file_info["name"])
+                ):
+                    results.append(
+                        {
+                            "fileId": file_id,
+                            "fileName": file_info["name"],
+                            "status": "error",
+                            "message": str(exc),
+                            "transcript": exc.transcript,
+                        }
+                    )
+                    continue
 
         downloaded_files.append(
             {
@@ -145,13 +165,18 @@ def _append_recognition_results(
         combined_text = downloaded_files[0]["text"]
 
     can_use_vision = policy_vision_fallback_enabled() and any(
-        is_pdf_filename(str(file_data["name"])) for file_data in downloaded_files
+        is_pdf_filename(str(file_data["name"]))
+        or is_policy_image_filename(str(file_data["name"]))
+        for file_data in downloaded_files
     )
     text_is_poor = any(
-        is_pdf_filename(str(file_data["name"]))
-        and (
-            is_extracted_policy_text_poor(str(file_data.get("text") or ""))
-            or is_policy_text_likely_tabular(str(file_data.get("text") or ""))
+        is_policy_image_filename(str(file_data["name"]))
+        or (
+            is_pdf_filename(str(file_data["name"]))
+            and (
+                is_extracted_policy_text_poor(str(file_data.get("text") or ""))
+                or is_policy_text_likely_tabular(str(file_data.get("text") or ""))
+            )
         )
         for file_data in downloaded_files
     )

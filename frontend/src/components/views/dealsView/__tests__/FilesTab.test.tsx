@@ -121,7 +121,7 @@ describe('FilesTab', () => {
     renderWithProviders();
 
     expect(
-      screen.getByRole('button', { name: 'Распознать полис (PDF, DOC, DOCX)' }),
+      screen.getByRole('button', { name: 'Распознать полис (PDF, DOC, DOCX, JPG/JPEG, PNG)' }),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Распознать документы' })).not.toBeInTheDocument();
   });

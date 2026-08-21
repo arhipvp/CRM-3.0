@@ -20,6 +20,7 @@ import pymupdf
 from apps.deals.insurance_type_descriptions import AI_INSURANCE_TYPE_DESCRIPTIONS
 from django.conf import settings
 from docx import Document
+from PIL import Image, ImageOps, UnidentifiedImageError
 from PyPDF2 import PdfReader
 
 logger = logging.getLogger(__name__)
@@ -367,6 +368,30 @@ def is_pdf_filename(filename: str) -> bool:
     return (filename or "").lower().endswith(".pdf")
 
 
+SUPPORTED_POLICY_IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
+IMAGE_EXTENSIONS = SUPPORTED_POLICY_IMAGE_EXTENSIONS | {
+    ".bmp",
+    ".gif",
+    ".heic",
+    ".heif",
+    ".tif",
+    ".tiff",
+    ".webp",
+}
+
+
+def is_policy_image_filename(filename: str) -> bool:
+    """Проверить, поддерживается ли изображение для распознавания полиса."""
+
+    return Path(filename or "").suffix.lower() in SUPPORTED_POLICY_IMAGE_EXTENSIONS
+
+
+def is_image_filename(filename: str) -> bool:
+    """Проверить, является ли файл изображением по расширению."""
+
+    return Path(filename or "").suffix.lower() in IMAGE_EXTENSIONS
+
+
 def is_extracted_policy_text_poor(text: str) -> bool:
     """Оценить, можно ли доверять текстовому слою документа."""
 
@@ -573,6 +598,29 @@ def _render_pdf_pages_for_vision(
     return images
 
 
+def _prepare_image_for_vision(content: bytes, filename: str) -> bytes:
+    """Нормализовать JPG/PNG в PNG и применить EXIF-ориентацию."""
+
+    if not is_policy_image_filename(filename):
+        raise PolicyRecognitionError(
+            "Неподдерживаемый формат изображения для распознавания полиса: "
+            f"{filename}. Поддерживаются JPG, JPEG и PNG."
+        )
+    try:
+        with Image.open(BytesIO(content)) as source:
+            source.load()
+            image = ImageOps.exif_transpose(source)
+            if image.mode not in {"RGB", "RGBA"}:
+                image = image.convert("RGBA" if "transparency" in image.info else "RGB")
+            normalized = BytesIO()
+            image.save(normalized, format="PNG")
+    except (OSError, UnidentifiedImageError, ValueError) as exc:
+        raise PolicyRecognitionError(
+            f"Не удалось подготовить изображение для vision-распознавания: {filename}."
+        ) from exc
+    return normalized.getvalue()
+
+
 def _validate_policy_payload(data: dict) -> None:
     if HAVE_JSONSCHEMA:
         validate(instance=data, schema=POLICY_SCHEMA)
@@ -597,7 +645,7 @@ def _build_vision_messages(
     extra_types: List[CatalogEntry] | None = None,
 ) -> tuple[list[dict], str]:
     max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
-    rendered_pages = 0
+    visual_inputs = 0
     user_content: list[dict] = [{"type": "text", "text": VISION_USER_PROMPT}]
     source_hint_parts: list[str] = []
 
@@ -607,14 +655,21 @@ def _build_vision_messages(
         source_text = str(file_data.get("text") or "")
         if source_text:
             source_hint_parts.append(f"Файл {filename}:\n{source_text}")
-        if not isinstance(content, bytes) or not is_pdf_filename(filename):
+        if not isinstance(content, bytes):
             continue
-        remaining_pages = max_pages - rendered_pages
-        images = _render_pdf_pages_for_vision(
-            content,
-            filename,
-            remaining_pages=remaining_pages,
-        )
+        remaining_pages = max_pages - visual_inputs
+        if remaining_pages <= 0:
+            break
+        if is_pdf_filename(filename):
+            images = _render_pdf_pages_for_vision(
+                content,
+                filename,
+                remaining_pages=remaining_pages,
+            )
+        elif is_policy_image_filename(filename):
+            images = [_prepare_image_for_vision(content, filename)]
+        else:
+            continue
         if not images:
             continue
         user_content.append({"type": "text", "text": f"Файл: {filename}"})
@@ -625,12 +680,14 @@ def _build_vision_messages(
                     "image_url": {"url": _to_data_uri(image_bytes, "image/png")},
                 }
             )
-        rendered_pages += len(images)
-        if rendered_pages >= max_pages:
+        visual_inputs += len(images)
+        if visual_inputs >= max_pages:
             break
 
-    if rendered_pages == 0:
-        raise PolicyRecognitionError("Нет PDF-страниц для vision-распознавания полиса.")
+    if visual_inputs == 0:
+        raise PolicyRecognitionError(
+            "Нет изображений или PDF-страниц для vision-распознавания полиса."
+        )
 
     messages = [
         {
@@ -1331,7 +1388,7 @@ def recognize_policy_from_pdf_images(
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
-    """Распознать полис по PDF-страницам, отрендеренным как изображения."""
+    """Распознать полис по PDF-страницам и изображениям."""
 
     messages, source_text = _build_vision_messages(
         files,
@@ -1355,6 +1412,23 @@ def recognize_policy_from_bytes(
     extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
+
+    if is_image_filename(filename) and not is_policy_image_filename(filename):
+        raise PolicyRecognitionError(
+            "Неподдерживаемый формат изображения для распознавания полиса: "
+            f"{filename}. Поддерживаются JPG, JPEG и PNG."
+        )
+
+    if is_policy_image_filename(filename):
+        if not policy_vision_fallback_enabled():
+            raise PolicyRecognitionError(
+                "Vision-распознавание полисов отключено в настройках."
+            )
+        return recognize_policy_from_pdf_images(
+            [{"name": filename, "content": content, "text": ""}],
+            extra_companies=extra_companies,
+            extra_types=extra_types,
+        )
 
     text = ""
     text_error: PolicyRecognitionError | None = None

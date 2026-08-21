@@ -138,7 +138,9 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
           variant="primary"
           size="sm"
         >
-          {props.isRecognizing ? 'Распознаём...' : 'Распознать полис (PDF, DOC, DOCX)'}
+          {props.isRecognizing
+            ? 'Распознаём...'
+            : 'Распознать полис (PDF, DOC, DOCX, JPG/JPEG, PNG)'}
         </Button>
         <Button
           type="button"

@@ -171,7 +171,7 @@ export function usePoliciesTabController({
           <div>
             <p className="text-sm font-semibold text-slate-900">Файлы полиса</p>
             <p className="text-xs text-slate-500">
-              Загрузим в сделку, распознаем ИИ и откроем черновик полиса.
+              Загрузите PDF, DOC, DOCX, JPG/JPEG или PNG — распознаем ИИ и откроем черновик полиса.
             </p>
           </div>
           {isRecognizingPolicyFiles && (

@@ -184,7 +184,7 @@ describe('useDealDriveFiles', () => {
     });
   });
 
-  it('recognizes selected PDF, DOC and DOCX files and notifies about parsed drafts', async () => {
+  it('recognizes selected documents and JPG/JPEG/PNG images and notifies about parsed drafts', async () => {
     const deal = createDeal();
     const files = [
       {
@@ -213,6 +213,28 @@ describe('useDealDriveFiles', () => {
         id: 'file-3',
         name: 'policy.docx',
         mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+      {
+        id: 'file-4',
+        name: 'policy.jpg',
+        mimeType: 'image/jpeg',
+        size: 1024,
+        createdAt: '2025-01-01T00:00:00Z',
+        modifiedAt: '2025-01-01T00:00:00Z',
+        webViewLink: 'https://drive.google.com/file',
+        isFolder: false,
+        parentId: null,
+      },
+      {
+        id: 'file-5',
+        name: 'policy.png',
+        mimeType: 'image/png',
         size: 1024,
         createdAt: '2025-01-01T00:00:00Z',
         modifiedAt: '2025-01-01T00:00:00Z',
@@ -262,7 +284,7 @@ describe('useDealDriveFiles', () => {
     expect(resultRef.current?.recognitionResults).toEqual([parsedResult]);
   });
 
-  it('uploads policy files, recognizes uploaded ids and opens a policy draft', async () => {
+  it('uploads policy documents and images, recognizes their ids and opens a policy draft', async () => {
     const deal = createDeal();
     const uploadedFiles = [
       {
@@ -278,8 +300,8 @@ describe('useDealDriveFiles', () => {
       },
       {
         id: 'uploaded-2',
-        name: 'policy.docx',
-        mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        name: 'policy.jpeg',
+        mimeType: 'image/jpeg',
         size: 2048,
         createdAt: '2025-01-01T00:00:00Z',
         modifiedAt: '2025-01-01T00:00:00Z',
@@ -305,9 +327,7 @@ describe('useDealDriveFiles', () => {
     await act(async () => {
       await resultRef.current?.handleUploadAndRecognizePolicyFiles([
         new File(['pdf'], 'policy.pdf', { type: 'application/pdf' }),
-        new File(['docx'], 'policy.docx', {
-          type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        }),
+        new File(['jpeg'], 'policy.jpeg'),
       ]);
     });
 
@@ -336,7 +356,9 @@ describe('useDealDriveFiles', () => {
       ]);
     });
 
-    expect(resultRef.current?.recognitionMessage).toBe('Загрузите только файлы PDF, DOC или DOCX.');
+    expect(resultRef.current?.recognitionMessage).toBe(
+      'Загрузите только файлы PDF, DOC, DOCX, JPG/JPEG или PNG.',
+    );
     expect(uploadDealDriveFileMock).not.toHaveBeenCalled();
     expect(recognizeDealPoliciesMock).not.toHaveBeenCalled();
   });
@@ -434,7 +456,9 @@ describe('useDealDriveFiles', () => {
     });
 
     expect(resultRef.current?.canRecognizeSelectedFiles).toBe(false);
-    expect(resultRef.current?.recognitionMessage).toBe('Выберите только файлы PDF, DOC или DOCX.');
+    expect(resultRef.current?.recognitionMessage).toBe(
+      'Выберите только файлы PDF, DOC, DOCX, JPG/JPEG или PNG.',
+    );
     expect(recognizeDealPoliciesMock).not.toHaveBeenCalled();
   });
 

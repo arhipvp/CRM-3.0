@@ -56,9 +56,14 @@ const isRecognizablePolicyFile = (file: Pick<DriveFile, 'mimeType' | 'name'>): b
     mimeType === 'application/pdf' ||
     mimeType === 'application/msword' ||
     mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mimeType === 'image/jpeg' ||
+    mimeType === 'image/png' ||
     normalizedName.endsWith('.pdf') ||
     normalizedName.endsWith('.doc') ||
-    normalizedName.endsWith('.docx')
+    normalizedName.endsWith('.docx') ||
+    normalizedName.endsWith('.jpg') ||
+    normalizedName.endsWith('.jpeg') ||
+    normalizedName.endsWith('.png')
   );
 };
 
@@ -438,7 +443,7 @@ export const useDealDriveFiles = ({
     }
 
     if (!canRecognizeSelectedFiles) {
-      setRecognitionMessage('Выберите только файлы PDF, DOC или DOCX.');
+      setRecognitionMessage('Выберите только файлы PDF, DOC, DOCX, JPG/JPEG или PNG.');
       return;
     }
 
@@ -483,7 +488,7 @@ export const useDealDriveFiles = ({
       }
 
       if (!files.every(isRecognizableUploadFile)) {
-        setRecognitionMessage('Загрузите только файлы PDF, DOC или DOCX.');
+        setRecognitionMessage('Загрузите только файлы PDF, DOC, DOCX, JPG/JPEG или PNG.');
         return;
       }
 

@@ -7,6 +7,8 @@ from unittest.mock import Mock, patch
 import pymupdf
 from apps.policies.ai_service import (
     PolicyRecognitionError,
+    _build_vision_messages,
+    _prepare_image_for_vision,
     _render_pdf_pages_for_vision,
     extract_text_from_bytes,
     is_extracted_policy_text_poor,
@@ -14,6 +16,7 @@ from apps.policies.ai_service import (
 )
 from django.test import SimpleTestCase, override_settings
 from docx import Document
+from PIL import Image
 
 
 class ExtractPolicyTextFromBytesTests(SimpleTestCase):
@@ -73,6 +76,19 @@ class ExtractPolicyTextFromBytesTests(SimpleTestCase):
 
 
 class PolicyVisionFallbackTests(SimpleTestCase):
+    def _image_bytes(
+        self, image_format: str = "PNG", *, orientation: int | None = None
+    ):
+        image = Image.new("RGB", (20, 10), "white")
+        buffer = BytesIO()
+        save_args = {}
+        if orientation is not None:
+            exif = Image.Exif()
+            exif[274] = orientation
+            save_args["exif"] = exif
+        image.save(buffer, format=image_format, **save_args)
+        return buffer.getvalue()
+
     def test_pdf_with_garbled_text_is_poor_text_candidate(self):
         text = "\x04\x05 \x06\x07 abc def ghijk " * 20
 
@@ -208,3 +224,48 @@ class PolicyVisionFallbackTests(SimpleTestCase):
 
         self.assertEqual(len(images), 1)
         self.assertTrue(images[0].startswith(b"\x89PNG"))
+
+    def test_jpeg_is_normalized_and_exif_orientation_is_applied(self):
+        normalized = _prepare_image_for_vision(
+            self._image_bytes("JPEG", orientation=6), "policy.jpg"
+        )
+
+        with Image.open(BytesIO(normalized)) as image:
+            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.size, (10, 20))
+
+    def test_png_is_normalized_for_vision(self):
+        normalized = _prepare_image_for_vision(self._image_bytes(), "policy.png")
+
+        with Image.open(BytesIO(normalized)) as image:
+            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.size, (20, 10))
+
+    def test_broken_image_raises_clear_error(self):
+        with self.assertRaises(PolicyRecognitionError) as exc_info:
+            _prepare_image_for_vision(b"not-an-image", "broken.png")
+
+        self.assertIn("Не удалось подготовить изображение", str(exc_info.exception))
+
+    def test_unsupported_image_format_raises_clear_error(self):
+        with self.assertRaises(PolicyRecognitionError) as exc_info:
+            _prepare_image_for_vision(b"image", "policy.webp")
+
+        self.assertIn("Неподдерживаемый формат", str(exc_info.exception))
+
+    @override_settings(POLICY_RECOGNITION_MAX_VISION_PAGES=1)
+    def test_pdf_and_images_share_visual_input_limit(self):
+        document = pymupdf.open()
+        document.new_page().insert_text((72, 72), "Page 1")
+        pdf_content = document.tobytes()
+        document.close()
+
+        messages, _ = _build_vision_messages(
+            [
+                {"name": "first.png", "content": self._image_bytes()},
+                {"name": "second.pdf", "content": pdf_content},
+            ]
+        )
+
+        user_content = messages[1]["content"]
+        self.assertEqual(sum(item["type"] == "image_url" for item in user_content), 1)

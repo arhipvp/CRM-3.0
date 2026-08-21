@@ -118,6 +118,93 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
             extra_types=[],
         )
 
+    def test_recognize_jpg_uses_vision_without_text_extraction(self):
+        file_map = {
+            "image-file": {
+                "id": "image-file",
+                "name": "policy.jpg",
+                "mime_type": "image/jpeg",
+                "is_folder": False,
+                "parent_id": None,
+            }
+        }
+        expected = {"policyNumber": "JPG-123"}
+
+        with (
+            patch(
+                "apps.policies.services.recognition.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.policies.services.recognition.download_drive_file",
+                return_value=b"jpeg-bytes",
+            ),
+            patch(
+                "apps.policies.services.recognition.extract_text_from_bytes"
+            ) as extract_mock,
+            patch(
+                "apps.policies.services.recognition.recognize_policy_from_pdf_images",
+                return_value=(expected, "vision transcript"),
+            ) as vision_mock,
+        ):
+            response = self.api_client.post(
+                "/api/v1/policies/recognize/",
+                {"deal_id": str(self.deal.id), "file_ids": ["image-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"][0]["status"], "parsed")
+        self.assertEqual(response.data["results"][0]["data"], expected)
+        self.assertIn("Vision", response.data["results"][0]["message"])
+        extract_mock.assert_not_called()
+        vision_mock.assert_called_once_with(
+            [
+                {
+                    "id": "image-file",
+                    "name": "policy.jpg",
+                    "text": "",
+                    "content": b"jpeg-bytes",
+                }
+            ],
+            extra_companies=[],
+            extra_types=[],
+        )
+
+    def test_recognize_unsupported_image_returns_clear_error(self):
+        file_map = {
+            "image-file": {
+                "id": "image-file",
+                "name": "policy.webp",
+                "mime_type": "image/webp",
+                "is_folder": False,
+                "parent_id": None,
+            }
+        }
+
+        with (
+            patch(
+                "apps.policies.services.recognition.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.policies.services.recognition.download_drive_file",
+                return_value=b"webp-bytes",
+            ),
+        ):
+            response = self.api_client.post(
+                "/api/v1/policies/recognize/",
+                {"deal_id": str(self.deal.id), "file_ids": ["image-file"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"][0]["status"], "error")
+        self.assertIn(
+            "Неподдерживаемый формат изображения",
+            response.data["results"][0]["message"],
+        )
+
     def test_recognize_keeps_processing_when_doc_extraction_fails(self):
         file_map = {
             "bad-doc": {
