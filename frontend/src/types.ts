@@ -178,7 +178,6 @@ export interface PolicyRecognitionResult {
   fileName?: string | null;
   status: 'parsed' | 'error' | 'exists';
   message?: string;
-  transcript?: string | null;
   data?: Record<string, unknown>;
 }
 

@@ -1,6 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createPolicyDraft, movePolicy, updatePolicyDraft } from '../policies';
+import {
+  createPolicyDraft,
+  movePolicy,
+  recognizeDealPolicies,
+  updatePolicyDraft,
+} from '../policies';
 
 const DEAL_ID = '16c3bcb8-4118-433b-81aa-5a6385538ece';
 const COMPANY_ID = 'd2be7261-c17e-441c-9214-054060e288cf';
@@ -291,6 +296,53 @@ describe('createPolicyDraft', () => {
       expect(fetchMock).not.toHaveBeenCalled();
     },
   );
+});
+
+describe('recognizeDealPolicies', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    window.localStorage.clear();
+  });
+
+  it('maps successful results without transcript and ignores legacy raw transcript fields', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          results: [
+            {
+              file_id: 'file-1',
+              file_name: 'policy.jpg',
+              status: 'parsed',
+              transcript: 'data:image/jpeg;base64,secret-image-data',
+              data: { number: 'POL-1' },
+            },
+          ],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await recognizeDealPolicies(DEAL_ID, ['file-1']);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/policies/recognize/',
+      expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ deal_id: DEAL_ID, file_ids: ['file-1'] }),
+      }),
+    );
+    expect(result.results).toEqual([
+      {
+        fileId: 'file-1',
+        fileName: 'policy.jpg',
+        status: 'parsed',
+        message: undefined,
+        data: { number: 'POL-1' },
+      },
+    ]);
+    expect(result.results[0]).not.toHaveProperty('transcript');
+  });
 });
 
 describe('updatePolicyDraft', () => {

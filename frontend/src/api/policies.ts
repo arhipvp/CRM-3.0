@@ -318,7 +318,6 @@ export async function recognizeDealPolicies(
         fileName: toNullableString(item.fileName ?? item.file_name),
         status: statusValue === 'parsed' ? 'parsed' : statusValue === 'exists' ? 'exists' : 'error',
         message: toOptionalString(item.message),
-        transcript: toNullableString(item.transcript ?? item.transcript_text),
         data:
           typeof item.data === 'object' && item.data !== null
             ? (item.data as Record<string, unknown>)

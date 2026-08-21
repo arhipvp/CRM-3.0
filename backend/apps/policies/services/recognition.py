@@ -125,7 +125,6 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
                             "fileName": file_info["name"],
                             "status": "error",
                             "message": str(exc),
-                            "transcript": exc.transcript,
                         }
                     )
                     continue
@@ -185,21 +184,21 @@ def _append_recognition_results(
     try:
         if text_is_poor and can_use_vision:
             attempted_vision = True
-            data, transcript = recognize_policy_from_pdf_images(
+            data, _ = recognize_policy_from_pdf_images(
                 downloaded_files,
                 extra_companies=company_names,
                 extra_types=type_names,
             )
             used_vision = True
         else:
-            data, transcript = recognize_policy_from_text(
+            data, _ = recognize_policy_from_text(
                 str(combined_text),
                 extra_companies=company_names,
                 extra_types=type_names,
             )
             if is_policy_recognition_result_poor(data) and can_use_vision:
                 attempted_vision = True
-                data, transcript = recognize_policy_from_pdf_images(
+                data, _ = recognize_policy_from_pdf_images(
                     downloaded_files,
                     extra_companies=company_names,
                     extra_types=type_names,
@@ -209,7 +208,7 @@ def _append_recognition_results(
         if can_use_vision and not attempted_vision:
             try:
                 attempted_vision = True
-                data, transcript = recognize_policy_from_pdf_images(
+                data, _ = recognize_policy_from_pdf_images(
                     downloaded_files,
                     extra_companies=company_names,
                     extra_types=type_names,
@@ -220,7 +219,6 @@ def _append_recognition_results(
                     results,
                     downloaded_files,
                     message=f"{exc}; vision fallback: {vision_exc}",
-                    transcript=f"{exc.transcript}\n\n{vision_exc.transcript}".strip(),
                 )
                 return
         else:
@@ -228,7 +226,6 @@ def _append_recognition_results(
                 results,
                 downloaded_files,
                 message=str(exc),
-                transcript=exc.transcript,
             )
             return
 
@@ -254,7 +251,6 @@ def _append_recognition_results(
             "message": message,
         }
         if is_primary:
-            payload["transcript"] = transcript
             payload["data"] = data
         results.append(payload)
 
@@ -264,7 +260,6 @@ def _append_recognition_error_results(
     downloaded_files: list[dict[str, object]],
     *,
     message: str,
-    transcript: str,
 ) -> None:
     for file_data in downloaded_files:
         results.append(
@@ -273,6 +268,5 @@ def _append_recognition_error_results(
                 "fileName": file_data["name"],
                 "status": "error",
                 "message": message,
-                "transcript": transcript,
             }
         )

@@ -86,14 +86,6 @@ export function RecognitionResults({ results }: { results: PolicyRecognitionResu
           >
             {formatRecognitionSummary(result)}
           </p>
-          {result.transcript && (
-            <details className="text-[10px] text-slate-400">
-              <summary>Показать транскрипт</summary>
-              <pre className="whitespace-pre-wrap text-[11px] leading-snug">
-                {result.transcript}
-              </pre>
-            </details>
-          )}
         </div>
       ))}
     </div>

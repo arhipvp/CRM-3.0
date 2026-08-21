@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import time
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from io import BytesIO
@@ -212,20 +213,33 @@ def _format_catalog_entries(
 
 
 def _log_conversation(label: str, messages: List[dict]) -> str:
-    """Залогировать диалог и вернуть транскрипт."""
+    """Записать безопасные метаданные диалога без его содержимого."""
 
-    transcript = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
-    logger.info("Диалог с OpenRouter для %s:\n%s", label, transcript)
-    return transcript
+    visual_inputs = sum(
+        1
+        for message in messages
+        if isinstance(message.get("content"), list)
+        for item in message["content"]
+        if isinstance(item, dict) and item.get("type") == "image_url"
+    )
+    logger.info(
+        "OpenRouter policy recognition completed: label=%s messages=%s visual_inputs=%s",
+        label,
+        len(messages),
+        visual_inputs,
+    )
+    return ""
 
 
-def _resolve_ai_client_config() -> Tuple[str, str, str]:
+def _resolve_ai_client_config(*, policy_model: bool = True) -> Tuple[str, str, str]:
     """Вернуть настройки доступа к OpenRouter."""
 
     api_key = getattr(settings, "OPENROUTER_API_KEY", "")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY не задан")
     model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-4o-mini"
+    if policy_model:
+        model = getattr(settings, "POLICY_RECOGNITION_MODEL", "") or model
     base_url = (
         getattr(settings, "OPENROUTER_BASE_URL", "") or OPENROUTER_DEFAULT_BASE_URL
     )
@@ -599,7 +613,7 @@ def _render_pdf_pages_for_vision(
 
 
 def _prepare_image_for_vision(content: bytes, filename: str) -> bytes:
-    """Нормализовать JPG/PNG в PNG и применить EXIF-ориентацию."""
+    """Нормализовать изображение, применить EXIF-поворот и ограничить размер."""
 
     if not is_policy_image_filename(filename):
         raise PolicyRecognitionError(
@@ -610,15 +624,35 @@ def _prepare_image_for_vision(content: bytes, filename: str) -> bytes:
         with Image.open(BytesIO(content)) as source:
             source.load()
             image = ImageOps.exif_transpose(source)
-            if image.mode not in {"RGB", "RGBA"}:
-                image = image.convert("RGBA" if "transparency" in image.info else "RGB")
+            max_dimension = int(
+                getattr(settings, "POLICY_RECOGNITION_MAX_IMAGE_DIMENSION", 2048)
+            )
+            if max_dimension > 0:
+                image.thumbnail(
+                    (max_dimension, max_dimension), Image.Resampling.LANCZOS
+                )
             normalized = BytesIO()
-            image.save(normalized, format="PNG")
+            has_alpha = "A" in image.getbands() or "transparency" in image.info
+            if has_alpha:
+                image.convert("RGBA").save(normalized, format="PNG", optimize=True)
+            else:
+                image.convert("RGB").save(
+                    normalized,
+                    format="JPEG",
+                    quality=90,
+                    optimize=True,
+                )
     except (OSError, UnidentifiedImageError, ValueError) as exc:
         raise PolicyRecognitionError(
             f"Не удалось подготовить изображение для vision-распознавания: {filename}."
         ) from exc
     return normalized.getvalue()
+
+
+def _image_mime_type(image_bytes: bytes) -> str:
+    """Вернуть MIME-тип нормализованного visual-входа."""
+
+    return "image/png" if image_bytes.startswith(b"\x89PNG") else "image/jpeg"
 
 
 def _validate_policy_payload(data: dict) -> None:
@@ -677,7 +711,9 @@ def _build_vision_messages(
             user_content.append(
                 {
                     "type": "image_url",
-                    "image_url": {"url": _to_data_uri(image_bytes, "image/png")},
+                    "image_url": {
+                        "url": _to_data_uri(image_bytes, _image_mime_type(image_bytes))
+                    },
                 }
             )
         visual_inputs += len(images)
@@ -1189,13 +1225,69 @@ def _build_verification_message(
     )
 
 
-def _chat(
+def _verification_visual_content(messages: List[dict]) -> list[dict]:
+    """Вернуть visual-вложения исходного запроса для самопроверки."""
+
+    for message in messages:
+        content = message.get("content")
+        if message.get("role") != "user" or not isinstance(content, list):
+            continue
+        return [
+            item
+            for item in content
+            if isinstance(item, dict) and item.get("type") in {"image_url"}
+        ]
+    return []
+
+
+def _progress_content(content: object) -> str:
+    """Не передавать base64-вложения в прогресс и логи."""
+
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(
+            str(item.get("text") or "")
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "text"
+        )
+    return ""
+
+
+def _vision_input_dimensions(messages: List[dict]) -> list[str]:
+    """Вернуть размеры visual-вложений, не раскрывая их содержимое в логах."""
+
+    dimensions: list[str] = []
+    for message in messages:
+        content = message.get("content")
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            url = (
+                item.get("image_url", {}).get("url")
+                if isinstance(item, dict) and item.get("type") == "image_url"
+                else ""
+            )
+            if not isinstance(url, str) or "," not in url:
+                continue
+            try:
+                image_data = base64.b64decode(url.split(",", 1)[1])
+                with Image.open(BytesIO(image_data)) as image:
+                    dimensions.append(f"{image.width}x{image.height}")
+            except (OSError, ValueError):
+                dimensions.append("unknown")
+    return dimensions
+
+
+def _chat_request(
     messages: List[dict],
     *,
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
+    policy_model: bool = True,
 ) -> str:
-    api_key, base_url, model = _resolve_ai_client_config()
+    api_key, base_url, model = _resolve_ai_client_config(policy_model=policy_model)
+    started_at = time.monotonic()
     client_kwargs: dict[str, str] = {"api_key": api_key, "base_url": base_url}
     client = openai.OpenAI(**client_kwargs)
     logger.debug(
@@ -1244,7 +1336,21 @@ def _chat(
             close_method = getattr(stream, "close", None)
             if callable(close_method):
                 close_method()
-        return "".join(parts) or "".join(content_parts)
+        result = "".join(parts) or "".join(content_parts)
+        logger.info(
+            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
+            model,
+            sum(
+                1
+                for message in messages
+                if isinstance(message.get("content"), list)
+                for item in message["content"]
+                if isinstance(item, dict) and item.get("type") == "image_url"
+            ),
+            _vision_input_dimensions(messages),
+            round((time.monotonic() - started_at) * 1000),
+        )
+        return result
 
     resp = client.chat.completions.create(
         model=model,
@@ -1256,11 +1362,64 @@ def _chat(
     message = resp.choices[0].message
     tool_calls = getattr(message, "tool_calls", None)
     if tool_calls and tool_calls[0].function and tool_calls[0].function.arguments:
-        return tool_calls[0].function.arguments
-    content = getattr(message, "content", None) or ""
-    if content:
-        return content
+        result = tool_calls[0].function.arguments
+    else:
+        result = getattr(message, "content", None) or ""
+    if result:
+        logger.info(
+            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
+            model,
+            sum(
+                1
+                for message in messages
+                if isinstance(message.get("content"), list)
+                for item in message["content"]
+                if isinstance(item, dict) and item.get("type") == "image_url"
+            ),
+            _vision_input_dimensions(messages),
+            round((time.monotonic() - started_at) * 1000),
+        )
+        return result
     raise RuntimeError("OpenRouter вернул пустой ответ")
+
+
+def _chat(
+    messages: List[dict],
+    *,
+    progress_cb: Callable[[str, str], None] | None = None,
+    cancel_cb: Callable[[], bool] | None = None,
+    policy_model: bool = True,
+) -> str:
+    """Выполнить запрос к AI и записать безопасный результат ошибки."""
+
+    started_at = time.monotonic()
+    try:
+        return _chat_request(
+            messages,
+            progress_cb=progress_cb,
+            cancel_cb=cancel_cb,
+            policy_model=policy_model,
+        )
+    except Exception as exc:
+        model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-4o-mini"
+        if policy_model:
+            model = getattr(settings, "POLICY_RECOGNITION_MODEL", "") or model
+        visual_inputs = sum(
+            1
+            for message in messages
+            if isinstance(message.get("content"), list)
+            for item in message["content"]
+            if isinstance(item, dict) and item.get("type") == "image_url"
+        )
+        logger.warning(
+            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=error reason=%s",
+            model,
+            visual_inputs,
+            _vision_input_dimensions(messages),
+            round((time.monotonic() - started_at) * 1000),
+            type(exc).__name__,
+        )
+        raise
 
 
 def recognize_policy_interactive(
@@ -1271,6 +1430,7 @@ def recognize_policy_interactive(
     extra_types: List[CatalogEntry] | None = None,
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
+    use_policy_model: bool = True,
 ) -> Tuple[dict, str, List[dict]]:
     """Распознать полис и вернуть JSON, транскрипт и сообщения."""
 
@@ -1295,11 +1455,18 @@ def recognize_policy_interactive(
     if progress_cb:
         for message in messages:
             _check_cancel()
-            progress_cb(message["role"], message["content"])
+            content = _progress_content(message["content"])
+            if content:
+                progress_cb(message["role"], content)
 
     for attempt in range(MAX_ATTEMPTS):
         _check_cancel()
-        answer = _chat(messages, progress_cb=progress_cb, cancel_cb=cancel_cb)
+        answer = _chat(
+            messages,
+            progress_cb=progress_cb,
+            cancel_cb=cancel_cb,
+            policy_model=use_policy_model,
+        )
         messages.append({"role": "assistant", "content": answer})
         try:
             draft_data = _parse_policy_answer(answer, validate_payload=False)
@@ -1325,7 +1492,17 @@ def recognize_policy_interactive(
                     mode="verify",
                 ),
             },
-            {"role": "user", "content": verify_message},
+            {
+                "role": "user",
+                "content": (
+                    [
+                        {"type": "text", "text": verify_message},
+                        *_verification_visual_content(messages),
+                    ]
+                    if _verification_visual_content(messages)
+                    else verify_message
+                ),
+            },
         ]
         if progress_cb:
             progress_cb("user", verify_message)
@@ -1334,6 +1511,7 @@ def recognize_policy_interactive(
             verify_messages,
             progress_cb=progress_cb,
             cancel_cb=cancel_cb,
+            policy_model=use_policy_model,
         )
         messages.extend(verify_messages)
         messages.append({"role": "assistant", "content": verify_answer})
@@ -1373,11 +1551,15 @@ def recognize_policy_from_text(
     *,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    use_policy_model: bool = True,
 ) -> Tuple[dict, str]:
     """Распознать полис по тексту."""
 
     data, transcript, _ = recognize_policy_interactive(
-        text, extra_companies=extra_companies, extra_types=extra_types
+        text,
+        extra_companies=extra_companies,
+        extra_types=extra_types,
+        use_policy_model=use_policy_model,
     )
     return data, transcript
 

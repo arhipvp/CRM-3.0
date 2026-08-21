@@ -173,7 +173,9 @@ def recognize_osago_calculation(
 
     if source_text:
         try:
-            text_payload, _ = recognize_policy_from_text(source_text)
+            text_payload, _ = recognize_policy_from_text(
+                source_text, use_policy_model=False
+            )
             _add_text_candidates(candidates, text_payload, 0.8)
         except PolicyRecognitionError as exc:
             warnings.append(f"Текстовый источник: {exc}")

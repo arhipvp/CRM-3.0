@@ -1,13 +1,16 @@
 # -*- coding: utf-8 -*-
 
 import json
+from io import BytesIO
 from unittest.mock import patch
 
 from apps.policies.ai_service import (
     _build_prompt,
+    recognize_policy_from_pdf_images,
     recognize_policy_interactive,
 )
 from django.test import SimpleTestCase
+from PIL import Image
 
 
 class RecognizePolicyAiVerificationTests(SimpleTestCase):
@@ -65,7 +68,7 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         verification_message = messages[-2]["content"]
         self.assertIn("Формальные замечания CRM", verification_message)
         self.assertIn("vehicle_vin", verification_message)
-        self.assertIn("САМОПРОВЕРКИ", transcript)
+        self.assertEqual(transcript, "")
 
     @patch("apps.policies.ai_service._chat")
     def test_dgo_type_comes_from_ai_using_catalog_descriptions(self, chat_mock) -> None:
@@ -95,6 +98,36 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         self.assertEqual(data["policy"]["insurance_type"], "ДГО/ДСАГО")
         first_call_messages = chat_mock.call_args_list[0].args[0]
         self.assertIn("ДГО/ДСАГО: добровольная", first_call_messages[0]["content"])
+
+    @patch("apps.policies.ai_service._chat")
+    def test_verification_pass_receives_same_images_as_extraction(
+        self, chat_mock
+    ) -> None:
+        chat_mock.side_effect = [
+            self._build_answer("WP0ZZZYAZSL060921"),
+            self._build_answer("WP0ZZZYAZSL060921"),
+        ]
+        image = Image.new("RGB", (20, 10), "white")
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+
+        recognize_policy_from_pdf_images(
+            [{"name": "policy.jpg", "content": buffer.getvalue(), "text": ""}]
+        )
+
+        extraction_messages = chat_mock.call_args_list[0].args[0]
+        verification_messages = chat_mock.call_args_list[1].args[0]
+        extraction_images = [
+            item
+            for item in extraction_messages[1]["content"]
+            if item["type"] == "image_url"
+        ]
+        verification_images = [
+            item
+            for item in verification_messages[1]["content"]
+            if item["type"] == "image_url"
+        ]
+        self.assertEqual(verification_images, extraction_images)
 
     def test_prompt_adds_default_descriptions_for_known_type_names(self) -> None:
         prompt = _build_prompt(extra_types=["ОСАГО", "ДГО/ДСАГО"])

@@ -67,6 +67,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"][0]["status"], "parsed")
         self.assertEqual(response.data["results"][0]["data"]["policyNumber"], "123")
+        self.assertNotIn("transcript", response.data["results"][0])
         tree_mock.assert_called_once_with("deal-folder")
         extract_mock.assert_called_once_with(b"policy-bytes", "policy.pdf")
         recognize_mock.assert_called_once()
@@ -156,6 +157,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"][0]["status"], "parsed")
         self.assertEqual(response.data["results"][0]["data"], expected)
+        self.assertNotIn("transcript", response.data["results"][0])
         self.assertIn("Vision", response.data["results"][0]["message"])
         extract_mock.assert_not_called()
         vision_mock.assert_called_once_with(
@@ -204,6 +206,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
             "Неподдерживаемый формат изображения",
             response.data["results"][0]["message"],
         )
+        self.assertNotIn("transcript", response.data["results"][0])
 
     def test_recognize_keeps_processing_when_doc_extraction_fails(self):
         file_map = {

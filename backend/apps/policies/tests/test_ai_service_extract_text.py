@@ -10,6 +10,7 @@ from apps.policies.ai_service import (
     _build_vision_messages,
     _prepare_image_for_vision,
     _render_pdf_pages_for_vision,
+    _resolve_ai_client_config,
     extract_text_from_bytes,
     is_extracted_policy_text_poor,
     recognize_policy_from_bytes,
@@ -225,21 +226,62 @@ class PolicyVisionFallbackTests(SimpleTestCase):
         self.assertEqual(len(images), 1)
         self.assertTrue(images[0].startswith(b"\x89PNG"))
 
+    @override_settings(POLICY_RECOGNITION_MAX_IMAGE_DIMENSION=2048)
     def test_jpeg_is_normalized_and_exif_orientation_is_applied(self):
         normalized = _prepare_image_for_vision(
             self._image_bytes("JPEG", orientation=6), "policy.jpg"
         )
 
         with Image.open(BytesIO(normalized)) as image:
-            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.format, "JPEG")
             self.assertEqual(image.size, (10, 20))
 
     def test_png_is_normalized_for_vision(self):
         normalized = _prepare_image_for_vision(self._image_bytes(), "policy.png")
 
         with Image.open(BytesIO(normalized)) as image:
-            self.assertEqual(image.format, "PNG")
+            self.assertEqual(image.format, "JPEG")
             self.assertEqual(image.size, (20, 10))
+
+    @override_settings(POLICY_RECOGNITION_MAX_IMAGE_DIMENSION=100)
+    def test_image_is_resized_to_configured_max_dimension(self):
+        image = Image.new("RGB", (400, 200), "white")
+        source = BytesIO()
+        image.save(source, format="JPEG")
+
+        normalized = _prepare_image_for_vision(source.getvalue(), "policy.jpg")
+
+        with Image.open(BytesIO(normalized)) as prepared:
+            self.assertEqual(prepared.size, (100, 50))
+
+    def test_image_with_alpha_stays_png(self):
+        image = Image.new("RGBA", (20, 10), (255, 255, 255, 0))
+        source = BytesIO()
+        image.save(source, format="PNG")
+
+        normalized = _prepare_image_for_vision(source.getvalue(), "policy.png")
+
+        self.assertTrue(normalized.startswith(b"\x89PNG"))
+
+    @override_settings(
+        POLICY_RECOGNITION_MODEL="google/gemini-2.5-pro",
+        OPENROUTER_MODEL="gpt-4o-mini",
+        OPENROUTER_API_KEY="test-key",
+    )
+    def test_policy_model_has_priority_over_common_model(self):
+        _, _, model = _resolve_ai_client_config()
+
+        self.assertEqual(model, "google/gemini-2.5-pro")
+
+    @override_settings(
+        POLICY_RECOGNITION_MODEL="",
+        OPENROUTER_MODEL="gpt-4o-mini",
+        OPENROUTER_API_KEY="test-key",
+    )
+    def test_policy_model_falls_back_to_common_model(self):
+        _, _, model = _resolve_ai_client_config()
+
+        self.assertEqual(model, "gpt-4o-mini")
 
     def test_broken_image_raises_clear_error(self):
         with self.assertRaises(PolicyRecognitionError) as exc_info:
