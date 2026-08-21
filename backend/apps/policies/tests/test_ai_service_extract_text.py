@@ -266,7 +266,7 @@ class PolicyVisionFallbackTests(SimpleTestCase):
     @override_settings(
         POLICY_RECOGNITION_MODEL="google/gemini-2.5-pro",
         OPENROUTER_MODEL="gpt-4o-mini",
-        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_KEY="test-key",  # pragma: allowlist secret
     )
     def test_policy_model_has_priority_over_common_model(self):
         _, _, model = _resolve_ai_client_config()
