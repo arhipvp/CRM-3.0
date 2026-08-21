@@ -221,6 +221,7 @@ export const useAppContentController = () => {
     dealOrdering,
     setDealOrdering,
     showClientDeals,
+    resetDealFilters,
     filters: dealFilters,
   } = useDealFilters();
 
@@ -266,7 +267,6 @@ export const useAppContentController = () => {
     loadDealPolicies,
     handleRefreshSelectedDealPolicies,
     handleRefreshPreviewDealPolicies,
-    registerProtectedCreatedDeal,
     dealAccessMessage,
     clearDealAccessMessage,
     isSelectedDealTasksLoading,
@@ -559,7 +559,7 @@ export const useAppContentController = () => {
     clearSelectedDealFocus: dealPreview.clearSelectedDealFocus,
     resetDealSelection: dealPreview.resetDealSelection,
     requestDealRowFocus: dealPreview.requestDealRowFocus,
-    registerProtectedCreatedDeal,
+    resetDealFilters,
     invalidateDealQuotesCache,
     invalidateDealTasksCache,
     cacheDealQuotes,

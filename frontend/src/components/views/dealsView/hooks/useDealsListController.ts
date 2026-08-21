@@ -134,6 +134,7 @@ export function useDealsListController({
       return;
     lastHandledFocusNonceRef.current = dealRowFocusRequest.nonce;
     if (selectedRowRef.current?.isConnected) {
+      selectedRowRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
       selectedRowRef.current.focus({ preventScroll: true });
     }
   }, [dealRowFocusRequest, selectedDealId]);

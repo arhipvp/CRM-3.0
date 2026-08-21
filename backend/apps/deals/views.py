@@ -424,57 +424,34 @@ class DealViewSet(
         event.refresh_from_db()
         return Response(DealEventSerializer(stored_event_payload(event)).data)
 
-    def _pinned_ids(self, user):
-        if not user or not user.is_authenticated:
-            return []
-        return list(DealPin.objects.filter(user=user).values_list("deal_id", flat=True))
+    def _pinned_queryset(self, queryset, user):
+        """Return pinned deals from the already filtered list queryset.
 
-    def _pinned_queryset(self, user, pinned_ids):
-        if not pinned_ids:
+        The relation is unique per user/deal, so ordering by the pin timestamp
+        keeps the first pinned deal at the top without duplicating rows.
+        """
+        if not user or not user.is_authenticated:
             return Deal.objects.none()
-        embeds = self._requested_deal_embeds()
-        queryset = self._base_queryset(
-            include_deleted=True,
-            user=user,
-            embeds=embeds,
-            metrics=self._requested_deal_metrics(),
-        ).filter(id__in=pinned_ids)
-        ordering_param = self.request.query_params.get("ordering")
-        if ordering_param:
-            ordering = [
-                item.strip() for item in ordering_param.split(",") if item.strip()
-            ]
-            if ordering:
-                queryset = queryset.order_by(*ordering)
-        return queryset
+        return queryset.filter(pins__user=user).order_by("pins__created_at", "pins__id")
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
-        pinned_ids = self._pinned_ids(request.user)
-        search_term = str(request.query_params.get("search") or "").strip()
-        matching_pinned_queryset = (
-            queryset.filter(id__in=pinned_ids) if search_term and pinned_ids else None
-        )
-        pinned_count = (
-            matching_pinned_queryset.count()
-            if matching_pinned_queryset is not None
-            else len(pinned_ids)
-        )
-        if pinned_ids:
-            queryset = queryset.exclude(id__in=pinned_ids)
+        if request.user.is_authenticated:
+            pinned_queryset = self._pinned_queryset(queryset, request.user)
+            regular_queryset = queryset.exclude(pins__user=request.user)
+        else:
+            pinned_queryset = Deal.objects.none()
+            regular_queryset = queryset
+        pinned_count = pinned_queryset.count()
 
-        page = self.paginate_queryset(queryset)
+        page = self.paginate_queryset(regular_queryset)
         if page is not None:
-            pinned_queryset = (
-                (
-                    matching_pinned_queryset
-                    if matching_pinned_queryset is not None
-                    else self._pinned_queryset(request.user, pinned_ids)
-                )
+            first_page_pins = (
+                pinned_queryset
                 if str(request.query_params.get("page") or "1") in {"1", ""}
                 else Deal.objects.none()
             )
-            pinned_data = self.get_serializer(pinned_queryset, many=True).data
+            pinned_data = self.get_serializer(first_page_pins, many=True).data
             page_data = self.get_serializer(page, many=True).data
             paginator = self.paginator
             page_obj = getattr(paginator, "page", None)
@@ -490,8 +467,9 @@ class DealViewSet(
                 }
             )
 
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        pinned_data = self.get_serializer(pinned_queryset, many=True).data
+        regular_data = self.get_serializer(regular_queryset, many=True).data
+        return Response(pinned_data + regular_data)
 
     @action(detail=True, methods=["post"], url_path="pin")
     def pin(self, request, pk=None):

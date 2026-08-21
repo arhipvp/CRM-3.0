@@ -67,9 +67,7 @@ export const useDealDetailsData = ({
     return map;
   }, [deals]);
 
-  const protectedCreatedDealRef = useRef<Deal | null>(null);
   const preservedDeepLinkedDealRef = useRef<Deal | null>(null);
-  const skipNextMissingSelectedDealClearRef = useRef<string | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
   const deepLinkedDealIdRef = useRef<string | null>(deepLinkedDealId);
@@ -415,48 +413,12 @@ export const useDealDetailsData = ({
         return dealsData;
       }
       if (dealsData.some((deal) => deal.id === currentSelectedDealId)) {
-        if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
-          skipNextMissingSelectedDealClearRef.current = null;
-        }
-        if (protectedCreatedDealRef.current?.id === currentSelectedDealId) {
-          protectedCreatedDealRef.current = null;
-        }
-        return dealsData;
-      }
-      if (filters?.search?.trim()) {
-        clearSelectedDealFocus();
-        return dealsData;
-      }
-      if (deepLinkedDealIdRef.current === currentSelectedDealId) {
-        const preservedDeepLinkedDeal = preservedDeepLinkedDealRef.current;
-        if (preservedDeepLinkedDeal?.id === currentSelectedDealId) {
-          updateAppData((prev) => {
-            if (prev.deals.some((deal) => deal.id === preservedDeepLinkedDeal.id)) {
-              return {};
-            }
-            return { deals: [preservedDeepLinkedDeal, ...prev.deals] };
-          });
-        }
-        return dealsData;
-      }
-      if (skipNextMissingSelectedDealClearRef.current === currentSelectedDealId) {
-        skipNextMissingSelectedDealClearRef.current = null;
-        return dealsData;
-      }
-      const protectedCreatedDeal = protectedCreatedDealRef.current;
-      if (protectedCreatedDeal?.id === currentSelectedDealId) {
-        updateAppData((prev) => {
-          if (prev.deals.some((deal) => deal.id === protectedCreatedDeal.id)) {
-            return {};
-          }
-          return { deals: [protectedCreatedDeal, ...prev.deals] };
-        });
         return dealsData;
       }
       clearSelectedDealFocus();
       return dealsData;
     },
-    [clearSelectedDealFocus, refreshDeals, restoreDealsQuotesFromCache, updateAppData],
+    [clearSelectedDealFocus, refreshDeals, restoreDealsQuotesFromCache],
   );
 
   const syncDealsByIds = useCallback(
@@ -630,14 +592,6 @@ export const useDealDetailsData = ({
 
   useEffect(() => {
     selectedDealIdRef.current = effectiveSelectedDealId;
-    const protectedCreatedDeal = protectedCreatedDealRef.current;
-    if (
-      protectedCreatedDeal &&
-      effectiveSelectedDealId &&
-      effectiveSelectedDealId !== protectedCreatedDeal.id
-    ) {
-      protectedCreatedDealRef.current = null;
-    }
   }, [effectiveSelectedDealId]);
 
   useEffect(() => {
@@ -823,11 +777,6 @@ export const useDealDetailsData = ({
     [loadDealPolicies],
   );
 
-  const registerProtectedCreatedDeal = useCallback((deal: Deal) => {
-    protectedCreatedDealRef.current = deal;
-    skipNextMissingSelectedDealClearRef.current = deal.id;
-  }, []);
-
   return {
     dealsById,
     mergeDealWithHydratedQuotes,
@@ -848,7 +797,6 @@ export const useDealDetailsData = ({
     loadDealQuotes,
     handleRefreshSelectedDealPolicies,
     handleRefreshPreviewDealPolicies,
-    registerProtectedCreatedDeal,
     dealAccessMessage,
     clearDealAccessMessage: () => setDealAccessMessage(null),
     isSelectedDealTasksLoading: effectiveSelectedDealId

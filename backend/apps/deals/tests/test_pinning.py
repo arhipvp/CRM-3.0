@@ -1,7 +1,10 @@
+from datetime import timedelta
+
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal, DealPin
 from django.contrib.auth.models import User
+from django.utils import timezone
 from rest_framework import status
 
 
@@ -131,3 +134,115 @@ class DealPinningTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data["results"], [])
         self.assertEqual(response.data["count"], 0)
+
+    def test_pinned_deals_are_ordered_by_first_pin(self):
+        oldest, middle, newest = self._create_deals(3)
+        pins = [
+            DealPin.objects.create(user=self.seller, deal=oldest),
+            DealPin.objects.create(user=self.seller, deal=middle),
+            DealPin.objects.create(user=self.seller, deal=newest),
+        ]
+        now = timezone.now()
+        for pin, created_at in zip(
+            pins,
+            [now - timedelta(minutes=2), now - timedelta(minutes=1), now],
+        ):
+            DealPin.objects.filter(pk=pin.pk).update(created_at=created_at)
+
+        response = self.api_client.get(
+            "/api/v1/deals/",
+            {"page": 1, "page_size": 20, "ordering": "-created_at"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(
+            self._result_ids(response)[:3],
+            [str(oldest.id), str(middle.id), str(newest.id)],
+        )
+
+    def test_pinned_deals_respect_non_search_filters(self):
+        other_client = Client.objects.create(name="Other Pinning Client")
+        other_executor = User.objects.create_user(
+            username="other-executor", password="pass"  # pragma: allowlist secret
+        )
+        matching = self._create_deals(1)[0]
+        other_client_deal = Deal.objects.create(
+            title="Other client pinned",
+            client=other_client,
+            seller=self.seller,
+            executor=other_executor,
+        )
+        closed = Deal.objects.create(
+            title="Closed pinned",
+            client=self.client_record,
+            seller=self.seller,
+            status=Deal.DealStatus.WON,
+        )
+        deleted = Deal.objects.create(
+            title="Deleted pinned",
+            client=self.client_record,
+            seller=self.seller,
+        )
+        deleted.delete()
+        DealPin.objects.bulk_create(
+            [
+                DealPin(user=self.seller, deal=matching),
+                DealPin(user=self.seller, deal=other_client_deal),
+                DealPin(user=self.seller, deal=closed),
+                DealPin(user=self.seller, deal=deleted),
+            ]
+        )
+
+        default_response = self.api_client.get("/api/v1/deals/", format="json")
+        client_response = self.api_client.get(
+            "/api/v1/deals/", {"client": other_client.id}, format="json"
+        )
+        executor_response = self.api_client.get(
+            "/api/v1/deals/", {"executor": other_executor.id}, format="json"
+        )
+        closed_response = self.api_client.get(
+            "/api/v1/deals/",
+            {"status": Deal.DealStatus.WON, "show_closed": "1"},
+            format="json",
+        )
+        deleted_response = self.api_client.get(
+            "/api/v1/deals/", {"show_deleted": "1"}, format="json"
+        )
+
+        self.assertEqual(
+            set(self._result_ids(default_response)),
+            {str(matching.id), str(other_client_deal.id)},
+        )
+        self.assertEqual(self._result_ids(client_response), [str(other_client_deal.id)])
+        self.assertEqual(
+            self._result_ids(executor_response), [str(other_client_deal.id)]
+        )
+        self.assertEqual(self._result_ids(closed_response), [str(closed.id)])
+        self.assertEqual(
+            set(self._result_ids(deleted_response)),
+            {str(matching.id), str(other_client_deal.id), str(deleted.id)},
+        )
+
+    def test_unpinned_deal_returns_to_regular_first_page(self):
+        deal = self._create_deals(20)[0]
+        DealPin.objects.create(user=self.seller, deal=deal)
+
+        pinned_response = self.api_client.get(
+            "/api/v1/deals/", {"page": 1, "page_size": 20}, format="json"
+        )
+        unpin_response = self.api_client.post(
+            f"/api/v1/deals/{deal.id}/unpin/", format="json"
+        )
+        regular_response = self.api_client.get(
+            "/api/v1/deals/", {"page": 1, "page_size": 20}, format="json"
+        )
+
+        self.assertEqual(pinned_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(self._result_ids(pinned_response)), 20)
+        self.assertEqual(unpin_response.status_code, status.HTTP_200_OK)
+        self.assertFalse(unpin_response.data["is_pinned"])
+        self.assertEqual(regular_response.status_code, status.HTTP_200_OK)
+        self.assertEqual(regular_response.data["count"], 20)
+        self.assertEqual(len(self._result_ids(regular_response)), 20)
+        self.assertIn(str(deal.id), self._result_ids(regular_response))

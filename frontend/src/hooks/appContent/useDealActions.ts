@@ -68,7 +68,7 @@ interface UseDealActionsParams {
   clearSelectedDealFocus: () => void;
   resetDealSelection: () => void;
   requestDealRowFocus: (dealId: string) => void;
-  registerProtectedCreatedDeal: (deal: Deal) => void;
+  resetDealFilters: () => void;
   invalidateDealQuotesCache: (dealId?: string | null) => void;
   invalidateDealTasksCache: (dealId?: string | null) => void;
   cacheDealQuotes: (dealId: string, quotes: Quote[]) => void;
@@ -99,7 +99,7 @@ export const useDealActions = ({
   clearSelectedDealFocus,
   resetDealSelection,
   requestDealRowFocus,
-  registerProtectedCreatedDeal,
+  resetDealFilters,
   invalidateDealQuotesCache,
   invalidateDealTasksCache,
   cacheDealQuotes,
@@ -117,19 +117,19 @@ export const useDealActions = ({
         source: data.source?.trim() || undefined,
         visibleUserIds: data.visibleUserIds,
       });
-      updateAppData((prev) => ({ deals: [created, ...prev.deals] }));
-      registerProtectedCreatedDeal(created);
+      resetDealFilters();
+      await refreshDealsWithSelection({}, { force: true });
       selectDealById(created.id);
       requestDealRowFocus(created.id);
       setModal(null);
     },
     [
       invalidateDealsCache,
-      registerProtectedCreatedDeal,
+      refreshDealsWithSelection,
       requestDealRowFocus,
+      resetDealFilters,
       selectDealById,
       setModal,
-      updateAppData,
     ],
   );
 
@@ -138,10 +138,8 @@ export const useDealActions = ({
       invalidateDealsCache();
       setIsSyncing(true);
       try {
-        const updated = await closeDeal(dealId, payload);
-        updateAppData((prev) => ({
-          deals: prev.deals.map((deal) => (deal.id === updated.id ? updated : deal)),
-        }));
+        await closeDeal(dealId, payload);
+        await refreshDealsWithSelection(dealFilters, { force: true });
       } catch (err) {
         const message =
           err instanceof APIError
@@ -154,7 +152,7 @@ export const useDealActions = ({
         setIsSyncing(false);
       }
     },
-    [invalidateDealsCache, setError, setIsSyncing, updateAppData],
+    [dealFilters, invalidateDealsCache, refreshDealsWithSelection, setError, setIsSyncing],
   );
 
   const handleReopenDeal = useCallback(
@@ -210,7 +208,10 @@ export const useDealActions = ({
       setIsSyncing(true);
       try {
         await pinDeal(dealId);
-        await refreshDealsWithSelection(dealFilters, { force: true });
+        const refreshedDeals = await refreshDealsWithSelection(dealFilters, { force: true });
+        if (selectedDealId === dealId && refreshedDeals.some((deal) => deal.id === dealId)) {
+          requestDealRowFocus(dealId);
+        }
         addNotification('Сделка закреплена', 'success', 3000);
       } catch (err) {
         if (err instanceof APIError && err.status === 400) {
@@ -228,6 +229,8 @@ export const useDealActions = ({
       dealFilters,
       invalidateDealsCache,
       refreshDealsWithSelection,
+      requestDealRowFocus,
+      selectedDealId,
       setError,
       setIsSyncing,
     ],

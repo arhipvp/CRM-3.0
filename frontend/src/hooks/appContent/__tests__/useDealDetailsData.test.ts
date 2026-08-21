@@ -56,13 +56,10 @@ describe('useDealDetailsData search selection', () => {
     expect(params.updateAppData).toHaveBeenCalledTimes(1);
   });
 
-  it('clears a missing protected created deal during search', async () => {
+  it('clears a selected deal that disappears from search results', async () => {
     const params = createParams({ dealFilters: { search: 'другая сделка' } });
     const { result } = renderHook(() => useDealDetailsData(params));
 
-    act(() => {
-      result.current.registerProtectedCreatedDeal(params.deals[0]);
-    });
     await act(async () => {
       await result.current.refreshDealsWithSelection(params.dealFilters);
     });
@@ -88,7 +85,7 @@ describe('useDealDetailsData search selection', () => {
     expect(params.updateAppData).toHaveBeenCalledTimes(1);
   });
 
-  it('preserves a missing deep-linked deal when search is not active', async () => {
+  it('clears a missing deep-linked deal for filters other than search', async () => {
     const params = createParams({ deepLinkedDealId: 'deal-1' });
     const { result } = renderHook(() => useDealDetailsData(params));
 
@@ -96,7 +93,18 @@ describe('useDealDetailsData search selection', () => {
       await result.current.refreshDealsWithSelection(params.dealFilters);
     });
 
-    expect(params.clearSelectedDealFocus).not.toHaveBeenCalled();
-    expect(params.updateAppData).toHaveBeenCalledTimes(2);
+    expect(params.clearSelectedDealFocus).toHaveBeenCalledTimes(1);
+    expect(params.updateAppData).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears a selected deal that disappears after a non-search filter change', async () => {
+    const params = createParams({ dealFilters: { executor: 'user-2' } });
+    const { result } = renderHook(() => useDealDetailsData(params));
+
+    await act(async () => {
+      await result.current.refreshDealsWithSelection(params.dealFilters);
+    });
+
+    expect(params.clearSelectedDealFocus).toHaveBeenCalledTimes(1);
   });
 });

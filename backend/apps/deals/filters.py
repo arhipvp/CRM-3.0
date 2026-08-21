@@ -41,7 +41,7 @@ class DealFilterSet(django_filters.FilterSet):
         field_name="expected_close", label="Expected Close (range)"
     )
 
-    client = django_filters.NumberFilter(field_name="client__id", label="Client ID")
+    client = django_filters.UUIDFilter(field_name="client__id", label="Client ID")
 
     ordering = django_filters.OrderingFilter(
         fields=(

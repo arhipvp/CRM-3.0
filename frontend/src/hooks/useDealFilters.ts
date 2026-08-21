@@ -50,6 +50,16 @@ export const useDealFilters = () => {
     setDealClientFilter(clientId);
   };
 
+  const resetDealFilters = () => {
+    setDealSearchInput('');
+    setDealSearchApplied('');
+    setDealExecutorFilterState('');
+    setDealShowDeletedState(false);
+    setDealShowClosedState(false);
+    setDealOrderingState(undefined);
+    setDealClientFilter('');
+  };
+
   const filters = useMemo<FilterParams>(() => {
     const result: FilterParams = {};
     if (dealSearchApplied) {
@@ -93,6 +103,7 @@ export const useDealFilters = () => {
     dealOrdering,
     setDealOrdering,
     showClientDeals,
+    resetDealFilters,
     filters,
   };
 };

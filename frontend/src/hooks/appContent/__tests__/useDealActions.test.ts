@@ -39,9 +39,18 @@ vi.mock('../../../api', () => {
   };
 });
 
-import { mergeDeals, updateDeal } from '../../../api';
+import {
+  closeDeal,
+  createDeal as createDealRequest,
+  mergeDeals,
+  pinDeal,
+  updateDeal,
+} from '../../../api';
 
+const closeDealMock = vi.mocked(closeDeal);
+const createDealRequestMock = vi.mocked(createDealRequest);
 const mergeDealsMock = vi.mocked(mergeDeals);
+const pinDealMock = vi.mocked(pinDeal);
 const updateDealMock = vi.mocked(updateDeal);
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
@@ -90,7 +99,7 @@ const createParams = () => {
     clearSelectedDealFocus: vi.fn(),
     resetDealSelection: vi.fn(),
     requestDealRowFocus: vi.fn(),
-    registerProtectedCreatedDeal: vi.fn(),
+    resetDealFilters: vi.fn(),
     invalidateDealQuotesCache: vi.fn(),
     invalidateDealTasksCache: vi.fn(),
     cacheDealQuotes: vi.fn(),
@@ -179,6 +188,71 @@ describe('useDealActions', () => {
     expect(params.refreshDeals).toHaveBeenCalledWith(params.dealFilters, {
       force: true,
       preserveLoadedCount: true,
+    });
+  });
+
+  it('после закрепления выбранной сделки обновляет список и возвращает фокус строке', async () => {
+    const params = createParams();
+    params.refreshDealsWithSelection.mockResolvedValue([createDeal()]);
+    pinDealMock.mockResolvedValue(createDeal({ isPinned: true }));
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handlePinDeal('deal-1');
+    });
+
+    expect(params.refreshDealsWithSelection).toHaveBeenCalledWith(params.dealFilters, {
+      force: true,
+    });
+    expect(params.requestDealRowFocus).toHaveBeenCalledWith('deal-1');
+  });
+
+  it('не меняет фокус при закреплении другой сделки', async () => {
+    const params = createParams();
+    params.refreshDealsWithSelection.mockResolvedValue([createDeal({ id: 'deal-2' })]);
+    pinDealMock.mockResolvedValue(createDeal({ id: 'deal-2', isPinned: true }));
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handlePinDeal('deal-2');
+    });
+
+    expect(params.requestDealRowFocus).not.toHaveBeenCalled();
+  });
+
+  it('после создания сбрасывает фильтры, обновляет список и фокусирует новую сделку', async () => {
+    const params = createParams();
+    const created = createDeal({ id: 'deal-new' });
+    createDealRequestMock.mockResolvedValue(created);
+    params.refreshDealsWithSelection.mockResolvedValue([created]);
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handleAddDeal({
+        title: 'Новая сделка',
+        clientId: 'client-1',
+        description: '',
+      });
+    });
+
+    expect(params.resetDealFilters).toHaveBeenCalledTimes(1);
+    expect(params.refreshDealsWithSelection).toHaveBeenCalledWith({}, { force: true });
+    expect(params.selectDealById).toHaveBeenCalledWith(created.id);
+    expect(params.requestDealRowFocus).toHaveBeenCalledWith(created.id);
+  });
+
+  it('после закрытия обновляет выдачу с текущими фильтрами', async () => {
+    const params = createParams();
+    params.dealFilters = { search: 'сделка' };
+    closeDealMock.mockResolvedValue(createDeal({ status: 'won' }));
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handleCloseDeal('deal-1', { reason: 'Успех', status: 'won' });
+    });
+
+    expect(params.refreshDealsWithSelection).toHaveBeenCalledWith(params.dealFilters, {
+      force: true,
     });
   });
 });
