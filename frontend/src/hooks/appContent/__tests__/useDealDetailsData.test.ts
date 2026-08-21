@@ -45,6 +45,7 @@ describe('useDealDetailsData search selection', () => {
     const params = createParams({
       deepLinkedDealId: 'deal-1',
       dealFilters: { search: 'другая сделка' },
+      isAuthenticated: true,
     });
     const { result } = renderHook(() => useDealDetailsData(params));
 
@@ -85,20 +86,25 @@ describe('useDealDetailsData search selection', () => {
     expect(params.updateAppData).toHaveBeenCalledTimes(1);
   });
 
-  it('clears a missing deep-linked deal for filters other than search', async () => {
-    const params = createParams({ deepLinkedDealId: 'deal-1' });
+  it('keeps a missing deep-linked deal after an unfiltered refresh', async () => {
+    const params = createParams({ deepLinkedDealId: 'deal-1', isAuthenticated: true });
+    params.refreshDeals = vi.fn().mockResolvedValue([]) as Params['refreshDeals'];
     const { result } = renderHook(() => useDealDetailsData(params));
 
     await act(async () => {
       await result.current.refreshDealsWithSelection(params.dealFilters);
     });
 
-    expect(params.clearSelectedDealFocus).toHaveBeenCalledTimes(1);
-    expect(params.updateAppData).toHaveBeenCalledTimes(1);
+    expect(params.clearSelectedDealFocus).not.toHaveBeenCalled();
+    expect(params.updateAppData).toHaveBeenCalledTimes(2);
   });
 
   it('clears a selected deal that disappears after a non-search filter change', async () => {
-    const params = createParams({ dealFilters: { executor: 'user-2' } });
+    const params = createParams({
+      deepLinkedDealId: 'deal-1',
+      dealFilters: { executor: 'user-2' },
+      isAuthenticated: true,
+    });
     const { result } = renderHook(() => useDealDetailsData(params));
 
     await act(async () => {

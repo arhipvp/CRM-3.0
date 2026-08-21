@@ -70,6 +70,7 @@ export const useDealDetailsData = ({
   const preservedDeepLinkedDealRef = useRef<Deal | null>(null);
   const deepLinkedDealLoadedRef = useRef<string | null>(null);
   const deepLinkedDealLoadingRef = useRef<string | null>(null);
+  const unresolvedDeepLinkedDealIdRef = useRef<string | null>(deepLinkedDealId);
   const deepLinkedDealIdRef = useRef<string | null>(deepLinkedDealId);
   const selectedDealIdRef = useRef<string | null>(null);
   const previewDealIdRef = useRef<string | null>(null);
@@ -415,10 +416,28 @@ export const useDealDetailsData = ({
       if (dealsData.some((deal) => deal.id === currentSelectedDealId)) {
         return dealsData;
       }
+      if (unresolvedDeepLinkedDealIdRef.current === currentSelectedDealId) {
+        return dealsData;
+      }
+      const isUnfilteredRefresh = Object.keys(filters ?? {}).length === 0;
+      if (
+        isUnfilteredRefresh &&
+        deepLinkedDealIdRef.current === currentSelectedDealId &&
+        preservedDeepLinkedDealRef.current?.id === currentSelectedDealId
+      ) {
+        const preservedDeepLinkedDeal = preservedDeepLinkedDealRef.current;
+        updateAppData((prev) => {
+          if (prev.deals.some((deal) => deal.id === preservedDeepLinkedDeal.id)) {
+            return {};
+          }
+          return { deals: [preservedDeepLinkedDeal, ...prev.deals] };
+        });
+        return dealsData;
+      }
       clearSelectedDealFocus();
       return dealsData;
     },
-    [clearSelectedDealFocus, refreshDeals, restoreDealsQuotesFromCache],
+    [clearSelectedDealFocus, refreshDeals, restoreDealsQuotesFromCache, updateAppData],
   );
 
   const syncDealsByIds = useCallback(
@@ -459,12 +478,14 @@ export const useDealDetailsData = ({
     if (!isDealsRoute) {
       deepLinkedDealLoadedRef.current = null;
       deepLinkedDealLoadingRef.current = null;
+      unresolvedDeepLinkedDealIdRef.current = null;
       return;
     }
 
     if (!deepLinkedDealId) {
       deepLinkedDealLoadedRef.current = null;
       deepLinkedDealLoadingRef.current = null;
+      unresolvedDeepLinkedDealIdRef.current = null;
       return;
     }
 
@@ -475,6 +496,7 @@ export const useDealDetailsData = ({
     if (dealsById.has(deepLinkedDealId)) {
       deepLinkedDealLoadedRef.current = deepLinkedDealId;
       deepLinkedDealLoadingRef.current = null;
+      unresolvedDeepLinkedDealIdRef.current = null;
       return;
     }
 
@@ -486,9 +508,13 @@ export const useDealDetailsData = ({
     }
 
     deepLinkedDealLoadingRef.current = deepLinkedDealId;
+    unresolvedDeepLinkedDealIdRef.current = deepLinkedDealId;
     syncDealsByIds([deepLinkedDealId])
       .then(() => {
         deepLinkedDealLoadedRef.current = deepLinkedDealId;
+        if (unresolvedDeepLinkedDealIdRef.current === deepLinkedDealId) {
+          unresolvedDeepLinkedDealIdRef.current = null;
+        }
       })
       .catch((err) => {
         deepLinkedDealLoadedRef.current = null;

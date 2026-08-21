@@ -797,7 +797,7 @@ describe('AppContent hotkeys integration', () => {
       expect(createDeal).toHaveBeenCalledTimes(1);
       expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-created');
     });
-    await waitFor(() => expect(refreshDealsMock).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(refreshDealsMock).toHaveBeenCalledTimes(2));
     refreshDealsMock.mockClear();
 
     fireEvent.click(screen.getByRole('button', { name: 'Trigger search change' }));
