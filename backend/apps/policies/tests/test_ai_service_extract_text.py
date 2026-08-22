@@ -276,7 +276,7 @@ class PolicyVisionFallbackTests(SimpleTestCase):
     @override_settings(
         POLICY_RECOGNITION_MODEL="",
         OPENROUTER_MODEL="gpt-4o-mini",
-        OPENROUTER_API_KEY="test-key",
+        OPENROUTER_API_KEY="test-key",  # pragma: allowlist secret
     )
     def test_policy_model_falls_back_to_common_model(self):
         _, _, model = _resolve_ai_client_config()
