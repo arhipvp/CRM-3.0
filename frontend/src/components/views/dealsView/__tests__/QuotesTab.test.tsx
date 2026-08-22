@@ -55,6 +55,7 @@ describe('QuotesTab', () => {
       'src',
       'https://cdn.example.test/alfa.svg',
     );
+    expect(screen.getByText('Альфа')).toBeInTheDocument();
   });
 
   it('форматирует франшизу как рубли и сортирует её как число', () => {

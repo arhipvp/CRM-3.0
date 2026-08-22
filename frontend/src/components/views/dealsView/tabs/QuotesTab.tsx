@@ -217,11 +217,18 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     {quote.insuranceType}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
-                    <InsuranceCompanyLogo
-                      companyName={quote.insuranceCompany}
-                      logoUrl={quote.insuranceCompanyLogoUrl}
-                      fallbackClassName={`text-slate-600 ${deletedTextClass}`}
-                    />
+                    <div className="flex min-w-0 items-center gap-2">
+                      <InsuranceCompanyLogo
+                        companyName={quote.insuranceCompany}
+                        logoUrl={quote.insuranceCompanyLogoUrl}
+                        fallbackClassName={`text-slate-600 ${deletedTextClass}`}
+                      />
+                      {quote.insuranceCompanyLogoUrl && (
+                        <span className={`min-w-0 truncate text-slate-700 ${deletedTextClass}`}>
+                          {quote.insuranceCompany || '-'}
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td
                     className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
