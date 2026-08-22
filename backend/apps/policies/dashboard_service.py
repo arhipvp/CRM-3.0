@@ -3,6 +3,7 @@ from __future__ import annotations
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
 from apps.tasks.models import Task
+from django.core.files.storage import default_storage
 from django.db.models import Count, DecimalField, Q, Sum, Value
 from django.db.models.functions import Coalesce, TruncDate
 
@@ -239,6 +240,7 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
         records_queryset.values(
             "payment__policy__insurance_company_id",
             "payment__policy__insurance_company__name",
+            "payment__policy__insurance_company__logo",
             "payment__policy__insurance_type_id",
             "payment__policy__insurance_type__name",
         )
@@ -268,6 +270,7 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
 
     financial_by_company_type = []
     for row in grouped_financial_rows:
+        logo_name = row.get("payment__policy__insurance_company__logo")
         company_name = (
             row.get("payment__policy__insurance_company__name") or ""
         ).strip()
@@ -281,6 +284,9 @@ def build_seller_dashboard_payload(*, user, start_date, end_date) -> dict:
                     "payment__policy__insurance_company_id"
                 ),
                 "insurance_company_name": company_name or "Не указано",
+                "insurance_company_logo_url": (
+                    default_storage.url(logo_name) if logo_name else None
+                ),
                 "insurance_type_id": row.get("payment__policy__insurance_type_id"),
                 "insurance_type_name": insurance_type_name or "Не указано",
                 "income_total": format_amount(row.get("income_total")),

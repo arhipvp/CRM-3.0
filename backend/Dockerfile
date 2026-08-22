@@ -21,6 +21,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-traditional \
     curl \
     libreoffice-writer \
+    tesseract-ocr \
+    tesseract-ocr-rus \
+    tesseract-ocr-osd \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /root/.local /root/.local

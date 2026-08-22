@@ -60,6 +60,8 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
 
     def test_dashboard_sums_paid_payments_for_current_month(self):
         today = timezone.localdate()
+        self.company.logo.name = "insurance_company_logos/company-logo.png"
+        self.company.save(update_fields=["logo"])
         month_start = today.replace(day=1)
         previous_month = month_start - timedelta(days=1)
 
@@ -222,12 +224,17 @@ class SellerDashboardTests(AuthenticatedAPITestCase):
         self.assertEqual(company_row["expense_total"], "40.00")
         self.assertEqual(company_row["net_total"], "120.00")
         self.assertEqual(company_row["records_count"], 3)
+        self.assertEqual(
+            company_row["insurance_company_logo_url"],
+            "/media/insurance_company_logos/company-logo.png",
+        )
 
         unknown_row = by_key[("Не указано", "Не указано")]
         self.assertEqual(unknown_row["income_total"], "0.00")
         self.assertEqual(unknown_row["expense_total"], "25.00")
         self.assertEqual(unknown_row["net_total"], "-25.00")
         self.assertEqual(unknown_row["records_count"], 1)
+        self.assertIsNone(unknown_row["insurance_company_logo_url"])
 
     def test_dashboard_respects_custom_range(self):
         today = timezone.localdate()

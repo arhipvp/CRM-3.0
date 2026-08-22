@@ -31,12 +31,14 @@ export type FinancialCell = { income: number; expense: number; net: number; coun
 export type FinancialCompanyRow = {
   companyKey: string;
   companyName: string;
+  companyLogoUrl?: string | null;
   cells: Map<string, FinancialCell>;
   totals: FinancialCell;
 };
 export type FinancialTypeColumn = { typeKey: string; typeName: string };
 export type FinancialMaxExpensePair = {
   companyName: string;
+  companyLogoUrl?: string | null;
   typeName: string;
   expense: number;
   net: number;
@@ -197,6 +199,7 @@ export function buildFinancialMatrix(
     const row = rowsByCompany.get(companyKey) ?? {
       companyKey,
       companyName,
+      companyLogoUrl: item.insuranceCompanyLogoUrl,
       cells: new Map<string, FinancialCell>(),
       totals: createEmptyFinancialCell(),
     };
@@ -302,6 +305,7 @@ export function buildFinancialMatrix(
       if (cell.expense && (!maxExpensePair || cell.expense > maxExpensePair.expense))
         maxExpensePair = {
           companyName: row.companyName,
+          companyLogoUrl: row.companyLogoUrl,
           typeName: typeNames.get(typeKey) ?? UNKNOWN_GROUP_LABEL,
           expense: cell.expense,
           net: cell.net,

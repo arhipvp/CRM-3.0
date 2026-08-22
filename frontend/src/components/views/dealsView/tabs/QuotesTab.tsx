@@ -2,6 +2,7 @@
 import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
+import { InsuranceCompanyLogo } from '../../../common/InsuranceCompanyLogo';
 import { TableHeadCell } from '../../../common/TableHeadCell';
 import { DataTableShell } from '../../../common/table/DataTableShell';
 import { EmptyTableState } from '../../../common/table/EmptyTableState';
@@ -216,11 +217,10 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                     {quote.insuranceType}
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
-                    <ColoredLabel
-                      value={quote.insuranceCompany}
-                      fallback="-"
-                      showDot
-                      className={`text-slate-600 ${deletedTextClass}`}
+                    <InsuranceCompanyLogo
+                      companyName={quote.insuranceCompany}
+                      logoUrl={quote.insuranceCompanyLogoUrl}
+                      fallbackClassName={`text-slate-600 ${deletedTextClass}`}
                     />
                   </td>
                   <td

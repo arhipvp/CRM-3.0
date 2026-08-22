@@ -19,7 +19,7 @@ import {
   TABLE_ROW_CLASS,
   TABLE_THEAD_CLASS,
 } from '../../../common/tableStyles';
-import { ColoredLabel } from '../../../common/ColoredLabel';
+import { InsuranceCompanyLogo } from '../../../common/InsuranceCompanyLogo';
 import { PolicyMoveDialog } from '../../../policies/PolicyMoveDialog';
 import {
   PolicyDataField,
@@ -280,10 +280,10 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                 data-testid={`policy-meta-${policy.id}`}
                               >
                                 {insuranceCompany ? (
-                                  <ColoredLabel
-                                    value={insuranceCompany}
-                                    showDot
-                                    className="max-w-full truncate text-xs font-semibold text-slate-800"
+                                  <InsuranceCompanyLogo
+                                    companyName={insuranceCompany}
+                                    logoUrl={policy.insuranceCompanyLogoUrl}
+                                    fallbackClassName="max-w-full truncate text-xs font-semibold text-slate-800"
                                   />
                                 ) : null}
                                 {!hasMeta && (

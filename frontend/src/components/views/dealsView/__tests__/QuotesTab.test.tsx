@@ -21,6 +21,7 @@ const buildQuote = (overrides: Partial<Quote> = {}): Quote => ({
   sellerName: overrides.sellerName ?? 'Менеджер',
   insuranceCompanyId: overrides.insuranceCompanyId ?? 'company-1',
   insuranceCompany: overrides.insuranceCompany ?? 'Компания',
+  insuranceCompanyLogoUrl: overrides.insuranceCompanyLogoUrl ?? null,
   insuranceTypeId: overrides.insuranceTypeId ?? 'type-1',
   insuranceType: overrides.insuranceType ?? 'Каско',
   sumInsured: overrides.sumInsured ?? 1000000,
@@ -34,6 +35,28 @@ const buildQuote = (overrides: Partial<Quote> = {}): Quote => ({
 });
 
 describe('QuotesTab', () => {
+  it('shows the insurance company logo when the quote provides one', () => {
+    render(
+      <QuotesTab
+        selectedDeal={selectedDeal}
+        quotes={[
+          buildQuote({
+            insuranceCompany: 'Альфа',
+            insuranceCompanyLogoUrl: 'https://cdn.example.test/alfa.svg',
+          }),
+        ]}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByAltText('Логотип Альфа')).toHaveAttribute(
+      'src',
+      'https://cdn.example.test/alfa.svg',
+    );
+  });
+
   it('форматирует франшизу как рубли и сортирует её как число', () => {
     render(
       <QuotesTab

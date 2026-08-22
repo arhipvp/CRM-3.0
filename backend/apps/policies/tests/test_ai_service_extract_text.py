@@ -9,6 +9,7 @@ from apps.policies.ai_service import (
     PolicyRecognitionError,
     _build_vision_messages,
     _prepare_image_for_vision,
+    _prepare_pdf_page_for_vision,
     _render_pdf_pages_for_vision,
     _resolve_ai_client_config,
     extract_text_from_bytes,
@@ -214,7 +215,8 @@ class PolicyVisionFallbackTests(SimpleTestCase):
         vision_recognize_mock.assert_not_called()
 
     @override_settings(POLICY_RECOGNITION_MAX_VISION_PAGES=1)
-    def test_pdf_render_limits_page_count(self):
+    @patch("apps.policies.ai_service._detect_pdf_page_rotation", return_value=0)
+    def test_pdf_render_limits_page_count(self, rotation_mock: Mock):
         document = pymupdf.open()
         document.new_page().insert_text((72, 72), "Страница 1")
         document.new_page().insert_text((72, 72), "Страница 2")
@@ -224,7 +226,77 @@ class PolicyVisionFallbackTests(SimpleTestCase):
         images = _render_pdf_pages_for_vision(content, "policy.pdf")
 
         self.assertEqual(len(images), 1)
-        self.assertTrue(images[0].startswith(b"\x89PNG"))
+        self.assertTrue(images[0].startswith(b"\xff\xd8"))
+        rotation_mock.assert_called_once()
+
+    @override_settings(
+        POLICY_RECOGNITION_PDF_RENDER_DPI=72,
+        POLICY_RECOGNITION_MAX_IMAGE_DIMENSION=100,
+    )
+    @patch("apps.policies.ai_service._detect_pdf_page_rotation", return_value=0)
+    def test_rendered_pdf_page_is_resized_and_jpeg_normalized(
+        self, rotation_mock: Mock
+    ):
+        document = pymupdf.open()
+        document.new_page(width=400, height=200)
+        content = document.tobytes()
+        document.close()
+
+        image_bytes = _render_pdf_pages_for_vision(content, "policy.pdf")[0]
+
+        with Image.open(BytesIO(image_bytes)) as image:
+            self.assertEqual(image.format, "JPEG")
+            self.assertEqual(image.size, (100, 50))
+        rotation_mock.assert_called_once()
+
+    @patch(
+        "apps.policies.ai_service.pytesseract.image_to_osd",
+        return_value={"rotate": "90", "orientation_conf": "10.5"},
+    )
+    def test_pdf_page_osd_rotations_are_applied(self, osd_mock: Mock):
+        expected_sizes = {90: (20, 40), 180: (40, 20), 270: (20, 40)}
+        for rotation, expected_size in expected_sizes.items():
+            with self.subTest(rotation=rotation):
+                source = BytesIO()
+                Image.new("RGB", (40, 20), "white").save(source, format="PNG")
+                osd_mock.return_value = {
+                    "rotate": str(rotation),
+                    "orientation_conf": "10.5",
+                }
+
+                normalized = _prepare_pdf_page_for_vision(source.getvalue())
+
+                with Image.open(BytesIO(normalized)) as image:
+                    self.assertEqual(image.size, expected_size)
+        self.assertEqual(osd_mock.call_count, 3)
+
+    @patch(
+        "apps.policies.ai_service.pytesseract.image_to_osd",
+        return_value={"rotate": "90", "orientation_conf": "4.9"},
+    )
+    def test_pdf_page_osd_low_confidence_keeps_orientation(self, osd_mock: Mock):
+        source = BytesIO()
+        Image.new("RGB", (40, 20), "white").save(source, format="PNG")
+
+        normalized = _prepare_pdf_page_for_vision(source.getvalue())
+
+        with Image.open(BytesIO(normalized)) as image:
+            self.assertEqual(image.size, (40, 20))
+        osd_mock.assert_called_once()
+
+    @patch(
+        "apps.policies.ai_service.pytesseract.image_to_osd",
+        side_effect=RuntimeError("OSD unavailable"),
+    )
+    def test_pdf_page_osd_failure_keeps_orientation(self, osd_mock: Mock):
+        source = BytesIO()
+        Image.new("RGB", (40, 20), "white").save(source, format="PNG")
+
+        normalized = _prepare_pdf_page_for_vision(source.getvalue())
+
+        with Image.open(BytesIO(normalized)) as image:
+            self.assertEqual(image.size, (40, 20))
+        osd_mock.assert_called_once()
 
     @override_settings(POLICY_RECOGNITION_MAX_IMAGE_DIMENSION=2048)
     def test_jpeg_is_normalized_and_exif_orientation_is_applied(self):

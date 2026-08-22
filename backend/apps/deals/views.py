@@ -237,11 +237,17 @@ class DealViewSet(
             "client", "seller", "executor", "mailbox"
         ).all()
         requested_embeds = embeds or set()
-        prefetch_fields = [
-            field for field in ("quotes", "documents") if field in requested_embeds
-        ]
-        if prefetch_fields:
-            queryset = queryset.prefetch_related(*prefetch_fields)
+        if "quotes" in requested_embeds:
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    "quotes",
+                    queryset=Quote.objects.select_related(
+                        "insurance_company", "insurance_type", "seller"
+                    ),
+                )
+            )
+        if "documents" in requested_embeds:
+            queryset = queryset.prefetch_related("documents")
         if "policies" in requested_embeds:
             decimal_field = DecimalField(max_digits=12, decimal_places=2)
             policy_queryset = (

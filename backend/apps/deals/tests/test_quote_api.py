@@ -43,6 +43,7 @@ class QuoteApiTests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data["deductible"], 300000.5)
+        self.assertIsNone(response.data["insurance_company_logo_url"])
         self.assertEqual(float(Quote.objects.get().deductible), 300000.5)
 
     def test_update_quote_allows_empty_deductible(self):

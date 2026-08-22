@@ -1,7 +1,7 @@
 ﻿import React from 'react';
 
 import type { Payment, Policy } from '../../types';
-import { ColoredLabel } from '../common/ColoredLabel';
+import { InsuranceCompanyLogo } from '../common/InsuranceCompanyLogo';
 import { LabelValuePair } from '../common/LabelValuePair';
 import { PaymentCard } from './PaymentCard';
 import type { PolicyCardModel } from './policyCardModel';
@@ -138,11 +138,10 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
       valueClassName="min-w-0 flex-1"
       value={
         <span className="block min-w-0 truncate" title={value}>
-          <ColoredLabel
-            value={value}
-            fallback={POLICY_PLACEHOLDER}
-            showDot
-            className="max-w-full truncate font-semibold text-slate-900"
+          <InsuranceCompanyLogo
+            companyName={value}
+            logoUrl={policy.insuranceCompanyLogoUrl}
+            fallbackClassName="max-w-full truncate font-semibold text-slate-900"
           />
         </span>
       }

@@ -162,6 +162,9 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   sellerName: toNullableString(raw.seller_name ?? raw.sellerName),
   insuranceCompanyId: toStringValue(raw.insurance_company),
   insuranceCompany: toStringValue(raw.insurance_company_name ?? raw.insurer ?? ''),
+  insuranceCompanyLogoUrl: toNullableString(
+    raw.insurance_company_logo_url ?? raw.insuranceCompanyLogoUrl,
+  ),
   insuranceTypeId: toStringValue(raw.insurance_type),
   insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
   sumInsured: toNumberValue(raw.sum_insured),
@@ -177,6 +180,7 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
 export const mapInsuranceCompany = (raw: Record<string, unknown>): InsuranceCompany => ({
   id: toStringValue(raw.id),
   name: toStringValue(raw.name),
+  logoUrl: toNullableString(raw.logo_url ?? raw.logoUrl),
   description: toOptionalString(raw.description),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
@@ -379,6 +383,9 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
   number: toStringValue(raw.number),
   insuranceCompanyId: toStringValue(raw.insurance_company),
   insuranceCompany: toStringValue(raw.insurance_company_name ?? raw.insurance_company ?? ''),
+  insuranceCompanyLogoUrl: toNullableString(
+    raw.insurance_company_logo_url ?? raw.insuranceCompanyLogoUrl,
+  ),
   insuranceTypeId: toStringValue(raw.insurance_type),
   insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
   dealId: toStringValue(raw.deal),

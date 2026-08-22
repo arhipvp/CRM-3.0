@@ -66,6 +66,7 @@ python manage.py runserver
 - Для распознавания полисов из Word: `.docx` поддерживается через Python-библиотеку, а для `.doc` нужен установленный LibreOffice/headless converter (`soffice`). В Docker-образ backend он устанавливается автоматически.
 - Распознавание полисов через OpenRouter выполняется в два AI-прохода: первичное извлечение JSON и самопроверка результата по исходному тексту/визуальным входам с формальными замечаниями CRM. Для PDF-полисов с плохим или табличным текстовым слоем и для изображений JPG/JPEG/PNG используется Vision ИИ. Для этого потока можно задать отдельную модель через `POLICY_RECOGNITION_MODEL` (иначе используется `OPENROUTER_MODEL`). Управление Vision: `POLICY_RECOGNITION_VISION_FALLBACK_ENABLED`, `POLICY_RECOGNITION_PDF_RENDER_DPI`, `POLICY_RECOGNITION_MAX_VISION_PAGES`, `POLICY_RECOGNITION_MAX_IMAGE_DIMENSION`; лимит страниц ограничивает суммарное число PDF-страниц и изображений в одном запросе, а размер фото по умолчанию — 2048 px по большей стороне. Содержимое полисов и base64-вложения не попадают в API-ответы или логи распознавания.
 - В промпт передаются названия и описания `InsuranceCompany`/`InsuranceType`; для точного выбора типов страхования поддерживайте заполненным `InsuranceType.description`. В Django admin для видов страхования есть фильтр пустых описаний и action `Заполнить стандартные AI-описания` для базовых категорий ОСАГО, КАСКО, ДГО/ДСАГО, GAP и авто-прочее.
+- Для `InsuranceCompany` в Django admin можно загрузить необязательный логотип PNG, WebP или SVG до 2 МБ. API каталога возвращает его как `logo_url`, а API полисов и расчётов — как `insurance_company_logo_url`; dashboard передаёт URL в строках финансовой матрицы. Отсутствие файла не влияет на работу полисов или расчётов.
 - Перед релизом обязательно `python manage.py check --deploy`.
 - `manage.py test` автоматически переключает backend на `config.test_settings`, чтобы локальные тесты не зависели от случайной Postgres-конфигурации.
 
@@ -120,6 +121,7 @@ FROM policies_policy;
 - В `docker-compose.yml` сервис монтирует `backend/.env`, `backend_static`, bind-монт локального `Media` и `runtime-secrets` для shared secret files вроде OAuth refresh token file.
 - `entrypoint.sh` запускается в контейнере, применяя миграции и стартуя gunicorn с настройками `WORKERS` и `TIMEOUT`.
 - Для синхронного распознавания документов production timeout Gunicorn задаётся переменной `GUNICORN_TIMEOUT` (по умолчанию 300 секунд). Общий бюджет распознавания сделки задаётся `CALCULATION_RECOGNITION_BUDGET_SECONDS` (по умолчанию 240 секунд).
+- Для сканированных PDF-страниц Vision использует Tesseract OSD для коррекции уверенно определённого поворота, затем ограничивает размер по `POLICY_RECOGNITION_MAX_IMAGE_DIMENSION` (по умолчанию 2048 px). Nginx ожидает API-ответ до 300 секунд, что согласовано с Gunicorn.
 
 ### Фоновые обращения к внешним сервисам
 

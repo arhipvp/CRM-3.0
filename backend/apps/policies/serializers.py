@@ -20,6 +20,7 @@ class PolicySerializer(serializers.ModelSerializer):
     insurance_company_name = serializers.CharField(
         source="insurance_company.name", read_only=True
     )
+    insurance_company_logo_url = serializers.SerializerMethodField(read_only=True)
     insurance_type_name = serializers.CharField(
         source="insurance_type.name", read_only=True
     )
@@ -61,6 +62,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "number",
             "insurance_company",
             "insurance_company_name",
+            "insurance_company_logo_url",
             "insurance_type",
             "insurance_type_name",
             "deal",
@@ -114,6 +116,15 @@ class PolicySerializer(serializers.ModelSerializer):
                 "help_text": "Legacy field, kept for backward compatibility."
             },
         }
+
+    def get_insurance_company_logo_url(self, obj: Policy) -> str | None:
+        company = obj.insurance_company
+        if not company or not company.logo:
+            return None
+
+        request = self.context.get("request")
+        url = company.logo.url
+        return request.build_absolute_uri(url) if request else url
 
     def validate_vin(self, value: str) -> str:
         """Убедиться, что VIN — 17 латинских символов или цифр."""

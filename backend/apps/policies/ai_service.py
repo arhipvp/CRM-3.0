@@ -18,6 +18,7 @@ from typing import Callable, List, Tuple
 
 import openai
 import pymupdf
+import pytesseract
 from apps.deals.insurance_type_descriptions import AI_INSURANCE_TYPE_DESCRIPTIONS
 from django.conf import settings
 from docx import Document
@@ -588,7 +589,7 @@ def _render_pdf_pages_for_vision(
     *,
     remaining_pages: int | None = None,
 ) -> list[bytes]:
-    """Отрендерить страницы PDF в PNG для vision-модели."""
+    """Отрендерить и нормализовать страницы PDF для vision-модели."""
 
     dpi = int(getattr(settings, "POLICY_RECOGNITION_PDF_RENDER_DPI", 180))
     max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
@@ -604,7 +605,7 @@ def _render_pdf_pages_for_vision(
                 if len(images) >= max_pages:
                     break
                 pix = page.get_pixmap(dpi=dpi)
-                images.append(pix.tobytes("png"))
+                images.append(_prepare_pdf_page_for_vision(pix.tobytes("png")))
     except Exception as exc:
         raise PolicyRecognitionError(
             f"Не удалось подготовить PDF для vision-распознавания: {filename}."
@@ -612,8 +613,87 @@ def _render_pdf_pages_for_vision(
     return images
 
 
+def _detect_pdf_page_rotation(image: Image.Image) -> int:
+    """Вернуть требуемый поворот PDF-страницы по OSD или 0 при неопределённости."""
+
+    try:
+        osd = pytesseract.image_to_osd(
+            image,
+            output_type=pytesseract.Output.DICT,
+        )
+        rotation = int(osd.get("rotate", 0))
+        confidence = float(osd.get("orientation_conf", 0))
+    except (
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        AttributeError,
+        KeyError,
+        pytesseract.TesseractError,
+        pytesseract.TesseractNotFoundError,
+    ) as exc:
+        logger.info("Не удалось определить ориентацию PDF-страницы через OSD: %s", exc)
+        return 0
+
+    if rotation not in {90, 180, 270}:
+        return 0
+    if confidence < 5:
+        logger.info(
+            "OSD не повернул PDF-страницу из-за низкой уверенности: %.2f", confidence
+        )
+        return 0
+    return rotation
+
+
+def _normalize_image_for_vision(
+    image: Image.Image,
+    *,
+    apply_osd_rotation: bool = False,
+) -> bytes:
+    """Нормализовать изображение и ограничить его размер для vision-модели."""
+
+    image = ImageOps.exif_transpose(image)
+    if apply_osd_rotation:
+        rotation = _detect_pdf_page_rotation(image)
+        if rotation:
+            image = image.rotate(360 - rotation, expand=True)
+
+    max_dimension = int(
+        getattr(settings, "POLICY_RECOGNITION_MAX_IMAGE_DIMENSION", 2048)
+    )
+    if max_dimension > 0:
+        image.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+
+    normalized = BytesIO()
+    has_alpha = "A" in image.getbands() or "transparency" in image.info
+    if has_alpha:
+        image.convert("RGBA").save(normalized, format="PNG", optimize=True)
+    else:
+        image.convert("RGB").save(
+            normalized,
+            format="JPEG",
+            quality=90,
+            optimize=True,
+        )
+    return normalized.getvalue()
+
+
+def _prepare_pdf_page_for_vision(content: bytes) -> bytes:
+    """Нормализовать отрендеренную PDF-страницу и исправить её ориентацию по OSD."""
+
+    try:
+        with Image.open(BytesIO(content)) as source:
+            source.load()
+            return _normalize_image_for_vision(source, apply_osd_rotation=True)
+    except (OSError, UnidentifiedImageError, ValueError) as exc:
+        raise PolicyRecognitionError(
+            "Не удалось подготовить PDF-страницу для vision-распознавания."
+        ) from exc
+
+
 def _prepare_image_for_vision(content: bytes, filename: str) -> bytes:
-    """Нормализовать изображение, применить EXIF-поворот и ограничить размер."""
+    """Нормализовать загруженное изображение, применить EXIF-поворот и ограничить размер."""
 
     if not is_policy_image_filename(filename):
         raise PolicyRecognitionError(
@@ -623,30 +703,11 @@ def _prepare_image_for_vision(content: bytes, filename: str) -> bytes:
     try:
         with Image.open(BytesIO(content)) as source:
             source.load()
-            image = ImageOps.exif_transpose(source)
-            max_dimension = int(
-                getattr(settings, "POLICY_RECOGNITION_MAX_IMAGE_DIMENSION", 2048)
-            )
-            if max_dimension > 0:
-                image.thumbnail(
-                    (max_dimension, max_dimension), Image.Resampling.LANCZOS
-                )
-            normalized = BytesIO()
-            has_alpha = "A" in image.getbands() or "transparency" in image.info
-            if has_alpha:
-                image.convert("RGBA").save(normalized, format="PNG", optimize=True)
-            else:
-                image.convert("RGB").save(
-                    normalized,
-                    format="JPEG",
-                    quality=90,
-                    optimize=True,
-                )
+            return _normalize_image_for_vision(source)
     except (OSError, UnidentifiedImageError, ValueError) as exc:
         raise PolicyRecognitionError(
             f"Не удалось подготовить изображение для vision-распознавания: {filename}."
         ) from exc
-    return normalized.getvalue()
 
 
 def _image_mime_type(image_bytes: bytes) -> str:

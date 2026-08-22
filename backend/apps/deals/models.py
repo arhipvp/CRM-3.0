@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 import uuid
+from pathlib import Path
 
 from apps.common.indexes import PostgresTrigramIndex
 from apps.common.models import SoftDeleteModel
 from django.conf import settings
+from django.core.files.base import ContentFile
 from django.db import models
 from django.utils import timezone
+
+from .validators import sanitize_insurance_company_svg, validate_insurance_company_logo
 
 
 class InsuranceCompany(SoftDeleteModel):
@@ -20,6 +24,12 @@ class InsuranceCompany(SoftDeleteModel):
         blank=True,
         help_text="Дополнительная информация о компании",
     )
+    logo = models.FileField(
+        upload_to="insurance_company_logos/",
+        blank=True,
+        validators=[validate_insurance_company_logo],
+        help_text="Логотип в формате PNG, WebP или SVG размером до 2 МБ",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -28,6 +38,19 @@ class InsuranceCompany(SoftDeleteModel):
 
     def __str__(self) -> str:
         return self.name
+
+    def save(self, *args, **kwargs):
+        if (
+            self.logo
+            and not self.logo._committed
+            and Path(self.logo.name).suffix.lower() == ".svg"
+        ):
+            self.logo.save(
+                self.logo.name,
+                ContentFile(sanitize_insurance_company_svg(self.logo.file)),
+                save=False,
+            )
+        return super().save(*args, **kwargs)
 
 
 class InsuranceType(SoftDeleteModel):

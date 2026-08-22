@@ -52,6 +52,7 @@ describe('dashboard calculations', () => {
       {
         insuranceCompanyId: 'c1',
         insuranceCompanyName: 'Альфа',
+        insuranceCompanyLogoUrl: 'https://cdn.example.test/alfa.svg',
         insuranceTypeId: 't1',
         insuranceTypeName: 'КАСКО',
         incomeTotal: '100',
@@ -72,6 +73,9 @@ describe('dashboard calculations', () => {
     ];
     const matrix = buildFinancialMatrix(rows, '', false, false, 'net_desc');
     expect(matrix.rows.map((row) => row.companyName)).toEqual(['Альфа', 'Бета']);
+    expect(matrix.rows[0].companyLogoUrl).toBe('https://cdn.example.test/alfa.svg');
+    expect(matrix.topCompanies[0].companyLogoUrl).toBe('https://cdn.example.test/alfa.svg');
+    expect(matrix.maxExpensePair?.companyLogoUrl).toBe('https://cdn.example.test/alfa.svg');
     expect(matrix.grandTotals).toMatchObject({ income: 150, expense: 35, net: 115, count: 3 });
     expect(buildFinancialMatrix(rows, 'бета', false, true, 'alpha').rows).toHaveLength(1);
   });

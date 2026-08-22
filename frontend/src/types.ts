@@ -61,6 +61,7 @@ export interface Quote {
   sellerName?: string | null;
   insuranceCompanyId: string;
   insuranceCompany: string;
+  insuranceCompanyLogoUrl?: string | null;
   insuranceTypeId: string;
   insuranceType: string;
   sumInsured: number;
@@ -76,6 +77,7 @@ export interface Quote {
 export interface InsuranceCompany {
   id: string;
   name: string;
+  logoUrl?: string | null;
   description?: string;
   createdAt: string;
   updatedAt: string;
@@ -436,6 +438,7 @@ export interface Policy {
   number: string;
   insuranceCompanyId: string;
   insuranceCompany: string;
+  insuranceCompanyLogoUrl?: string | null;
   insuranceTypeId: string;
   insuranceType: string;
   dealId: string;
@@ -617,6 +620,7 @@ export interface SellerDashboardFinancialTotals {
 export interface SellerDashboardFinancialByCompanyTypeRow {
   insuranceCompanyId?: string | null;
   insuranceCompanyName: string;
+  insuranceCompanyLogoUrl?: string | null;
   insuranceTypeId?: string | null;
   insuranceTypeName: string;
   incomeTotal: string;

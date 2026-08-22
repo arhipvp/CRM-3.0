@@ -21,7 +21,7 @@ import {
   PolicyEmptyLedger,
   PolicyTermCard,
 } from '../../policies/PolicyTableCards';
-import { ColoredLabel } from '../../common/ColoredLabel';
+import { InsuranceCompanyLogo } from '../../common/InsuranceCompanyLogo';
 import { ClientNameIndicators } from '../../clients/ClientNameIndicators';
 import { Button } from '../../common/Button';
 import { DataTableShell } from '../../common/table/DataTableShell';
@@ -208,7 +208,11 @@ export const PoliciesTable = ({
                           </PolicyDataField>
                           <PolicyDataField label="Страховая компания">
                             {insuranceCompany ? (
-                              <ColoredLabel value={insuranceCompany} showDot className="text-sm" />
+                              <InsuranceCompanyLogo
+                                companyName={insuranceCompany}
+                                logoUrl={policy.insuranceCompanyLogoUrl}
+                                fallbackClassName="text-sm"
+                              />
                             ) : (
                               <span className="font-normal text-slate-400">Не указана</span>
                             )}

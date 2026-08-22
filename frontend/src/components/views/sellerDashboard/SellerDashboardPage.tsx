@@ -3,6 +3,7 @@ import { formatCurrencyRu } from '../../../utils/formatting';
 import { Button } from '../../common/Button';
 import { DateInput } from '../../common/forms/DateInput';
 import { PageHeader } from '../../common/layoutPrimitives';
+import { InsuranceCompanyLogo } from '../../common/InsuranceCompanyLogo';
 import {
   useSellerDashboardController,
   type SellerDashboardFinancialSort,
@@ -314,8 +315,13 @@ export const SellerDashboardView: React.FC = () => {
                       key={company.companyKey}
                       className="flex items-center justify-between gap-2"
                     >
-                      <span className="text-slate-600">
-                        {index + 1}. {company.companyName}
+                      <span className="flex min-w-0 items-center gap-2 text-slate-600">
+                        <span>{index + 1}.</span>
+                        <InsuranceCompanyLogo
+                          companyName={company.companyName}
+                          logoUrl={company.companyLogoUrl}
+                          fallbackClassName="text-slate-600"
+                        />
                       </span>
                       <span
                         className={
@@ -366,9 +372,11 @@ export const SellerDashboardView: React.FC = () => {
               </p>
               {financialMatrix.maxExpensePair ? (
                 <div className="mt-2 space-y-1 text-sm">
-                  <p className="font-semibold text-slate-900">
-                    {financialMatrix.maxExpensePair.companyName}
-                  </p>
+                  <InsuranceCompanyLogo
+                    companyName={financialMatrix.maxExpensePair.companyName}
+                    logoUrl={financialMatrix.maxExpensePair.companyLogoUrl}
+                    fallbackClassName="font-semibold text-slate-900"
+                  />
                   <p className="text-slate-600">{financialMatrix.maxExpensePair.typeName}</p>
                   <p className="font-semibold text-rose-700">
                     {formatCurrencyRu(financialMatrix.maxExpensePair.expense, '—')}
@@ -428,7 +436,11 @@ export const SellerDashboardView: React.FC = () => {
                         index % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'
                       }`}
                     >
-                      {companyRow.companyName}
+                      <InsuranceCompanyLogo
+                        companyName={companyRow.companyName}
+                        logoUrl={companyRow.companyLogoUrl}
+                        fallbackClassName="font-semibold text-slate-700"
+                      />
                     </td>
                     {financialMatrix.types.map((typeColumn) => (
                       <td

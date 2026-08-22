@@ -34,6 +34,7 @@ const createDashboardPayload = () => ({
     {
       insuranceCompanyId: 'ic-1',
       insuranceCompanyName: 'РЕСО',
+      insuranceCompanyLogoUrl: 'https://cdn.example.test/reso.svg',
       insuranceTypeId: 'it-1',
       insuranceTypeName: 'КАСКО',
       incomeTotal: '50000',
@@ -113,6 +114,18 @@ describe('SellerDashboardView', () => {
     expect(calendarDay).toHaveTextContent(/Окончания полисов\s*1/);
     expect(calendarDay).toHaveTextContent(/Контакты\s*1/);
     expect(screen.getByText('Общая нагрузка: меньше → больше')).toBeInTheDocument();
+  });
+
+  it('shows the company logo in financial summaries and matrix', async () => {
+    mockedFetchSellerDashboard.mockResolvedValueOnce(createDashboardPayload());
+
+    render(<SellerDashboardView />);
+
+    const logos = await screen.findAllByAltText('Логотип РЕСО');
+    expect(logos).toHaveLength(3);
+    logos.forEach((logo) =>
+      expect(logo).toHaveAttribute('src', 'https://cdn.example.test/reso.svg'),
+    );
   });
 
   it('links key KPI cards to filtered workflows', async () => {

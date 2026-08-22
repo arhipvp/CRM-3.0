@@ -36,6 +36,7 @@ class QuoteSerializer(serializers.ModelSerializer):
     insurance_company_name = serializers.CharField(
         source="insurance_company.name", read_only=True
     )
+    insurance_company_logo_url = serializers.SerializerMethodField(read_only=True)
     insurance_type_name = serializers.CharField(
         source="insurance_type.name", read_only=True
     )
@@ -49,6 +50,7 @@ class QuoteSerializer(serializers.ModelSerializer):
             "insurance_company",
             "insurance_type",
             "insurance_company_name",
+            "insurance_company_logo_url",
             "insurance_type_name",
             "sum_insured",
             "premium",
@@ -70,19 +72,39 @@ class QuoteSerializer(serializers.ModelSerializer):
         full_name = f"{seller.first_name} {seller.last_name}".strip()
         return full_name or seller.username
 
+    def get_insurance_company_logo_url(self, obj: Quote) -> str | None:
+        company = obj.insurance_company
+        if not company or not company.logo:
+            return None
+
+        request = self.context.get("request")
+        url = company.logo.url
+        return request.build_absolute_uri(url) if request else url
+
 
 class InsuranceCompanySerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField(read_only=True)
+
     class Meta:
         model = InsuranceCompany
         fields = (
             "id",
             "name",
             "description",
+            "logo_url",
             "created_at",
             "updated_at",
             "deleted_at",
         )
         read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+    def get_logo_url(self, obj: InsuranceCompany) -> str | None:
+        if not obj.logo:
+            return None
+
+        request = self.context.get("request")
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class InsuranceTypeSerializer(serializers.ModelSerializer):
@@ -249,7 +271,7 @@ class DealSerializer(serializers.ModelSerializer):
             return []
         prefetched = getattr(obj, "embedded_policies", None)
         if prefetched is not None:
-            return PolicySerializer(prefetched, many=True).data
+            return PolicySerializer(prefetched, many=True, context=self.context).data
         decimal_field = DecimalField(max_digits=12, decimal_places=2)
         policies = (
             obj.policies.select_related(
@@ -278,7 +300,7 @@ class DealSerializer(serializers.ModelSerializer):
             .order_by("-created_at")
         )
         policies = with_computed_status_flags(policies)
-        return PolicySerializer(policies, many=True).data
+        return PolicySerializer(policies, many=True, context=self.context).data
 
     def _set_visible_users(self, deal: Deal, users):
         if users is None:

@@ -442,6 +442,9 @@ export async function fetchSellerDashboard(
         insuranceCompanyName: toStringValue(
           record.insurance_company_name ?? record.insuranceCompanyName ?? 'Не указано',
         ),
+        insuranceCompanyLogoUrl: toNullableString(
+          record.insurance_company_logo_url ?? record.insuranceCompanyLogoUrl,
+        ),
         insuranceTypeId: toNullableString(record.insurance_type_id ?? record.insuranceTypeId),
         insuranceTypeName: toStringValue(
           record.insurance_type_name ?? record.insuranceTypeName ?? 'Не указано',
