@@ -280,11 +280,18 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                 data-testid={`policy-meta-${policy.id}`}
                               >
                                 {insuranceCompany ? (
-                                  <InsuranceCompanyLogo
-                                    companyName={insuranceCompany}
-                                    logoUrl={policy.insuranceCompanyLogoUrl}
-                                    fallbackClassName="max-w-full truncate text-xs font-semibold text-slate-800"
-                                  />
+                                  <>
+                                    <InsuranceCompanyLogo
+                                      companyName={insuranceCompany}
+                                      logoUrl={policy.insuranceCompanyLogoUrl}
+                                      fallbackClassName="max-w-full truncate text-xs font-semibold text-slate-800"
+                                    />
+                                    {policy.insuranceCompanyLogoUrl && (
+                                      <span className="min-w-0 truncate text-xs font-semibold text-slate-800">
+                                        {insuranceCompany}
+                                      </span>
+                                    )}
+                                  </>
                                 ) : null}
                                 {!hasMeta && (
                                   <span className="text-sm font-normal text-slate-400">

@@ -137,12 +137,15 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
       className="min-w-0 flex-nowrap"
       valueClassName="min-w-0 flex-1"
       value={
-        <span className="block min-w-0 truncate" title={value}>
+        <span className="flex min-w-0 items-center gap-2" title={value}>
           <InsuranceCompanyLogo
             companyName={value}
             logoUrl={policy.insuranceCompanyLogoUrl}
             fallbackClassName="max-w-full truncate font-semibold text-slate-900"
           />
+          {policy.insuranceCompanyLogoUrl && (
+            <span className="min-w-0 truncate font-semibold text-slate-900">{value}</span>
+          )}
         </span>
       }
     />
