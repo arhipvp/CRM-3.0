@@ -32,6 +32,9 @@ export interface FilesTabProps {
   isRenaming: boolean;
   renameMessage: string | null;
   handleRenameDriveFile: (fileId: string, name: string) => Promise<void>;
+  isMoving: boolean;
+  moveMessage: string | null;
+  handleMoveDriveFiles: (fileIds: string[], targetFolderId: string) => Promise<void>;
   isCreatingMailbox: boolean;
   isCheckingMailbox: boolean;
   mailboxActionError: string | null;

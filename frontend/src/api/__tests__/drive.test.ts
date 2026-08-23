@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   downloadDealDriveFiles,
   fetchDealDriveFiles,
+  moveDealDriveFiles,
   renameDealDriveFile,
   trashDealDriveFiles,
   uploadDealDriveFile,
@@ -74,5 +75,19 @@ describe('deal drive API', () => {
         },
       },
     );
+  });
+
+  it('moves selected files to a folder in a closed deal', async () => {
+    vi.mocked(request).mockResolvedValue({
+      moved_file_ids: ['file-1', 'file-2'],
+      target_folder_id: 'folder-2',
+    });
+
+    await moveDealDriveFiles('deal-1', ['file-1', 'file-2'], 'folder-2');
+
+    expect(request).toHaveBeenCalledWith('/deals/deal-1/drive-files/move/?show_closed=1', {
+      method: 'POST',
+      body: JSON.stringify({ file_ids: ['file-1', 'file-2'], target_folder_id: 'folder-2' }),
+    });
   });
 });

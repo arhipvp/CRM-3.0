@@ -41,8 +41,9 @@
 1. UI: загрузка документа в сделке.
 2. API: `POST /api/v1/deals/<id>/drive-files/` загружает файл в Google Drive через resumable upload; временные ошибки Google Drive (`429/5xx`) повторяются с backoff.
 3. Если Google Drive временно не принял файл, API возвращает `503` с `error_code=drive_temporary_error`, а UI просит повторить загрузку через минуту.
-4. Запуск распознавания полиса по выбранным Drive-файлам: `POST /api/v1/policies/recognize/` (JWT required).
-5. Для подготовки данных ОСАГО во вкладке «Данные» сделки оператор выбирает Drive-файлы и/или вводит текст, затем вызывает `POST /api/v1/deals/<id>/recognize-calculation/`. Полученный черновик можно исправить и сохранить через `PATCH /api/v1/deals/<id>/calculation/`; сохранение доступно администратору или продавцу сделки.
+4. Файлы сделки можно переместить между папками её дерева через `POST /api/v1/deals/<id>/drive-files/move/` с `file_ids` и `target_folder_id`; доступно продавцу сделки или администратору. Корень сделки — допустимая папка назначения.
+5. Запуск распознавания полиса по выбранным Drive-файлам: `POST /api/v1/policies/recognize/` (JWT required).
+6. Для подготовки данных ОСАГО во вкладке «Данные» сделки оператор выбирает Drive-файлы и/или вводит текст, затем вызывает `POST /api/v1/deals/<id>/recognize-calculation/`. Полученный черновик можно исправить и сохранить через `PATCH /api/v1/deals/<id>/calculation/`; сохранение доступно администратору или продавцу сделки.
 
 ## 7) Knowledge / Open Notebook
 

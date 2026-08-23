@@ -13,6 +13,11 @@ export interface DriveTrashResponse {
   trashFolderId?: string | null;
 }
 
+export interface DriveMoveResponse {
+  movedFileIds: string[];
+  targetFolderId: string;
+}
+
 function buildDealDriveQuery(includeDeleted = false, parentId?: string | null): string {
   const query = new URLSearchParams();
   query.set('show_closed', '1');
@@ -118,6 +123,30 @@ export async function renameDealDriveFile(
   }
 
   return mapDriveFile(payload.file as Record<string, unknown>);
+}
+
+export async function moveDealDriveFiles(
+  dealId: string,
+  fileIds: string[],
+  targetFolderId: string,
+  includeDeleted = false,
+): Promise<DriveMoveResponse> {
+  const suffix = buildDealDriveQuery(includeDeleted);
+  const payload = await request<{ moved_file_ids?: unknown; target_folder_id?: unknown }>(
+    `/deals/${dealId}/drive-files/move/${suffix}`,
+    {
+      method: 'POST',
+      body: JSON.stringify({ file_ids: fileIds, target_folder_id: targetFolderId }),
+    },
+  );
+
+  return {
+    movedFileIds: Array.isArray(payload?.moved_file_ids)
+      ? payload.moved_file_ids.filter((value): value is string => typeof value === 'string')
+      : [],
+    targetFolderId:
+      typeof payload?.target_folder_id === 'string' ? payload.target_folder_id : targetFolderId,
+  };
 }
 
 export async function fetchClientDriveFiles(clientId: string): Promise<DriveFilesResponse> {

@@ -22,11 +22,14 @@ interface FilesTabToolbarProps {
   isTrashing: boolean;
   handleDownloadDriveFiles: (fileIds?: string[]) => Promise<void>;
   isDownloading: boolean;
+  isMoving: boolean;
+  onOpenMoveDialog: () => void;
   driveError: string | null;
   recognitionMessage: string | null;
   trashMessage: string | null;
   downloadMessage: string | null;
   renameMessage: string | null;
+  moveMessage: string | null;
   recognitionResults: PolicyRecognitionResult[];
   isCreatingMailbox: boolean;
   isCheckingMailbox: boolean;
@@ -42,6 +45,7 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
     props.isRecognizing ||
     props.isTrashing ||
     props.isDownloading ||
+    props.isMoving ||
     !props.selectedDeal.driveFolderId ||
     props.selectedDriveFileIds.length === 0 ||
     !!props.driveError;
@@ -133,6 +137,15 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
       <div className="flex flex-wrap items-center gap-2 pt-2">
         <Button
           type="button"
+          onClick={props.onOpenMoveDialog}
+          disabled={disabled}
+          variant="secondary"
+          size="sm"
+        >
+          {props.isMoving ? 'Перемещаю...' : 'Переместить'}
+        </Button>
+        <Button
+          type="button"
           onClick={props.handleRecognizePolicies}
           disabled={disabled || !props.canRecognizeSelectedFiles}
           variant="primary"
@@ -176,6 +189,7 @@ export function FilesTabToolbar(props: FilesTabToolbarProps) {
         <p className="ui-status-danger-badge-xs">{props.downloadMessage}</p>
       )}
       {props.renameMessage && <p className="ui-status-danger-badge-xs">{props.renameMessage}</p>}
+      {props.moveMessage && <p className="ui-status-danger-badge-xs">{props.moveMessage}</p>}
       <RecognitionResults results={props.recognitionResults} />
       {props.driveError && (
         <div className="ui-panel-muted-text ui-status-danger-text">{props.driveError}</div>

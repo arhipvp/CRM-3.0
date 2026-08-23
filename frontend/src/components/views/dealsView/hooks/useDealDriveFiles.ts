@@ -5,6 +5,7 @@ import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
   downloadDealDriveFiles,
   fetchDealDriveFiles,
+  moveDealDriveFiles,
   recognizeDealPolicies,
   renameDealDriveFile,
   trashDealDriveFiles,
@@ -160,6 +161,8 @@ export const useDealDriveFiles = ({
   const [driveSortDirection, setDriveSortDirection] = useState<'asc' | 'desc'>('desc');
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameMessage, setRenameMessage] = useState<string | null>(null);
+  const [isMoving, setIsMoving] = useState(false);
+  const [moveMessage, setMoveMessage] = useState<string | null>(null);
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
 
   useEffect(() => {
@@ -173,6 +176,7 @@ export const useDealDriveFiles = ({
     setTrashMessage(null);
     setDownloadMessage(null);
     setRenameMessage(null);
+    setMoveMessage(null);
     setChildrenByParentId({});
     setExpandedFolderIds(new Set());
     setLoadingFolderIds(new Set());
@@ -781,6 +785,50 @@ export const useDealDriveFiles = ({
     [selectedDeal, updateFileInTree],
   );
 
+  const handleMoveDriveFiles = useCallback(
+    async (fileIds: string[], targetFolderId: string) => {
+      const deal = selectedDeal;
+      const targetIds = [...new Set(fileIds)];
+      if (!deal || !targetIds.length || !targetFolderId) {
+        return;
+      }
+
+      const filesToMove = targetIds
+        .map((fileId) => sortedDriveFiles.find((file) => file.id === fileId))
+        .filter((file): file is DriveFile => Boolean(file && !file.isFolder));
+      if (filesToMove.length !== targetIds.length) {
+        setMoveMessage('Для перемещения можно выбрать только файлы из текущего списка.');
+        return;
+      }
+      if (filesToMove.some((file) => (file.parentId ?? deal.driveFolderId) === targetFolderId)) {
+        setMoveMessage('Нельзя переместить файл в ту же папку.');
+        return;
+      }
+
+      const currentDealId = deal.id;
+      latestDealIdRef.current = currentDealId;
+      setIsMoving(true);
+      setMoveMessage(null);
+      try {
+        await moveDealDriveFiles(currentDealId, targetIds, targetFolderId, Boolean(deal.deletedAt));
+        if (latestDealIdRef.current === currentDealId) {
+          setSelectedDriveFileIds([]);
+        }
+      } catch (error) {
+        if (latestDealIdRef.current === currentDealId) {
+          console.error('Ошибка перемещения файлов:', error);
+          setMoveMessage(formatErrorMessage(error, 'Не удалось переместить файлы.'));
+        }
+      } finally {
+        if (latestDealIdRef.current === currentDealId) {
+          await loadDriveFiles();
+          setIsMoving(false);
+        }
+      }
+    },
+    [loadDriveFiles, selectedDeal, sortedDriveFiles],
+  );
+
   const toggleDriveSortDirection = useCallback(() => {
     setDriveSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
   }, []);
@@ -799,6 +847,8 @@ export const useDealDriveFiles = ({
     downloadMessage,
     isRenaming,
     renameMessage,
+    isMoving,
+    moveMessage,
     sortedDriveFiles,
     driveSortDirection,
     expandedFolderIds,
@@ -818,6 +868,7 @@ export const useDealDriveFiles = ({
     handleDownloadDriveFiles,
     getDriveFileBlob,
     handleRenameDriveFile,
+    handleMoveDriveFiles,
     resetDriveState,
   };
 };

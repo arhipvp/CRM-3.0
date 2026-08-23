@@ -20,6 +20,12 @@ interface DriveFilesTableProps {
   renderDate: (file: DriveFile) => string;
   renderSize: (file: DriveFile) => string;
   renderActions: (file: DriveFile) => React.ReactNode;
+  draggedFileIds?: string[];
+  dropTargetFolderId?: string | null;
+  isDragDisabled?: boolean;
+  onDragStart?: (file: DriveFile) => void;
+  onFolderDragOver?: (event: React.DragEvent<HTMLTableRowElement>, folder: DriveFile) => void;
+  onFolderDrop?: (event: React.DragEvent<HTMLTableRowElement>, folder: DriveFile) => void;
 }
 
 const getDriveItemIcon = (isFolder: boolean) => (isFolder ? '📁' : '📄');
@@ -40,6 +46,12 @@ export const DriveFilesTable: React.FC<DriveFilesTableProps> = ({
   renderDate,
   renderSize,
   renderActions,
+  draggedFileIds = [],
+  dropTargetFolderId,
+  isDragDisabled = false,
+  onDragStart,
+  onFolderDragOver,
+  onFolderDrop,
 }) => {
   const showSelection = Boolean(onToggleSelection);
 
@@ -77,12 +89,22 @@ export const DriveFilesTable: React.FC<DriveFilesTableProps> = ({
                 (!file.isFolder || isFolderRowSelectable) &&
                 !isSelectionDisabled?.(file);
               const indentStyle = depth > 0 ? { paddingLeft: `${depth * 20}px` } : undefined;
+              const isFolderDropTarget = file.isFolder && dropTargetFolderId === file.id;
 
               return (
                 <tr
                   key={file.id}
                   id={`drive-folder-row-${file.id}`}
-                  className={TABLE_ROW_CLASS_PLAIN}
+                  className={`${TABLE_ROW_CLASS_PLAIN} ${
+                    isFolderDropTarget
+                      ? 'bg-sky-50 outline outline-2 outline-sky-400 outline-offset-[-2px]'
+                      : ''
+                  }`}
+                  draggable={Boolean(!file.isFolder && onDragStart && !isDragDisabled)}
+                  onDragStart={() => onDragStart?.(file)}
+                  onDragOver={(event) => onFolderDragOver?.(event, file)}
+                  onDrop={(event) => onFolderDrop?.(event, file)}
+                  aria-grabbed={!file.isFolder && draggedFileIds.includes(file.id)}
                 >
                   {showSelection && (
                     <td className={TABLE_CELL_CLASS_SM}>

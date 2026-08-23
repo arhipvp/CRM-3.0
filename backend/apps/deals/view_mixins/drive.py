@@ -13,7 +13,12 @@ from apps.common.drive import (
     rename_drive_file,
     serialize_drive_error,
 )
-from apps.common.services import manage_drive_files
+from apps.common.services import (
+    DriveFileMoveValidationError,
+    manage_drive_files,
+    move_drive_files_within_folder_tree,
+)
+from apps.deals.permissions import can_modify_deal
 from apps.documents.external_jobs import create_external_job, serialize_external_job
 from apps.documents.models import ExternalJob
 from apps.users.models import AuditLog
@@ -23,7 +28,7 @@ from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
 from rest_framework import serializers, status
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
@@ -57,7 +62,68 @@ class DealDriveDownloadSerializer(serializers.Serializer):
     )
 
 
+class DealDriveMoveSerializer(serializers.Serializer):
+    file_ids = serializers.ListField(
+        child=serializers.CharField(),
+        min_length=1,
+        allow_empty=False,
+        required=True,
+    )
+    target_folder_id = serializers.CharField()
+
+
 class DealDriveMixin:
+    @action(
+        detail=True,
+        methods=["post"],
+        url_path="drive-files/move",
+        parser_classes=[JSONParser],
+    )
+    def move_drive_files(self, request, pk=None):
+        queryset = self.filter_queryset(self.get_queryset())
+        deal = get_object_or_404(queryset, pk=pk)
+        if not can_modify_deal(request.user, deal):
+            raise PermissionDenied("У вас нет прав на изменение этой сделки.")
+
+        serializer = DealDriveMoveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        file_ids = [
+            file_id.strip() for file_id in serializer.validated_data["file_ids"]
+        ]
+        target_folder_id = serializer.validated_data["target_folder_id"].strip()
+        if not all(file_ids):
+            raise ValidationError({"file_ids": "ID файлов не должны быть пустыми."})
+        if not target_folder_id:
+            raise ValidationError(
+                {"target_folder_id": "Нужно передать ID папки назначения."}
+            )
+
+        try:
+            folder_id = deal.drive_folder_id or ensure_deal_folder(deal)
+            if not folder_id:
+                return Response(
+                    {"detail": "Папка Google Drive для сделки не найдена."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            moved_file_ids = move_drive_files_within_folder_tree(
+                folder_id, file_ids, target_folder_id
+            )
+            return Response(
+                {
+                    "moved_file_ids": moved_file_ids,
+                    "target_folder_id": target_folder_id,
+                }
+            )
+        except DriveFileMoveValidationError as exc:
+            return Response(
+                {"detail": exc.detail, **exc.extra}, status=status.HTTP_400_BAD_REQUEST
+            )
+        except DriveError as exc:
+            return Response(
+                serialize_drive_error(exc), status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
     def _folder_belongs_to_deal_tree(
         self, root_folder_id: str, target_folder_id: str
     ) -> bool:

@@ -13,8 +13,10 @@ import {
 } from './FilesTabParts';
 import { FilePreviewDialogs, type FilePreviewState } from './FilePreviewDialogs';
 import { FilesTabToolbar } from './FilesTabToolbar';
+import { DriveMoveDialog, DriveRootDropZone } from './DriveMoveControls';
 import type { FilesTabProps } from './filesTabTypes';
 import { getFilePreviewKind, isImageFile, splitFileName } from './filePreviewUtils';
+import { useDriveMoveInteraction } from './useDriveMoveInteraction';
 
 function FilesTabContent({
   selectedDeal,
@@ -48,6 +50,9 @@ function FilesTabContent({
   isRenaming,
   renameMessage,
   handleRenameDriveFile,
+  isMoving,
+  moveMessage,
+  handleMoveDriveFiles,
   isCreatingMailbox,
   isCheckingMailbox,
   mailboxActionError,
@@ -78,6 +83,23 @@ function FilesTabContent({
     isDownloading ||
     isSelectedDealDeleted ||
     !selectedDeal?.driveFolderId;
+  const isMoveDisabled =
+    isMoving ||
+    isDriveLoading ||
+    isTrashing ||
+    isDownloading ||
+    isRecognizing ||
+    isRenaming ||
+    isSelectedDealDeleted ||
+    !selectedDeal?.driveFolderId;
+  const moveInteraction = useDriveMoveInteraction({
+    rootFolderId: selectedDeal?.driveFolderId,
+    files: sortedDriveFiles,
+    selectedFileIds: selectedDriveFileIds,
+    expandedFolderIds,
+    isDisabled: isMoveDisabled,
+    onMove: handleMoveDriveFiles,
+  });
 
   const openRenameModal = (file: DriveFile) => {
     const { baseName } = splitFileName(file.name);
@@ -363,11 +385,14 @@ function FilesTabContent({
         isTrashing={isTrashing}
         handleDownloadDriveFiles={handleDownloadDriveFiles}
         isDownloading={isDownloading}
+        isMoving={isMoving}
+        onOpenMoveDialog={() => moveInteraction.setIsDialogOpen(true)}
         driveError={driveError}
         recognitionMessage={recognitionMessage}
         trashMessage={trashMessage}
         downloadMessage={downloadMessage}
         renameMessage={renameMessage}
+        moveMessage={moveMessage}
         recognitionResults={recognitionResults}
         isCreatingMailbox={isCreatingMailbox}
         isCheckingMailbox={isCheckingMailbox}
@@ -378,6 +403,17 @@ function FilesTabContent({
       />
 
       <div className={'ui-content-divider'}>
+        {!driveError && selectedDeal.driveFolderId && (
+          <DriveRootDropZone
+            rootFolderId={selectedDeal.driveFolderId}
+            isDisabled={isMoveDisabled}
+            draggedFileIds={moveInteraction.draggedFileIds}
+            dropTargetFolderId={moveInteraction.dropTargetFolderId}
+            onDragOverRoot={moveInteraction.onDragOverRoot}
+            onDragLeaveRoot={() => moveInteraction.setDropTargetFolderId(null)}
+            onDropRoot={moveInteraction.onDropRoot}
+          />
+        )}
         {!driveError && selectedDeal.driveFolderId && isDriveLoading && (
           <div className="ui-panel-muted-text">Загружаю файлы...</div>
         )}
@@ -393,7 +429,7 @@ function FilesTabContent({
             selectedFileIds={selectedDriveFileIds}
             onToggleSelection={toggleDriveFileSelection}
             isSelectionDisabled={() =>
-              isDriveLoading || isTrashing || isDownloading || isRecognizing
+              isDriveLoading || isTrashing || isDownloading || isRecognizing || isMoving
             }
             isFolderRowSelectable
             expandedFolderIds={expandedFolderIds}
@@ -464,6 +500,12 @@ function FilesTabContent({
                 </ActionLinkButton>
               </div>
             )}
+            draggedFileIds={moveInteraction.draggedFileIds}
+            dropTargetFolderId={moveInteraction.dropTargetFolderId}
+            isDragDisabled={isMoveDisabled}
+            onDragStart={moveInteraction.onDragStart}
+            onFolderDragOver={moveInteraction.onFolderDragOver}
+            onFolderDrop={moveInteraction.onFolderDrop}
             emptyMessage="Папка пуста."
           />
         )}
@@ -500,6 +542,18 @@ function FilesTabContent({
         handleRenameSubmit={handleRenameSubmit}
         isRenaming={isRenaming}
       />
+      {selectedDeal.driveFolderId && (
+        <DriveMoveDialog
+          rootFolderId={selectedDeal.driveFolderId}
+          isMoving={isMoving}
+          isDialogOpen={moveInteraction.isDialogOpen}
+          selectedFiles={moveInteraction.selectedFiles}
+          destinationFolders={moveInteraction.destinationFolders}
+          onCloseDialog={() => moveInteraction.setIsDialogOpen(false)}
+          onMove={moveInteraction.completeMove}
+          getFolderDepth={getDriveFileDepth}
+        />
+      )}
     </section>
   );
 }
