@@ -89,6 +89,20 @@ export async function createPayment(data: {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
+  incomes?: Array<{
+    amount: number;
+    date?: string | null;
+    description?: string;
+    source?: string;
+    note?: string;
+  }>;
+  expenses?: Array<{
+    amount: number;
+    date?: string | null;
+    description?: string;
+    source?: string;
+    note?: string;
+  }>;
   initialRecord?: {
     amount: number;
     recordType: 'income' | 'expense';
@@ -107,6 +121,20 @@ export async function createPayment(data: {
       description: data.description || '',
       scheduled_date: data.scheduledDate || null,
       actual_date: data.actualDate || null,
+      incomes: data.incomes?.map((record) => ({
+        amount: record.amount,
+        date: record.date || null,
+        description: record.description || '',
+        source: record.source || '',
+        note: record.note || '',
+      })),
+      expenses: data.expenses?.map((record) => ({
+        amount: record.amount,
+        date: record.date || null,
+        description: record.description || '',
+        source: record.source || '',
+        note: record.note || '',
+      })),
       initial_record: data.initialRecord
         ? {
             amount: data.initialRecord.amount,

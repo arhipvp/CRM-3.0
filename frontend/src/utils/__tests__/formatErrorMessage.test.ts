@@ -12,11 +12,11 @@ describe('formatErrorMessage', () => {
     );
   });
 
-  it('keeps friendly API errors for non-html messages', () => {
+  it('adds action context and status for unexpected server errors', () => {
     const error = new APIError('Сервис временно недоступен', 500, '/mailboxes/');
 
     expect(formatErrorMessage(error, 'Не удалось загрузить почтовые ящики.')).toBe(
-      'Сервис временно недоступен',
+      'Не удалось загрузить почтовые ящики. Сервер временно не смог выполнить запрос (HTTP 500).',
     );
   });
 

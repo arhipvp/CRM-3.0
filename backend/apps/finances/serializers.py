@@ -303,7 +303,10 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
 
 class InitialFinancialRecordSerializer(serializers.Serializer):
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    record_type = serializers.ChoiceField(choices=FinancialRecord.RecordType.choices)
+    record_type = serializers.ChoiceField(
+        choices=FinancialRecord.RecordType.choices,
+        required=False,
+    )
     date = serializers.DateField(required=False, allow_null=True)
     description = serializers.CharField(required=False, allow_blank=True, default="")
     source = serializers.CharField(required=False, allow_blank=True, default="")
@@ -323,6 +326,12 @@ class PaymentSerializer(serializers.ModelSerializer):
     financial_records = FinancialRecordSerializer(many=True, read_only=True)
     can_delete = serializers.SerializerMethodField()
     initial_record = InitialFinancialRecordSerializer(write_only=True, required=False)
+    incomes = InitialFinancialRecordSerializer(
+        many=True, write_only=True, required=False
+    )
+    expenses = InitialFinancialRecordSerializer(
+        many=True, write_only=True, required=False
+    )
 
     class Meta:
         model = Payment
@@ -377,9 +386,23 @@ class PaymentSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         initial_record = validated_data.pop("initial_record", None)
+        incomes = validated_data.pop("incomes", [])
+        expenses = validated_data.pop("expenses", [])
         payment = super().create(validated_data)
         if initial_record is not None:
             FinancialRecord.objects.create(payment=payment, **initial_record)
+        for record in incomes:
+            FinancialRecord.objects.create(
+                payment=payment,
+                record_type=FinancialRecord.RecordType.INCOME,
+                **record,
+            )
+        for record in expenses:
+            FinancialRecord.objects.create(
+                payment=payment,
+                record_type=FinancialRecord.RecordType.EXPENSE,
+                **record,
+            )
         return payment
 
 

@@ -98,6 +98,11 @@ const renderRecordList = (
         const sign = recordType === 'income' ? '+' : '-';
 
         const recordTitle = record.note || 'Без примечания';
+        const deleteBlockedReason = record.statementId
+          ? 'Сначала уберите запись из ведомости.'
+          : record.date
+            ? 'Сначала снимите фактическую дату записи.'
+            : null;
 
         return (
           <div key={record.id} className={recordClassName}>
@@ -143,6 +148,8 @@ const renderRecordList = (
                     : 'link-danger text-[11px] font-semibold'
                 }
                 type="button"
+                disabled={Boolean(deleteBlockedReason)}
+                title={deleteBlockedReason ?? 'Удалить запись'}
               >
                 Удалить
               </Button>
@@ -332,7 +339,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
                     disabled={payment.canDelete === false}
                     title={
                       payment.canDelete === false
-                        ? 'Сначала удалите полученные доходы или выплаченные расходы'
+                        ? 'Нельзя удалить проведённый платёж или платёж с проведёнными записями.'
                         : 'Удалить платёж'
                     }
                   >
@@ -455,7 +462,7 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               disabled={payment.canDelete === false}
               title={
                 payment.canDelete === false
-                  ? 'Сначала удалите полученные доходы или выплаченные расходы'
+                  ? 'Нельзя удалить проведённый платёж или платёж с проведёнными записями.'
                   : 'Удалить платёж'
               }
             >

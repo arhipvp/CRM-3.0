@@ -160,7 +160,9 @@ describe('request error normalization', () => {
       ),
     );
 
-    await expect(request('/mailboxes/')).rejects.toThrow('Ошибка сервера');
+    await expect(request('/mailboxes/')).rejects.toThrow(
+      'Сервер временно не смог выполнить запрос (HTTP 500).',
+    );
   });
 
   it('prefers json detail for structured api errors', async () => {

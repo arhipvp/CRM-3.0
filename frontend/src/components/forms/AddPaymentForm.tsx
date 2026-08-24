@@ -9,6 +9,13 @@ import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
 import { FORM_INPUT_DISABLED, FORM_TEXTAREA_DISABLED } from '../common/forms/formClassNames';
+import { Button } from '../common/Button';
+import { EmptyState } from '../common/EmptyState';
+import { Panel } from '../common/layoutPrimitives';
+import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
+import { buildDefaultPaymentExpenses } from './addPolicy/policyFormState';
+import { createEmptyRecord, createPaymentWithDefaultIncome } from './addPolicy/types';
+import type { FinancialRecordDraft } from './addPolicy/types';
 
 export interface AddPaymentFormValues {
   policyId?: string;
@@ -17,6 +24,8 @@ export interface AddPaymentFormValues {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
+  incomes?: FinancialRecordDraft[];
+  expenses?: FinancialRecordDraft[];
 }
 
 interface AddPaymentFormProps {
@@ -54,6 +63,15 @@ export function AddPaymentForm({
     ? policyOptions.find((policy) => policy.id === fixedPolicyId)
     : undefined;
   const fixedPolicyDisplay = fixedPolicy?.number || fixedPolicy?.id || fixedPolicyId || '';
+  const [records, setRecords] = useState(() => {
+    if (payment) {
+      return { incomes: [] as FinancialRecordDraft[], expenses: [] as FinancialRecordDraft[] };
+    }
+    return {
+      incomes: createPaymentWithDefaultIncome().incomes,
+      expenses: buildDefaultPaymentExpenses(fixedPolicy?.counterparty),
+    };
+  });
 
   useEffect(() => {
     if (!dealId) {
@@ -100,6 +118,7 @@ export function AddPaymentForm({
       const submission: AddPaymentFormValues = {
         ...formData,
         dealId: dealId ?? (formData.dealId || undefined),
+        ...(payment ? {} : records),
       };
 
       await onSubmit(submission);
@@ -108,6 +127,39 @@ export function AddPaymentForm({
     } finally {
       setLoading(false);
     }
+  };
+
+  const addRecord = (type: 'incomes' | 'expenses') => {
+    setRecords((prev) => ({
+      ...prev,
+      [type]: [...prev[type], createEmptyRecord(type === 'expenses' ? '1' : '0')],
+    }));
+  };
+
+  const updateRecord = (
+    _paymentIndex: number,
+    type: 'incomes' | 'expenses',
+    recordIndex: number,
+    field: keyof FinancialRecordDraft,
+    value: string,
+  ) => {
+    setRecords((prev) => ({
+      ...prev,
+      [type]: prev[type].map((record, index) =>
+        index === recordIndex ? { ...record, [field]: value } : record,
+      ),
+    }));
+  };
+
+  const removeRecord = (
+    _paymentIndex: number,
+    type: 'incomes' | 'expenses',
+    recordIndex: number,
+  ) => {
+    setRecords((prev) => ({
+      ...prev,
+      [type]: prev[type].filter((_, index) => index !== recordIndex),
+    }));
   };
 
   return (
@@ -169,6 +221,56 @@ export function AddPaymentForm({
         onChange={handleChange}
         loading={loading}
       />
+
+      {!payment && (
+        <Panel variant="muted" padding="md" className="space-y-4">
+          <div>
+            <p className="app-label">Финансовые записи</p>
+            <p className="mt-1 text-xs text-slate-500">
+              Доходы и расходы будут созданы вместе с платежом.
+            </p>
+          </div>
+
+          {(['incomes', 'expenses'] as const).map((type) => {
+            const isIncome = type === 'incomes';
+            const title = isIncome ? 'Доходы' : 'Расходы';
+            const addLabel = isIncome ? 'Добавить доход' : 'Добавить расход';
+            return (
+              <Panel key={type} variant="flat" padding="sm" className="space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    {title}
+                  </h3>
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    size="sm"
+                    icon="plus"
+                    onClick={() => addRecord(type)}
+                    disabled={loading}
+                  >
+                    {addLabel}
+                  </Button>
+                </div>
+                {records[type].length === 0 && (
+                  <EmptyState compact>
+                    {isIncome
+                      ? 'Добавьте доход, чтобы привязать поступление к этому платежу.'
+                      : 'Добавьте расход, чтобы контролировать связанное списание.'}
+                  </EmptyState>
+                )}
+                <FinancialRecordInputs
+                  paymentIndex={0}
+                  type={type}
+                  records={records[type]}
+                  onUpdateRecord={updateRecord}
+                  onRemoveRecord={removeRecord}
+                />
+              </Panel>
+            );
+          })}
+        </Panel>
+      )}
 
       <FormActions
         onCancel={onCancel}

@@ -138,6 +138,47 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         payment = Payment.objects.get(pk=response.data["id"])
         self.assertEqual(payment.financial_records.count(), 1)
 
+    def test_payment_and_financial_records_are_created_atomically(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "incomes": [
+                    {"amount": "100.00", "note": "Комиссия"},
+                    {"amount": "50.00", "date": "2026-08-08"},
+                ],
+                "expenses": [{"amount": "20.00", "note": "Расход"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        payment = Payment.objects.get(pk=response.data["id"])
+        records = list(payment.financial_records.order_by("created_at"))
+        self.assertEqual(len(records), 3)
+        self.assertEqual(records[0].amount, Decimal("100.00"))
+        self.assertEqual(records[1].amount, Decimal("50.00"))
+        self.assertEqual(records[2].amount, Decimal("-20.00"))
+        self.assertEqual(records[2].record_type, FinancialRecord.RecordType.EXPENSE)
+
+    def test_invalid_financial_record_rolls_back_payment_creation(self):
+        self.authenticate(self.seller)
+        payments_before = Payment.objects.count()
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "incomes": [{"amount": "not-a-number"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Payment.objects.count(), payments_before)
+
     def test_invalid_initial_record_does_not_create_payment(self):
         self.authenticate(self.seller)
         count_before = Payment.objects.count()

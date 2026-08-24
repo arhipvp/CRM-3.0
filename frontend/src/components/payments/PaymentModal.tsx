@@ -34,9 +34,10 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({
       isOpen={isOpen}
       title={title}
       onClose={onClose}
-      size="sm"
+      size="lg"
       zIndex={zIndex}
       closeOnOverlayClick={false}
+      bodyScrollable
     >
       <AddPaymentForm
         payment={payment}

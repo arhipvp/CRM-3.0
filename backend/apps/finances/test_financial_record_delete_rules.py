@@ -83,7 +83,7 @@ class FinancialRecordDeleteRulesTests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.json()[0],
+            response.json()["detail"],
             "Нельзя удалить запись из ведомости. Сначала уберите её из состава ведомости.",
         )
 
@@ -107,6 +107,22 @@ class FinancialRecordDeleteRulesTests(AuthenticatedAPITestCase):
 
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertEqual(
-            response.json()[0],
+            response.json()["detail"],
             "Нельзя удалить запись из выплаченной ведомости.",
+        )
+
+    def test_delete_paid_financial_record_is_blocked(self):
+        record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=250,
+            record_type=FinancialRecord.RecordType.INCOME,
+            date=date(2026, 6, 11),
+        )
+
+        response = self._delete_record(record.id)
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json()["detail"],
+            "Нельзя удалить проведённую финансовую запись. Сначала снимите фактическую дату.",
         )

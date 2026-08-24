@@ -85,23 +85,27 @@ export const useFinanceActions = ({
           description: values.description,
           scheduledDate: values.scheduledDate || null,
           actualDate: values.actualDate || null,
-          initialRecord: {
-            amount: 0,
-            recordType: 'income',
-            date: new Date().toISOString().split('T')[0],
-            description: 'Счёт: автоматически создан для учета',
-            source: 'Система',
-          },
+          incomes: values.incomes?.map((record) => ({
+            amount: Number(record.amount),
+            date: record.date || null,
+            description: record.description,
+            source: record.source,
+            note: record.note,
+          })),
+          expenses: values.expenses?.map((record) => ({
+            amount: Number(record.amount),
+            date: record.date || null,
+            description: record.description,
+            source: record.source,
+            note: record.note,
+          })),
         });
-        const zeroIncome = created.financialRecords?.[0];
 
         const paymentAmount = parseAmountValue(created.amount);
         const paymentPaidAmount = created.actualDate ? paymentAmount : 0;
         updateAppData((prev) => ({
           payments: [created, ...prev.payments],
-          financialRecords: zeroIncome
-            ? [zeroIncome, ...prev.financialRecords]
-            : prev.financialRecords,
+          financialRecords: [...(created.financialRecords ?? []), ...prev.financialRecords],
           policies: adjustPaymentsTotals(
             prev.policies,
             created.policyId,

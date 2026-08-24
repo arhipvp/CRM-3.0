@@ -131,7 +131,7 @@ const extractErrorPayload = async (
   }
 
   if (response.status >= 500) {
-    return { message: 'Ошибка сервера' };
+    return { message: `Сервер временно не смог выполнить запрос (HTTP ${response.status}).` };
   }
 
   return { message: `Request ${path} failed with status ${response.status}` };

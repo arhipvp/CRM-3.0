@@ -41,6 +41,11 @@ export function formatErrorMessage(error: unknown, fallback?: string): string {
       return errorCodeMessage;
     }
 
+    if (error.status >= 500) {
+      const action = (fallback ?? 'Не удалось выполнить действие').replace(/[.!?]\s*$/, '');
+      return `${action}. Сервер временно не смог выполнить запрос (HTTP ${error.status}).`;
+    }
+
     const override = STATUS_FRIENDLY_MESSAGES[error.status];
     const detail = error.message && error.message !== override ? ` — ${error.message}` : '';
     if (override) {

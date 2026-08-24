@@ -20,6 +20,7 @@ from apps.deals.permissions import build_deal_visibility_q
 from apps.documents.external_jobs import create_external_job, serialize_external_job
 from apps.documents.models import ExternalJob
 from apps.users.models import AuditLog
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import (
     Case,
@@ -346,13 +347,38 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         statement = getattr(instance, "statement", None)
         if statement:
             if statement.paid_at:
-                raise ValidationError("Нельзя удалить запись из выплаченной ведомости.")
+                return Response(
+                    {"detail": "Нельзя удалить запись из выплаченной ведомости."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             # Если запись уже добавлена в черновик ведомости, удалять её нельзя.
             # Сначала нужно убрать запись из ведомости, чтобы не нарушить её состав.
-            raise ValidationError(
-                "Нельзя удалить запись из ведомости. Сначала уберите её из состава ведомости."
+            return Response(
+                {
+                    "detail": (
+                        "Нельзя удалить запись из ведомости. "
+                        "Сначала уберите её из состава ведомости."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
             )
-        return super().destroy(request, *args, **kwargs)
+        if instance.date:
+            return Response(
+                {
+                    "detail": (
+                        "Нельзя удалить проведённую финансовую запись. "
+                        "Сначала снимите фактическую дату."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except DjangoValidationError as exc:
+            return Response(
+                {"detail": "; ".join(exc.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
@@ -1269,7 +1295,13 @@ class PaymentViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        return super().destroy(request, *args, **kwargs)
+        try:
+            return super().destroy(request, *args, **kwargs)
+        except DjangoValidationError as exc:
+            return Response(
+                {"detail": "; ".join(exc.messages)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
 
 class FinanceSummaryView(APIView):
