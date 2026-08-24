@@ -332,6 +332,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     expenses = InitialFinancialRecordSerializer(
         many=True, write_only=True, required=False
     )
+    policy_end_date = serializers.DateField(write_only=True, required=False)
 
     class Meta:
         model = Payment
@@ -368,12 +369,20 @@ class PaymentSerializer(serializers.ModelSerializer):
         amount = attrs.get("amount") or getattr(self.instance, "amount", None)
         policy = attrs.get("policy") or getattr(self.instance, "policy", None)
         input_deal = attrs.get("deal") if "deal" in attrs else None
+        policy_end_date = attrs.get("policy_end_date")
 
         errors = {}
         if not policy:
             errors["policy"] = "Укажите полис для платежа."
         elif input_deal and input_deal.pk != policy.deal_id:
             errors["deal"] = "Сделка платежа должна совпадать со сделкой полиса."
+        if policy_end_date and policy:
+            if policy.start_date and policy_end_date < policy.start_date:
+                errors["policy_end_date"] = (
+                    "Дата окончания не может быть раньше даты начала полиса."
+                )
+            elif policy.end_date and policy_end_date < policy.end_date:
+                errors["policy_end_date"] = "Дата окончания может быть только продлена."
         if amount is not None and amount <= 0:
             errors["amount"] = "Amount must be greater than zero."
         if errors:
@@ -388,7 +397,11 @@ class PaymentSerializer(serializers.ModelSerializer):
         initial_record = validated_data.pop("initial_record", None)
         incomes = validated_data.pop("incomes", [])
         expenses = validated_data.pop("expenses", [])
+        policy_end_date = validated_data.pop("policy_end_date", None)
         payment = super().create(validated_data)
+        if policy_end_date and payment.policy.end_date != policy_end_date:
+            payment.policy.end_date = policy_end_date
+            payment.policy.save(update_fields=["end_date", "updated_at"])
         if initial_record is not None:
             FinancialRecord.objects.create(payment=payment, **initial_record)
         for record in incomes:

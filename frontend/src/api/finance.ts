@@ -89,6 +89,7 @@ export async function createPayment(data: {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
+  policyEndDate?: string | null;
   incomes?: Array<{
     amount: number;
     date?: string | null;
@@ -121,6 +122,7 @@ export async function createPayment(data: {
       description: data.description || '',
       scheduled_date: data.scheduledDate || null,
       actual_date: data.actualDate || null,
+      policy_end_date: data.policyEndDate || undefined,
       incomes: data.incomes?.map((record) => ({
         amount: record.amount,
         date: record.date || null,

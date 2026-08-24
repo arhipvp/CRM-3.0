@@ -85,6 +85,7 @@ export const useFinanceActions = ({
           description: values.description,
           scheduledDate: values.scheduledDate || null,
           actualDate: values.actualDate || null,
+          policyEndDate: values.policyEndDate,
           incomes: values.incomes?.map((record) => ({
             amount: Number(record.amount),
             date: record.date || null,
@@ -111,6 +112,10 @@ export const useFinanceActions = ({
             created.policyId,
             paymentAmount,
             paymentPaidAmount,
+          ).map((policy) =>
+            policy.id === created.policyId && values.policyEndDate
+              ? { ...policy, endDate: values.policyEndDate }
+              : policy,
           ),
           deals: adjustPaymentsTotals(prev.deals, created.dealId, paymentAmount, paymentPaidAmount),
         }));

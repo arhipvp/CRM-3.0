@@ -14,6 +14,9 @@ const policy: Policy = {
   dealId: 'deal-1',
   isVehicle: false,
   counterparty: 'Партнёр',
+  salesChannelName: 'Альфа',
+  startDate: '2026-01-01',
+  endDate: '2026-12-31',
   status: 'active',
   createdAt: '2026-01-01T00:00:00Z',
 };
@@ -34,8 +37,13 @@ describe('AddPaymentForm', () => {
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
     expect(screen.getByText('Доход #1')).toBeInTheDocument();
     expect(screen.getByText('Расход #1')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Комиссионное вознаграждение от Альфа')).toBeInTheDocument();
+    expect(screen.getByLabelText('Дата окончания полиса')).toHaveValue('2026-12-31');
 
     fireEvent.change(screen.getByLabelText('Сумма (руб.) *'), { target: { value: '1000' } });
+    fireEvent.change(screen.getByLabelText('Дата окончания полиса'), {
+      target: { value: '2027-12-31' },
+    });
     fireEvent.submit(container.querySelector('form')!);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
@@ -43,7 +51,13 @@ describe('AddPaymentForm', () => {
       expect.objectContaining({
         policyId: policy.id,
         dealId: 'deal-1',
-        incomes: [expect.objectContaining({ amount: '0' })],
+        policyEndDate: '2027-12-31',
+        incomes: [
+          expect.objectContaining({
+            amount: '0',
+            note: 'Комиссионное вознаграждение от Альфа',
+          }),
+        ],
         expenses: [expect.objectContaining({ amount: '1', note: 'Расход контрагенту Партнёр' })],
       }),
     );

@@ -163,6 +163,91 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
         self.assertEqual(records[2].amount, Decimal("-20.00"))
         self.assertEqual(records[2].record_type, FinancialRecord.RecordType.EXPENSE)
 
+    def test_payment_creation_can_extend_policy_end_date_atomically(self):
+        self.policy.start_date = date(2026, 1, 1)
+        self.policy.end_date = date(2026, 12, 31)
+        self.policy.save(update_fields=["start_date", "end_date"])
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "policy_end_date": "2027-12-31",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.policy.refresh_from_db()
+        self.assertEqual(self.policy.end_date, date(2027, 12, 31))
+
+    def test_payment_creation_does_not_shorten_policy_term(self):
+        self.policy.start_date = date(2026, 1, 1)
+        self.policy.end_date = date(2026, 12, 31)
+        self.policy.save(update_fields=["start_date", "end_date"])
+        self.authenticate(self.seller)
+        payments_before = Payment.objects.count()
+
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "policy_end_date": "2026-06-30",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Payment.objects.count(), payments_before)
+        self.policy.refresh_from_db()
+        self.assertEqual(self.policy.end_date, date(2026, 12, 31))
+
+    def test_payment_creation_does_not_set_end_date_before_policy_start(self):
+        self.policy.start_date = date(2026, 1, 1)
+        self.policy.end_date = None
+        self.policy.save(update_fields=["start_date", "end_date"])
+        self.authenticate(self.seller)
+        payments_before = Payment.objects.count()
+
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "policy_end_date": "2025-12-31",
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(Payment.objects.count(), payments_before)
+        self.policy.refresh_from_db()
+        self.assertIsNone(self.policy.end_date)
+
+    def test_invalid_record_does_not_extend_policy_term(self):
+        self.policy.start_date = date(2026, 1, 1)
+        self.policy.end_date = date(2026, 12, 31)
+        self.policy.save(update_fields=["start_date", "end_date"])
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            "/api/v1/payments/",
+            {
+                "amount": "1500.00",
+                "policy": str(self.policy.id),
+                "policy_end_date": "2027-12-31",
+                "incomes": [{"amount": "not-a-number"}],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.policy.refresh_from_db()
+        self.assertEqual(self.policy.end_date, date(2026, 12, 31))
+
     def test_invalid_financial_record_rolls_back_payment_creation(self):
         self.authenticate(self.seller)
         payments_before = Payment.objects.count()

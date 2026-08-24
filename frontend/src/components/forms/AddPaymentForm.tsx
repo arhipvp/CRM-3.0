@@ -5,9 +5,14 @@ import { PolicyField } from './addPayment/PolicyField';
 import { DealField } from './addPayment/DealField';
 import { DatesFields } from './addPayment/DatesFields';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import {
+  buildCommissionIncomeNote,
+  shouldAutofillCommissionNote,
+} from '../../utils/financialRecordNotes';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
+import { DateInput } from '../common/forms/DateInput';
 import { FORM_INPUT_DISABLED, FORM_TEXTAREA_DISABLED } from '../common/forms/formClassNames';
 import { Button } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
@@ -24,6 +29,7 @@ export interface AddPaymentFormValues {
   description?: string;
   scheduledDate?: string | null;
   actualDate?: string | null;
+  policyEndDate?: string | null;
   incomes?: FinancialRecordDraft[];
   expenses?: FinancialRecordDraft[];
 }
@@ -63,12 +69,17 @@ export function AddPaymentForm({
     ? policyOptions.find((policy) => policy.id === fixedPolicyId)
     : undefined;
   const fixedPolicyDisplay = fixedPolicy?.number || fixedPolicy?.id || fixedPolicyId || '';
+  const selectedPolicy = policyOptions.find((policy) => policy.id === formData.policyId);
+  const [policyEndDate, setPolicyEndDate] = useState(fixedPolicy?.endDate ?? '');
+  const [policyEndDateTouched, setPolicyEndDateTouched] = useState(false);
   const [records, setRecords] = useState(() => {
     if (payment) {
       return { incomes: [] as FinancialRecordDraft[], expenses: [] as FinancialRecordDraft[] };
     }
     return {
-      incomes: createPaymentWithDefaultIncome().incomes,
+      incomes: createPaymentWithDefaultIncome(
+        buildCommissionIncomeNote(fixedPolicy?.salesChannelName),
+      ).incomes,
       expenses: buildDefaultPaymentExpenses(fixedPolicy?.counterparty),
     };
   });
@@ -88,6 +99,29 @@ export function AddPaymentForm({
       prev.policyId === fixedPolicyId ? prev : { ...prev, policyId: fixedPolicyId },
     );
   }, [fixedPolicyId]);
+
+  useEffect(() => {
+    if (payment || !selectedPolicy) {
+      return;
+    }
+
+    if (!policyEndDateTouched) {
+      setPolicyEndDate(selectedPolicy.endDate ?? '');
+    }
+    const commissionNote = buildCommissionIncomeNote(selectedPolicy.salesChannelName);
+    setRecords((prev) => ({
+      ...prev,
+      incomes: prev.incomes.map((income) =>
+        shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
+      ),
+    }));
+  }, [
+    payment,
+    policyEndDateTouched,
+    selectedPolicy?.endDate,
+    selectedPolicy?.id,
+    selectedPolicy?.salesChannelName,
+  ]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -114,10 +148,17 @@ export function AddPaymentForm({
       if (!formData.policyId) {
         throw new Error('Выберите полис');
       }
+      if (selectedPolicy?.endDate && !policyEndDate) {
+        throw new Error('Укажите дату окончания полиса.');
+      }
 
       const submission: AddPaymentFormValues = {
         ...formData,
         dealId: dealId ?? (formData.dealId || undefined),
+        policyEndDate:
+          !payment && policyEndDate !== (selectedPolicy?.endDate ?? '')
+            ? policyEndDate || null
+            : undefined,
         ...(payment ? {} : records),
       };
 
@@ -177,6 +218,21 @@ export function AddPaymentForm({
         fixedPolicyDisplay={fixedPolicyDisplay}
         fixedPolicy={fixedPolicy}
       />
+
+      {!payment && selectedPolicy && (
+        <FormField label="Дата окончания полиса" htmlFor="policy-end-date">
+          <DateInput
+            id="policy-end-date"
+            value={policyEndDate}
+            onChange={(event) => {
+              setPolicyEndDate(event.target.value);
+              setPolicyEndDateTouched(true);
+            }}
+            disabled={loading}
+            className={FORM_INPUT_DISABLED}
+          />
+        </FormField>
+      )}
 
       <DealField
         dealDisplayValue={dealDisplayValue}
