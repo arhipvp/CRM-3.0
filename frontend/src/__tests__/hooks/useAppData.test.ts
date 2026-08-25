@@ -121,6 +121,95 @@ describe('buildDealsCacheKey', () => {
 });
 
 describe('useAppData loading strategy', () => {
+  it('removes a transient deal during the next strict list refresh', async () => {
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.refreshDeals();
+    });
+
+    const transientDeal = {
+      id: 'deal-transient',
+      title: 'Новая сделка вне фильтра',
+      clientId: 'client-2',
+      status: 'open' as const,
+      createdAt: '2026-01-02T00:00:00Z',
+      quotes: [],
+      documents: [],
+    };
+    act(() => {
+      result.current.prependTransientDeal(transientDeal);
+    });
+    expect(result.current.dataState.deals.map((deal) => deal.id)).toEqual([
+      'deal-transient',
+      'deal-1',
+    ]);
+
+    await act(async () => {
+      await result.current.refreshDeals(undefined, { force: true });
+    });
+
+    expect(result.current.dataState.deals.map((deal) => deal.id)).toEqual(['deal-1']);
+  });
+
+  it('excludes a transient deal when loading the next page', async () => {
+    mockedFetchDealsWithPagination
+      .mockResolvedValueOnce({
+        count: 2,
+        next: '/deals/?page=2',
+        previous: null,
+        results: [
+          {
+            id: 'deal-1',
+            title: 'Deal',
+            clientId: 'client-1',
+            status: 'open',
+            createdAt: '2026-01-01T00:00:00Z',
+            quotes: [],
+            documents: [],
+          },
+        ],
+      })
+      .mockResolvedValueOnce({
+        count: 2,
+        next: null,
+        previous: '/deals/?page=1',
+        results: [
+          {
+            id: 'deal-2',
+            title: 'Вторая сделка',
+            clientId: 'client-2',
+            status: 'open',
+            createdAt: '2026-01-02T00:00:00Z',
+            quotes: [],
+            documents: [],
+          },
+        ],
+      });
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.refreshDeals();
+    });
+    act(() => {
+      result.current.prependTransientDeal({
+        id: 'deal-transient',
+        title: 'Новая сделка вне фильтра',
+        clientId: 'client-3',
+        status: 'open',
+        createdAt: '2026-01-03T00:00:00Z',
+        quotes: [],
+        documents: [],
+      });
+    });
+
+    await act(async () => {
+      await result.current.loadMoreDeals();
+    });
+
+    expect(result.current.dataState.deals.map((deal) => deal.id)).toEqual(['deal-1', 'deal-2']);
+  });
+
   it('deduplicates client detail loading and keeps hydrated clients across reference refreshes', async () => {
     const clientDeferred = deferred<never>();
     mockedFetchClientById.mockReturnValue(clientDeferred.promise);

@@ -58,6 +58,7 @@ interface UseDealActionsParams {
   setError: Dispatch<SetStateAction<string | null>>;
   setIsSyncing: Dispatch<SetStateAction<boolean>>;
   updateAppData: UpdateAppData;
+  prependTransientDeal: ReturnType<typeof useAppData>['prependTransientDeal'];
   invalidateDealsCache: () => void;
   refreshDeals: ReturnType<typeof useAppData>['refreshDeals'];
   refreshDealsWithSelection: (
@@ -68,7 +69,6 @@ interface UseDealActionsParams {
   clearSelectedDealFocus: (expectedDealId?: string) => void;
   resetDealSelection: () => void;
   requestDealRowFocus: (dealId: string) => void;
-  resetDealFilters: () => void;
   invalidateDealQuotesCache: (dealId?: string | null) => void;
   invalidateDealTasksCache: (dealId?: string | null) => void;
   cacheDealQuotes: (dealId: string, quotes: Quote[]) => void;
@@ -92,6 +92,7 @@ export const useDealActions = ({
   setError,
   setIsSyncing,
   updateAppData,
+  prependTransientDeal,
   invalidateDealsCache,
   refreshDeals,
   refreshDealsWithSelection,
@@ -99,7 +100,6 @@ export const useDealActions = ({
   clearSelectedDealFocus,
   resetDealSelection,
   requestDealRowFocus,
-  resetDealFilters,
   invalidateDealQuotesCache,
   invalidateDealTasksCache,
   cacheDealQuotes,
@@ -117,19 +117,22 @@ export const useDealActions = ({
         source: data.source?.trim() || undefined,
         visibleUserIds: data.visibleUserIds,
       });
-      resetDealFilters();
-      await refreshDealsWithSelection({}, { force: true });
+      const refreshedDeals = await refreshDealsWithSelection(dealFilters, { force: true });
+      if (!refreshedDeals.some((deal) => deal.id === created.id)) {
+        prependTransientDeal(created);
+      }
       selectDealById(created.id);
       requestDealRowFocus(created.id);
       setModal(null);
     },
     [
+      dealFilters,
       invalidateDealsCache,
       refreshDealsWithSelection,
       requestDealRowFocus,
-      resetDealFilters,
       selectDealById,
       setModal,
+      prependTransientDeal,
     ],
   );
 

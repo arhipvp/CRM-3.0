@@ -92,6 +92,7 @@ const createParams = () => {
     setError: vi.fn(),
     setIsSyncing: vi.fn(),
     updateAppData,
+    prependTransientDeal: vi.fn(),
     invalidateDealsCache: vi.fn(),
     refreshDeals: vi.fn(),
     refreshDealsWithSelection: vi.fn(),
@@ -220,8 +221,34 @@ describe('useDealActions', () => {
     expect(params.requestDealRowFocus).not.toHaveBeenCalled();
   });
 
-  it('после создания сбрасывает фильтры, обновляет список и фокусирует новую сделку', async () => {
+  it('после создания сохраняет фильтры, добавляет отсутствующую в выдаче сделку и фокусирует её', async () => {
     const params = createParams();
+    params.dealFilters = { client: 'client-2', executor: 'user-2', search: 'ипотека' };
+    const created = createDeal({ id: 'deal-new' });
+    createDealRequestMock.mockResolvedValue(created);
+    params.refreshDealsWithSelection.mockResolvedValue([createDeal({ id: 'deal-2' })]);
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handleAddDeal({
+        title: 'Новая сделка',
+        clientId: 'client-1',
+        description: '',
+      });
+    });
+
+    expect(params.resetDealFilters).not.toHaveBeenCalled();
+    expect(params.refreshDealsWithSelection).toHaveBeenCalledWith(params.dealFilters, {
+      force: true,
+    });
+    expect(params.prependTransientDeal).toHaveBeenCalledWith(created);
+    expect(params.selectDealById).toHaveBeenCalledWith(created.id);
+    expect(params.requestDealRowFocus).toHaveBeenCalledWith(created.id);
+  });
+
+  it('не добавляет дубликат новой сделки, если она уже попала в отфильтрованную выдачу', async () => {
+    const params = createParams();
+    params.dealFilters = { search: 'сделка' };
     const created = createDeal({ id: 'deal-new' });
     createDealRequestMock.mockResolvedValue(created);
     params.refreshDealsWithSelection.mockResolvedValue([created]);
@@ -235,10 +262,8 @@ describe('useDealActions', () => {
       });
     });
 
-    expect(params.resetDealFilters).toHaveBeenCalledTimes(1);
-    expect(params.refreshDealsWithSelection).toHaveBeenCalledWith({}, { force: true });
+    expect(params.prependTransientDeal).not.toHaveBeenCalled();
     expect(params.selectDealById).toHaveBeenCalledWith(created.id);
-    expect(params.requestDealRowFocus).toHaveBeenCalledWith(created.id);
   });
 
   it('сразу скрывает закрытую сделку, снимает фокус и обновляет выдачу в фоне', async () => {

@@ -131,6 +131,7 @@ export const useAppData = () => {
   const dealsCacheRef = useRef(
     new Map<string, { results: Deal[]; nextPage: number | null; totalCount: number }>(),
   );
+  const transientDealIdsRef = useRef(new Set<string>());
   const invalidateDealsCache = useCallback((filters?: FilterParams) => {
     if (filters) {
       dealsCacheRef.current.delete(buildDealsCacheKey(filters));
@@ -171,6 +172,16 @@ export const useAppData = () => {
     }
     dispatch({ type: 'update', updater });
   }, []);
+
+  const prependTransientDeal = useCallback(
+    (deal: Deal) => {
+      transientDealIdsRef.current.add(deal.id);
+      updateAppData((prev) => ({
+        deals: [deal, ...prev.deals.filter((item) => item.id !== deal.id)],
+      }));
+    },
+    [updateAppData],
+  );
 
   const ensureClientLoaded = useCallback(
     async (clientId: string): Promise<Client | null> => {
@@ -229,6 +240,7 @@ export const useAppData = () => {
             return cached.results;
           }
           setAppData({ deals: cached.results });
+          transientDealIdsRef.current.clear();
           setDealsFilters(resolvedFilters);
           setDealsNextPage(cached.nextPage);
           setDealsTotalCount(cached.totalCount);
@@ -265,6 +277,7 @@ export const useAppData = () => {
         nextPage,
         totalCount: payload.count,
       });
+      transientDealIdsRef.current.clear();
       setAppData({ deals: results });
       setDealsFilters(resolvedFilters);
       setDealsNextPage(nextPage);
@@ -294,8 +307,10 @@ export const useAppData = () => {
       if (dealsRequestRef.current !== requestId) {
         return;
       }
+      const transientDealIds = new Set(transientDealIdsRef.current);
       updateAppData((prev) => {
-        const extended = [...prev.deals, ...payload.results];
+        const strictExistingDeals = prev.deals.filter((deal) => !transientDealIds.has(deal.id));
+        const extended = [...strictExistingDeals, ...payload.results];
         dealsCacheRef.current.set(cacheKey, {
           results: extended,
           nextPage: payload.next ? dealsNextPage + 1 : null,
@@ -303,6 +318,7 @@ export const useAppData = () => {
         });
         return { deals: extended };
       });
+      transientDealIdsRef.current.clear();
       setDealsNextPage(payload.next ? dealsNextPage + 1 : null);
       setDealsTotalCount(payload.count);
     } catch (err) {
@@ -768,6 +784,7 @@ export const useAppData = () => {
     policiesFilters,
     updatePoliciesList,
     updateAppData,
+    prependTransientDeal,
     setAppData,
     resetPoliciesState,
     resetPoliciesListState,

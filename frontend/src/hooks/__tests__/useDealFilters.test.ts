@@ -23,7 +23,7 @@ describe('useDealFilters', () => {
     expect(result.current.filters).not.toHaveProperty('client');
   });
 
-  it('resets every filter before showing a newly created deal', () => {
+  it('resets every filter when explicitly requested', () => {
     const { result } = renderHook(() => useDealFilters());
 
     act(() => {
