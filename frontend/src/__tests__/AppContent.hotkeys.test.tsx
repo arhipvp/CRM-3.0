@@ -86,6 +86,7 @@ const appDataMock = vi.hoisted(() => ({
 }));
 
 const updateAppDataMock = vi.hoisted(() => vi.fn());
+const prependTransientDealMock = vi.hoisted(() => vi.fn());
 const refreshDealsMock = vi.hoisted(() => vi.fn());
 const invalidateDealsCacheMock = vi.hoisted(() => vi.fn());
 const updateDealMock = vi.hoisted(() => vi.fn());
@@ -123,6 +124,7 @@ vi.mock('../hooks/useAppData', () => ({
     refreshPolicies: vi.fn().mockResolvedValue([]),
     refreshPoliciesList: vi.fn().mockResolvedValue([]),
     updateAppData: updateAppDataMock,
+    prependTransientDeal: prependTransientDealMock,
     setAppData: vi.fn(),
     resetPoliciesState: vi.fn(),
     resetPoliciesListState: vi.fn(),
@@ -349,6 +351,10 @@ describe('AppContent hotkeys integration', () => {
     appDataMock.tasks = [];
     appDataMock.policiesList = [];
     updateAppDataMock.mockReset();
+    prependTransientDealMock.mockReset();
+    prependTransientDealMock.mockImplementation((deal) => {
+      appDataMock.deals = [deal, ...appDataMock.deals.filter((item) => item.id !== deal.id)];
+    });
     setErrorMock.mockReset();
     vi.mocked(updateTask).mockClear();
     vi.mocked(updateDeal).mockClear();
