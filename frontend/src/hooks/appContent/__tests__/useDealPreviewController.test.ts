@@ -24,6 +24,19 @@ describe('useDealPreviewController', () => {
     expect(result.current.isDealFocusCleared).toBe(false);
   });
 
+  it('не очищает фокус новой сделки по завершении операции над прежней', () => {
+    const { result } = renderHook(() => useDealPreviewController(), { wrapper });
+
+    act(() => {
+      result.current.selectDealById('deal-1');
+      result.current.selectDealById('deal-2');
+      result.current.clearSelectedDealFocus('deal-1');
+    });
+
+    expect(result.current.selectedDealId).toBe('deal-2');
+    expect(result.current.isDealFocusCleared).toBe(false);
+  });
+
   it('открывает и закрывает preview сделки', () => {
     const { result } = renderHook(() => useDealPreviewController(), { wrapper });
 

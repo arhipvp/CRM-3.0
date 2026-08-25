@@ -241,10 +241,11 @@ describe('useDealActions', () => {
     expect(params.requestDealRowFocus).toHaveBeenCalledWith(created.id);
   });
 
-  it('после закрытия обновляет выдачу с текущими фильтрами', async () => {
+  it('сразу скрывает закрытую сделку, снимает фокус и обновляет выдачу в фоне', async () => {
     const params = createParams();
     params.dealFilters = { search: 'сделка' };
-    closeDealMock.mockResolvedValue(createDeal({ status: 'won' }));
+    const closedDeal = createDeal({ status: 'won' });
+    closeDealMock.mockResolvedValue(closedDeal);
     const { result } = renderHook(() => useDealActions(params));
 
     await act(async () => {
@@ -254,5 +255,42 @@ describe('useDealActions', () => {
     expect(params.refreshDealsWithSelection).toHaveBeenCalledWith(params.dealFilters, {
       force: true,
     });
+    expect(params.updateAppData).toHaveBeenCalledTimes(1);
+    expect(params.updateAppData.mock.results[0].value).toEqual({ deals: [] });
+    expect(params.clearSelectedDealFocus).toHaveBeenCalledWith('deal-1');
+  });
+
+  it('оставляет закрытую сделку в ленте закрытых и обновляет её локально', async () => {
+    const params = createParams();
+    params.dealFilters = { show_closed: true };
+    const closedDeal = createDeal({ status: 'lost', closingReason: 'Не договорились' });
+    closeDealMock.mockResolvedValue(closedDeal);
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handleCloseDeal('deal-1', { reason: 'Не договорились', status: 'lost' });
+    });
+
+    expect(params.updateAppData.mock.results[0].value).toEqual({ deals: [closedDeal] });
+    expect(params.clearSelectedDealFocus).not.toHaveBeenCalled();
+  });
+
+  it('не возвращает закрытую сделку при ошибке фонового обновления', async () => {
+    const params = createParams();
+    const refreshError = new Error('Сеть недоступна');
+    closeDealMock.mockResolvedValue(createDeal({ status: 'won' }));
+    params.refreshDealsWithSelection.mockRejectedValue(refreshError);
+    const { result } = renderHook(() => useDealActions(params));
+
+    await act(async () => {
+      await result.current.handleCloseDeal('deal-1', { reason: 'Успех', status: 'won' });
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(params.updateAppData.mock.results[0].value).toEqual({ deals: [] });
+    expect(params.clearSelectedDealFocus).toHaveBeenCalledWith('deal-1');
+    expect(params.setError).not.toHaveBeenCalled();
   });
 });

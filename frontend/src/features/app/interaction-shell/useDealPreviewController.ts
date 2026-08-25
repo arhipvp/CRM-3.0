@@ -13,7 +13,7 @@ export type DealPreviewController = {
   dealRowFocusRequest: DealRowFocusRequest | null;
   previewDealId: string | null;
   setPreviewDealId: Dispatch<SetStateAction<string | null>>;
-  clearSelectedDealFocus: () => void;
+  clearSelectedDealFocus: (expectedDealId?: string) => void;
   resetDealSelection: () => void;
   selectDealById: (dealId: string) => void;
   handleOpenDealPreview: (dealId: string) => void;
@@ -31,6 +31,7 @@ export const useDealPreviewController = (): DealPreviewController => {
   const [dealRowFocusRequest, setDealRowFocusRequest] = useState<DealRowFocusRequest | null>(null);
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const dealRowFocusNonceRef = useRef(0);
+  const selectedDealIdRef = useRef(selectedDealId);
   const pathnameRef = useRef(location.pathname);
   const searchParamsRef = useRef(searchParams);
   const setSearchParamsRef = useRef(setSearchParams);
@@ -41,7 +42,9 @@ export const useDealPreviewController = (): DealPreviewController => {
     setSearchParamsRef.current = setSearchParams;
     setPreviewDealId(searchParams.get('previewDeal'));
     if (location.pathname === '/deals') {
-      setSelectedDealId(searchParams.get('dealId'));
+      const nextSelectedDealId = searchParams.get('dealId');
+      selectedDealIdRef.current = nextSelectedDealId;
+      setSelectedDealId(nextSelectedDealId);
     }
   }, [location.pathname, searchParams, setSearchParams]);
 
@@ -62,7 +65,11 @@ export const useDealPreviewController = (): DealPreviewController => {
     [previewDealId, setSearchParams],
   );
 
-  const clearSelectedDealFocus = useCallback(() => {
+  const clearSelectedDealFocus = useCallback((expectedDealId?: string) => {
+    if (expectedDealId && selectedDealIdRef.current !== expectedDealId) {
+      return;
+    }
+    selectedDealIdRef.current = null;
     setSelectedDealId(null);
     setIsDealFocusCleared(true);
     if (pathnameRef.current === '/deals') {
@@ -76,6 +83,7 @@ export const useDealPreviewController = (): DealPreviewController => {
   }, []);
 
   const selectDealById = useCallback((dealId: string) => {
+    selectedDealIdRef.current = dealId;
     setSelectedDealId(dealId);
     setIsDealFocusCleared(false);
     if (pathnameRef.current === '/deals' && searchParamsRef.current.get('dealId') !== dealId) {
@@ -88,12 +96,14 @@ export const useDealPreviewController = (): DealPreviewController => {
   }, []);
 
   const resetDealSelection = useCallback(() => {
+    selectedDealIdRef.current = null;
     setSelectedDealId(null);
     setIsDealFocusCleared(false);
   }, []);
 
   const handleOpenDealPreview = useCallback((dealId: string) => {
     setPreviewDealId(dealId);
+    selectedDealIdRef.current = dealId;
     setSelectedDealId(dealId);
     setIsDealFocusCleared(false);
     setSearchParamsRef.current((current) => {

@@ -65,7 +65,7 @@ interface UseDealActionsParams {
     options?: { force?: boolean },
   ) => Promise<Deal[]>;
   selectDealById: (dealId: string) => void;
-  clearSelectedDealFocus: () => void;
+  clearSelectedDealFocus: (expectedDealId?: string) => void;
   resetDealSelection: () => void;
   requestDealRowFocus: (dealId: string) => void;
   resetDealFilters: () => void;
@@ -138,8 +138,18 @@ export const useDealActions = ({
       invalidateDealsCache();
       setIsSyncing(true);
       try {
-        await closeDeal(dealId, payload);
-        await refreshDealsWithSelection(dealFilters, { force: true });
+        const closedDeal = await closeDeal(dealId, payload);
+        if (dealFilters.show_closed) {
+          updateAppData((prev) => ({
+            deals: prev.deals.map((deal) => (deal.id === closedDeal.id ? closedDeal : deal)),
+          }));
+        } else {
+          updateAppData((prev) => ({
+            deals: prev.deals.filter((deal) => deal.id !== closedDeal.id),
+          }));
+          clearSelectedDealFocus(dealId);
+        }
+        void refreshDealsWithSelection(dealFilters, { force: true }).catch(() => undefined);
       } catch (err) {
         const message =
           err instanceof APIError
@@ -152,7 +162,15 @@ export const useDealActions = ({
         setIsSyncing(false);
       }
     },
-    [dealFilters, invalidateDealsCache, refreshDealsWithSelection, setError, setIsSyncing],
+    [
+      clearSelectedDealFocus,
+      dealFilters,
+      invalidateDealsCache,
+      refreshDealsWithSelection,
+      setError,
+      setIsSyncing,
+      updateAppData,
+    ],
   );
 
   const handleReopenDeal = useCallback(
