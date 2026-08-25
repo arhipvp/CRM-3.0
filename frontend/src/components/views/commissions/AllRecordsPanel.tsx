@@ -170,7 +170,7 @@ function SalesChannelMultiSelect({
       {isOpen && (
         <fieldset
           id="sales-channel-filter-options"
-          className="absolute z-20 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg"
+          className="absolute z-30 mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white p-2 shadow-lg"
         >
           <legend className="sr-only">Каналы продаж</legend>
           <div className="mb-1 flex justify-end">

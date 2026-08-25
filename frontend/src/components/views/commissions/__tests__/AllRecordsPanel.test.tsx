@@ -117,6 +117,14 @@ describe('AllRecordsPanel', () => {
     expect(onPaymentScheduledDateToChange).toHaveBeenCalledWith('2026-03-31');
   });
 
+  it('opens the sales-channel menu above sticky table elements', () => {
+    renderPanel();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Все каналы продаж' }));
+
+    expect(screen.getByRole('group', { name: 'Каналы продаж' })).toHaveClass('z-30');
+  });
+
   it('clears selected sales channels', () => {
     const onSalesChannelFilterChange = vi.fn();
 
