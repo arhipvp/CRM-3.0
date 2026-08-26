@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, useLocation } from 'react-router-dom';
+import { Link, MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 
 import type { Task } from '../../../types';
@@ -40,7 +40,17 @@ const LocationProbe = () => {
   return <span data-testid="location">{`${location.pathname}${location.search}`}</span>;
 };
 
+const NavigationToDeals = () => {
+  const navigate = useNavigate();
+
+  return <button onClick={() => navigate('/deals')}>Перейти к сделкам</button>;
+};
+
 describe('TasksView', () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
   it('sorts urgent tasks first and then by oldest created date by default', () => {
     renderTasksView([
       buildTask({
@@ -221,5 +231,74 @@ describe('TasksView', () => {
     expect(onDealSelect).toHaveBeenCalledWith('deal-1');
     expect(onDealPreview).not.toHaveBeenCalled();
     expect(screen.getByTestId('location')).toHaveTextContent('/deals?dealId=deal-1');
+  });
+
+  it('restores filters after navigating away from the tasks list', async () => {
+    const onRefreshTasks = vi.fn().mockResolvedValue(undefined);
+
+    render(
+      <MemoryRouter initialEntries={['/tasks']}>
+        <Routes>
+          <Route
+            path="/tasks"
+            element={
+              <TasksView tasks={[buildTask()]} currentUser={null} onRefreshTasks={onRefreshTasks} />
+            }
+          />
+          <Route path="/deals" element={<Link to="/tasks">Вернуться к задачам</Link>} />
+        </Routes>
+        <NavigationToDeals />
+        <LocationProbe />
+      </MemoryRouter>,
+    );
+
+    fireEvent.change(screen.getByLabelText('Статус'), { target: { value: 'todo' } });
+    fireEvent.click(screen.getByLabelText('Только мои задачи'));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '/tasks?status=todo&only_my_tasks=true',
+      );
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Перейти к сделкам' }));
+    fireEvent.click(screen.getByRole('link', { name: 'Вернуться к задачам' }));
+
+    expect(screen.getByLabelText('Статус')).toHaveValue('todo');
+    expect(screen.getByLabelText('Только мои задачи')).toBeChecked();
+  });
+
+  it('uses URL filters instead of saved filters', () => {
+    window.sessionStorage.setItem(
+      'crm.tasks.filters.v1',
+      JSON.stringify({ taskStatus: 'todo', show_deleted: 'true' }),
+    );
+
+    render(
+      <MemoryRouter initialEntries={['/tasks?status=done']}>
+        <TasksView tasks={[buildTask({ status: 'done' })]} currentUser={null} />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByLabelText('Статус')).toHaveValue('done');
+    expect(screen.getByLabelText('Показывать удалённые')).not.toBeChecked();
+  });
+
+  it('clears saved filters when the filters are reset', async () => {
+    renderTasksView([buildTask()]);
+
+    fireEvent.change(screen.getByLabelText('Статус'), { target: { value: 'todo' } });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Сбросить фильтры' })).toBeInTheDocument();
+      expect(window.sessionStorage.getItem('crm.tasks.filters.v1')).not.toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сбросить фильтры' }));
+
+    await waitFor(() => {
+      expect(window.sessionStorage.getItem('crm.tasks.filters.v1')).toBeNull();
+      expect(screen.getByLabelText('Статус')).toHaveValue('');
+    });
   });
 });

@@ -16,6 +16,7 @@ type CustomFilterDefinition =
 
 export interface FilterBarProps {
   onFilterChange: (filters: FilterParams) => void;
+  onClearFilters?: () => void;
   initialFilters?: FilterParams;
   searchPlaceholder?: string;
   sortOptions?: Array<{ value: string; label: string }>;
@@ -26,6 +27,7 @@ export interface FilterBarProps {
 
 export function FilterBar({
   onFilterChange,
+  onClearFilters,
   initialFilters,
   searchPlaceholder = 'Поиск...',
   sortOptions = [],
@@ -105,6 +107,10 @@ export function FilterBar({
     setSearch(initialSearch);
     setOrdering(initialOrdering);
     setCustomFilterValues({});
+    if (onClearFilters) {
+      onClearFilters();
+      return;
+    }
     applyFilters({ search: initialSearch, ordering: initialOrdering });
   };
 

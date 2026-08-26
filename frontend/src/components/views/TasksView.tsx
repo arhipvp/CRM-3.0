@@ -14,6 +14,7 @@ type TaskSortKey = 'dueAt' | 'priority' | 'createdAt' | 'priorityThenCreatedAt';
 
 const DEFAULT_TASKS_SORTING = 'priorityThenCreatedAt';
 const TASKS_PAGE_SIZE = 50;
+const TASKS_FILTERS_SESSION_STORAGE_KEY = 'crm.tasks.filters.v1';
 
 const TASK_SORT_OPTIONS = [
   { value: DEFAULT_TASKS_SORTING, label: 'Сначала срочные, затем старые' },
@@ -24,6 +25,83 @@ const TASK_SORT_OPTIONS = [
   { value: '-createdAt', label: 'Дата создания (новые)' },
   { value: 'createdAt', label: 'Дата создания (старые)' },
 ];
+
+const buildDefaultFilters = (): FilterParams => ({
+  ordering: DEFAULT_TASKS_SORTING,
+});
+
+const buildTasksSearchParams = (filters: FilterParams, page?: number): URLSearchParams => {
+  const params = new URLSearchParams();
+  const mappings: Array<[string, unknown]> = [
+    ['search', filters.search],
+    ['ordering', filters.ordering],
+    ['status', filters.taskStatus],
+    ['priority', filters.priority],
+    ['show_completed', filters.show_completed],
+    ['show_deleted', filters.show_deleted],
+    ['only_my_tasks', filters.only_my_tasks],
+  ];
+
+  mappings.forEach(([key, value]) => {
+    if (value && !(key === 'ordering' && value === DEFAULT_TASKS_SORTING)) {
+      params.set(key, String(value));
+    }
+  });
+  if (page && page > 1) {
+    params.set('page', String(page));
+  }
+  return params;
+};
+
+const readStoredFilters = (): FilterParams | null => {
+  try {
+    const rawValue = window.sessionStorage.getItem(TASKS_FILTERS_SESSION_STORAGE_KEY);
+    if (!rawValue) {
+      return null;
+    }
+
+    const parsedValue: unknown = JSON.parse(rawValue);
+    if (!parsedValue || typeof parsedValue !== 'object' || Array.isArray(parsedValue)) {
+      return null;
+    }
+
+    const parsedFilters = parsedValue as Record<string, unknown>;
+    const storedFilters = buildDefaultFilters();
+    const stringKeys = ['search', 'ordering', 'taskStatus', 'priority'] as const;
+    const checkboxKeys = ['show_completed', 'show_deleted', 'only_my_tasks'] as const;
+
+    stringKeys.forEach((key) => {
+      if (typeof parsedFilters[key] === 'string' && parsedFilters[key]) {
+        storedFilters[key] = parsedFilters[key];
+      }
+    });
+    checkboxKeys.forEach((key) => {
+      if (parsedFilters[key] === true || parsedFilters[key] === 'true') {
+        storedFilters[key] = true;
+      }
+    });
+
+    return storedFilters;
+  } catch {
+    return null;
+  }
+};
+
+const persistFilters = (filters: FilterParams) => {
+  try {
+    window.sessionStorage.setItem(TASKS_FILTERS_SESSION_STORAGE_KEY, JSON.stringify(filters));
+  } catch {
+    // The task list remains usable when browser storage is unavailable.
+  }
+};
+
+const clearStoredFilters = () => {
+  try {
+    window.sessionStorage.removeItem(TASKS_FILTERS_SESSION_STORAGE_KEY);
+  } catch {
+    // The task list remains usable when browser storage is unavailable.
+  }
+};
 
 const getPriorityOrder = (priority: TaskPriority): number => {
   switch (priority) {
@@ -101,7 +179,7 @@ export const TasksView: React.FC<TasksViewProps> = ({
 }) => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const initialFilters = useMemo<FilterParams>(
+  const urlFilters = useMemo<FilterParams>(
     () => ({
       ordering: searchParams.get('ordering') || DEFAULT_TASKS_SORTING,
       search: searchParams.get('search') || undefined,
@@ -113,14 +191,31 @@ export const TasksView: React.FC<TasksViewProps> = ({
     }),
     [searchParams],
   );
-  const [filters, setFilters] = useState<FilterParams>(initialFilters);
+  const hasUrlFilters = searchParams.toString().length > 0;
+  const isInitialRenderRef = useRef(true);
+  const [filters, setFilters] = useState<FilterParams>(() =>
+    hasUrlFilters ? urlFilters : (readStoredFilters() ?? buildDefaultFilters()),
+  );
+  const [filterBarInitialFilters, setFilterBarInitialFilters] = useState<FilterParams>(() =>
+    hasUrlFilters ? urlFilters : (readStoredFilters() ?? buildDefaultFilters()),
+  );
+  const pendingSearchRef = useRef<string | null>(null);
   const requestedPage = Math.max(1, Number(searchParams.get('page')) || 1);
   const lastLoadKeyRef = useRef('');
   const debouncedSearch = useDebouncedValue(String(filters.search ?? '').trim(), 300);
 
   useEffect(() => {
-    setFilters(initialFilters);
-  }, [initialFilters]);
+    if (isInitialRenderRef.current) {
+      isInitialRenderRef.current = false;
+      return;
+    }
+    if (pendingSearchRef.current === searchParams.toString()) {
+      pendingSearchRef.current = null;
+      return;
+    }
+    setFilters(urlFilters);
+    setFilterBarInitialFilters(urlFilters);
+  }, [searchParams, urlFilters]);
 
   const handleDealClick = useCallback(
     (dealId?: string) => {
@@ -189,34 +284,30 @@ export const TasksView: React.FC<TasksViewProps> = ({
   const handleFilterChange = useCallback(
     (nextFilters: FilterParams) => {
       setFilters(nextFilters);
-      const nextParams = new URLSearchParams();
-      const mappings: Array<[string, unknown]> = [
-        ['search', nextFilters.search],
-        ['ordering', nextFilters.ordering],
-        ['status', nextFilters.taskStatus],
-        ['priority', nextFilters.priority],
-        ['show_completed', nextFilters.show_completed],
-        ['show_deleted', nextFilters.show_deleted],
-        ['only_my_tasks', nextFilters.only_my_tasks],
-      ];
-      mappings.forEach(([key, value]) => {
-        if (value && !(key === 'ordering' && value === DEFAULT_TASKS_SORTING)) {
-          nextParams.set(key, String(value));
-        }
-      });
+      persistFilters(nextFilters);
+      const nextParams = buildTasksSearchParams(nextFilters);
+      pendingSearchRef.current = nextParams.toString();
       setSearchParams(nextParams, { replace: true });
     },
     [setSearchParams],
   );
 
+  const handleClearFilters = useCallback(() => {
+    const defaultFilters = buildDefaultFilters();
+    clearStoredFilters();
+    setFilters(defaultFilters);
+    setFilterBarInitialFilters(defaultFilters);
+    pendingSearchRef.current = '';
+    setSearchParams(new URLSearchParams(), { replace: true });
+  }, [setSearchParams]);
+
   const setRequestedPage = useCallback(
     (nextPage: number) => {
-      const nextParams = new URLSearchParams(searchParams);
-      if (nextPage <= 1) nextParams.delete('page');
-      else nextParams.set('page', String(nextPage));
+      const nextParams = buildTasksSearchParams(filters, nextPage);
+      pendingSearchRef.current = nextParams.toString();
       setSearchParams(nextParams);
     },
-    [searchParams, setSearchParams],
+    [filters, setSearchParams],
   );
 
   const filteredTasks = useMemo(() => {
@@ -315,7 +406,8 @@ export const TasksView: React.FC<TasksViewProps> = ({
       />
       <FilterBar
         onFilterChange={handleFilterChange}
-        initialFilters={initialFilters}
+        onClearFilters={handleClearFilters}
+        initialFilters={filterBarInitialFilters}
         searchPlaceholder="Поиск задач, сделок или описаний..."
         sortOptions={TASK_SORT_OPTIONS}
         customFilters={[
