@@ -19,7 +19,7 @@ import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../../..
 import type { AddFinancialRecordFormValues } from '../../../forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../../../forms/AddTaskForm';
-import type { DealFormValues } from '../../../forms/DealForm';
+import type { DealFormValues, PreselectedDealClient } from '../../../forms/DealForm';
 import { useConfirm } from '../../../../hooks/useConfirm';
 import { useFinancialRecordModal } from '../../../../hooks/useFinancialRecordModal';
 import { usePaymentModal } from '../../../../hooks/usePaymentModal';
@@ -81,7 +81,7 @@ export interface DealDetailsPanelProps {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
-  pendingDealClientId?: string | null;
+  pendingDealClient?: PreselectedDealClient | null;
   onPendingDealClientConsumed?: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
@@ -184,7 +184,7 @@ export function useDealDetailsPanelController({
   onRequestAddPolicy,
   onRequestEditPolicy,
   onRequestAddClient,
-  pendingDealClientId,
+  pendingDealClient,
   onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
@@ -915,7 +915,7 @@ export function useDealDetailsPanelController({
     onUpdatePolicyRenewed,
     onUpdateTask,
     paymentFixedPolicyId,
-    pendingDealClientId,
+    pendingDealClient,
     policiesCount,
     policySortKey,
     policySortOrder,

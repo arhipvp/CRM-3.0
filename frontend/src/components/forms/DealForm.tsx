@@ -25,6 +25,11 @@ export interface DealFormValues {
   visibleUserIds?: string[];
 }
 
+export interface PreselectedDealClient {
+  id: string;
+  name: string;
+}
+
 interface QuickNextContactOption {
   label: string;
   days: number;
@@ -37,7 +42,7 @@ interface DealFormProps {
   initialValues?: Partial<DealFormValues>;
   mode?: 'create' | 'edit';
   onSubmit: (data: DealFormValues) => Promise<void>;
-  preselectedClientId?: string | null;
+  preselectedClient?: PreselectedDealClient | null;
   onPreselectedClientConsumed?: () => void;
   onRequestAddClient?: () => void;
   onQuickNextContactShift?: (newNextContactDate: string) => Promise<void>;
@@ -89,7 +94,7 @@ export const DealForm: React.FC<DealFormProps> = ({
   initialValues,
   mode = 'create',
   onSubmit,
-  preselectedClientId,
+  preselectedClient,
   onPreselectedClientConsumed,
   onRequestAddClient,
   onQuickNextContactShift,
@@ -120,7 +125,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     () => initialValues?.visibleUserIds ?? [],
     [initialValues?.visibleUserIds],
   );
-  const initialClientId = initialValues?.clientId ?? preselectedClientId ?? '';
+  const initialClientId = initialValues?.clientId ?? preselectedClient?.id ?? '';
   const initialClientQuery = initialClientId ? (clientsById.get(initialClientId)?.name ?? '') : '';
 
   const [title, setTitle] = useState(initialTitle);
@@ -199,22 +204,19 @@ export const DealForm: React.FC<DealFormProps> = ({
   }, [clientId, clientQuery, clientsById, initialValues?.clientId]);
 
   useEffect(() => {
-    if (!preselectedClientId) {
+    if (!preselectedClient) {
       appliedPreselectedClientIdRef.current = null;
       return;
     }
-    if (appliedPreselectedClientIdRef.current === preselectedClientId) {
+    if (appliedPreselectedClientIdRef.current === preselectedClient.id) {
       return;
     }
-    const preselected = clientsById.get(preselectedClientId);
-    if (!preselected) {
-      return;
-    }
-    setClientId(preselected.id);
-    setClientQuery(preselected.name);
-    appliedPreselectedClientIdRef.current = preselectedClientId;
+    const selectedClient = clientsById.get(preselectedClient.id) ?? preselectedClient;
+    setClientId(selectedClient.id);
+    setClientQuery(selectedClient.name);
+    appliedPreselectedClientIdRef.current = preselectedClient.id;
     onPreselectedClientConsumed?.();
-  }, [clientsById, onPreselectedClientConsumed, preselectedClientId]);
+  }, [clientsById, onPreselectedClientConsumed, preselectedClient]);
 
   useEffect(() => {
     if (!clients.length) return;
@@ -222,8 +224,8 @@ export const DealForm: React.FC<DealFormProps> = ({
     if (selectedClient) {
       return;
     }
-    if (mode === 'create' && !initialValues?.clientId && !preselectedClientId) {
-      if (clientId) {
+    if (mode === 'create' && !initialValues?.clientId && !preselectedClient) {
+      if (clientId && !clientQuery) {
         setClientId('');
       }
       if (!clientQuery) {
@@ -233,7 +235,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     }
     // The selected client may be outside the compact reference page. Preserve its
     // id instead of silently replacing the relationship with the first client.
-    if (!clientId && mode === 'create') {
+    if (!clientId && mode === 'create' && !preselectedClient) {
       setClientQuery('');
     }
   }, [
@@ -243,7 +245,7 @@ export const DealForm: React.FC<DealFormProps> = ({
     clientQuery,
     initialValues?.clientId,
     mode,
-    preselectedClientId,
+    preselectedClient,
   ]);
 
   const clientCandidates = useClientLookup(clientQuery, clients);

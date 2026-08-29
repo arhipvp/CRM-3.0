@@ -2,7 +2,7 @@ import type { AttachFinanceStatementRecordsResult, FilterParams } from '../../ap
 import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/deals';
 import type { AddFinancialRecordFormValues } from '../../components/forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../../components/forms/AddPaymentForm';
-import type { DealFormValues } from '../../components/forms/DealForm';
+import type { DealFormValues, PreselectedDealClient } from '../../components/forms/DealForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
 import type {
   ActivityLog,
@@ -73,7 +73,7 @@ export interface AppRouteDealsActions {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
-  pendingDealClientId: string | null;
+  pendingDealClient: PreselectedDealClient | null;
   onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;

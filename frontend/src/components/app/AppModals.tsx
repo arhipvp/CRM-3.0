@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import type { DealFormValues } from '../forms/DealForm';
+import type { DealFormValues, PreselectedDealClient } from '../forms/DealForm';
 import type { QuoteFormValues } from '../forms/AddQuoteForm';
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
@@ -71,7 +71,7 @@ interface AppModalsProps {
     email?: string | null;
   }) => Promise<void>;
   handleAddDeal: (data: DealFormValues) => Promise<void>;
-  pendingDealClientId: string | null;
+  pendingDealClient: PreselectedDealClient | null;
   onPendingDealClientConsumed: () => void;
   quoteDealId: string | null;
   setQuoteDealId: React.Dispatch<React.SetStateAction<string | null>>;
@@ -120,7 +120,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
   isClientModalOverlayOpen,
   handleAddClient,
   handleAddDeal,
-  pendingDealClientId,
+  pendingDealClient,
   onPendingDealClientConsumed,
   quoteDealId,
   setQuoteDealId,
@@ -232,7 +232,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
               clients={clients}
               users={users}
               onSubmit={handleAddDeal}
-              preselectedClientId={pendingDealClientId}
+              preselectedClient={pendingDealClient}
               onPreselectedClientConsumed={onPendingDealClientConsumed}
               onRequestAddClient={() => openClientModal('deal')}
             />

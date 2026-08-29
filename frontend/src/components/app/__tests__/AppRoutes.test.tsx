@@ -96,7 +96,7 @@ const createProps = (): AppRoutesProps => ({
     onRequestAddPolicy: noop,
     onRequestEditPolicy: noop,
     onRequestAddClient: noop,
-    pendingDealClientId: null,
+    pendingDealClient: null,
     onPendingDealClientConsumed: noop,
     onDeleteQuote: vi.fn(async () => undefined),
     onDeletePolicy: vi.fn(async () => undefined),

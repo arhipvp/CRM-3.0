@@ -67,7 +67,10 @@ export const useClientActions = ({
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const isClientModalOverlayOpenRef = useRef(false);
   const clientModalReturnToRef = useRef<ModalType | null>(null);
-  const [pendingDealClientId, setPendingDealClientId] = useState<string | null>(null);
+  const [pendingDealClient, setPendingDealClient] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [clientDeleteTarget, setClientDeleteTarget] = useState<Client | null>(null);
   const [similarClientTargetId, setSimilarClientTargetId] = useState<string | null>(null);
@@ -122,7 +125,7 @@ export const useClientActions = ({
       const created = await createClient(data);
       updateAppData((prev) => ({ clients: [created, ...prev.clients] }));
       if (clientModalReturnToRef.current === 'deal') {
-        setPendingDealClientId(created.id);
+        setPendingDealClient({ id: created.id, name: created.name });
       }
       closeClientModal();
     },
@@ -130,7 +133,7 @@ export const useClientActions = ({
   );
 
   const handlePendingDealClientConsumed = useCallback(() => {
-    setPendingDealClientId(null);
+    setPendingDealClient(null);
   }, []);
 
   const handleClientEditRequest = useCallback((client: Client) => {
@@ -624,7 +627,7 @@ export const useClientActions = ({
 
   return {
     isClientModalOverlayOpen,
-    pendingDealClientId,
+    pendingDealClient,
     editingClient,
     setEditingClient,
     clientDeleteTarget,

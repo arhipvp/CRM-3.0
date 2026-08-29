@@ -6,7 +6,7 @@ import type { AddPaymentFormValues } from '../../forms/AddPaymentForm';
 import { AddTaskForm } from '../../forms/AddTaskForm';
 import type { AddTaskFormValues } from '../../forms/AddTaskForm';
 import { DealForm } from '../../forms/DealForm';
-import type { DealFormValues } from '../../forms/DealForm';
+import type { DealFormValues, PreselectedDealClient } from '../../forms/DealForm';
 import { FinancialRecordModal } from '../../financialRecords/FinancialRecordModal';
 import { Modal } from '../../Modal';
 import { PaymentModal } from '../../payments/PaymentModal';
@@ -22,7 +22,7 @@ interface DealDetailsPanelModalsProps {
   selectedDeal: Deal | null;
   relatedPolicies: Policy[];
   selectedClientDisplayName: string;
-  pendingDealClientId?: string | null;
+  pendingDealClient?: PreselectedDealClient | null;
   onPendingDealClientConsumed?: () => void;
   onRequestAddClient: () => void;
   onUpdateDeal: (dealId: string, data: DealFormValues) => Promise<void>;
@@ -100,7 +100,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
   selectedDeal,
   relatedPolicies,
   selectedClientDisplayName,
-  pendingDealClientId,
+  pendingDealClient,
   onPendingDealClientConsumed,
   onRequestAddClient,
   onUpdateDeal,
@@ -198,7 +198,7 @@ export const DealDetailsPanelModals: React.FC<DealDetailsPanelModalsProps> = ({
             quickNextContactOptions={quickInlineDateOptions}
             onQuickNextContactShift={handleQuickNextContactShift}
             onRequestAddClient={onRequestAddClient}
-            preselectedClientId={pendingDealClientId}
+            preselectedClient={pendingDealClient}
             onPreselectedClientConsumed={onPendingDealClientConsumed}
             onSubmit={async (data) => {
               await onUpdateDeal(selectedDeal.id, data);

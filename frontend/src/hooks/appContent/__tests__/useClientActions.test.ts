@@ -191,9 +191,24 @@ describe('useClientActions', () => {
       await handleAddClient({ name: createdClient.name });
     });
 
-    expect(result.current.pendingDealClientId).toBe(createdClient.id);
+    expect(result.current.pendingDealClient).toEqual({
+      id: createdClient.id,
+      name: createdClient.name,
+    });
     expect(result.current.isClientModalOverlayOpen).toBe(false);
     expect(updateAppData).toHaveBeenCalledWith(expect.any(Function));
+  });
+
+  it('does not prepare a client selection when the nested form is cancelled', () => {
+    const { result } = renderClientActions();
+
+    act(() => {
+      result.current.openClientModal('deal');
+      result.current.closeClientModal();
+    });
+
+    expect(result.current.pendingDealClient).toBeNull();
+    expect(result.current.isClientModalOverlayOpen).toBe(false);
   });
 
   it('fills merge final fields from preview canonical profile', async () => {

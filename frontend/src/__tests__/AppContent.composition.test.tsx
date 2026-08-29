@@ -141,7 +141,7 @@ vi.mock('../hooks/useDealFilters', () => ({
 vi.mock('../hooks/appContent/useClientActions', () => ({
   useClientActions: () => ({
     isClientModalOverlayOpen: false,
-    pendingDealClientId: null,
+    pendingDealClient: null,
     editingClient: null,
     setEditingClient: vi.fn(),
     clientDeleteTarget: null,

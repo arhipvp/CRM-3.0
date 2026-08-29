@@ -30,7 +30,7 @@ const baseProps = {
     users: [],
     handleAddClient: vi.fn(),
     handleAddDeal: vi.fn(),
-    pendingDealClientId: null,
+    pendingDealClient: null,
     onPendingDealClientConsumed: vi.fn(),
     quoteDealId: null,
     setQuoteDealId: vi.fn(),

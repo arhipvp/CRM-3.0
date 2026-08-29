@@ -197,7 +197,7 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
     onUpdatePolicyRenewed,
     onUpdateTask,
     paymentFixedPolicyId,
-    pendingDealClientId,
+    pendingDealClient,
     policiesCount,
     policySortKey,
     policySortOrder,
@@ -551,7 +551,7 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
         selectedDeal={selectedDeal}
         relatedPolicies={relatedPolicies}
         selectedClientDisplayName={selectedClientDisplayName}
-        pendingDealClientId={pendingDealClientId}
+        pendingDealClient={pendingDealClient}
         onPendingDealClientConsumed={onPendingDealClientConsumed}
         onRequestAddClient={onRequestAddClient}
         onUpdateDeal={onUpdateDeal}

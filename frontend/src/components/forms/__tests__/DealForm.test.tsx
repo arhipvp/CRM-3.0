@@ -34,7 +34,7 @@ describe('DealForm', () => {
         clients={[makeClient('client-1', 'Клиент 1'), makeClient('client-2', 'Клиент 2')]}
         mode="edit"
         initialValues={{ title: 'Сделка', clientId: 'client-1' }}
-        preselectedClientId="client-2"
+        preselectedClient={{ id: 'client-2', name: 'Клиент 2' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
@@ -53,12 +53,12 @@ describe('DealForm', () => {
         clients={[makeClient('client-1', 'Клиент 1')]}
         mode="edit"
         initialValues={{ title: 'Сделка', clientId: 'client-1' }}
-        preselectedClientId="client-2"
+        preselectedClient={{ id: 'client-2', name: 'Клиент 2' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
 
-    expect(onPreselectedClientConsumed).not.toHaveBeenCalled();
+    expect(onPreselectedClientConsumed).toHaveBeenCalledTimes(1);
 
     rerender(
       <DealForm
@@ -66,7 +66,7 @@ describe('DealForm', () => {
         clients={[makeClient('client-1', 'Клиент 1'), makeClient('client-2', 'Клиент 2')]}
         mode="edit"
         initialValues={{ title: 'Сделка', clientId: 'client-1' }}
-        preselectedClientId="client-2"
+        preselectedClient={{ id: 'client-2', name: 'Клиент 2' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
@@ -83,7 +83,7 @@ describe('DealForm', () => {
         ]}
         mode="edit"
         initialValues={{ title: 'Сделка', clientId: 'client-1' }}
-        preselectedClientId="client-2"
+        preselectedClient={{ id: 'client-2', name: 'Клиент 2' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
@@ -99,14 +99,14 @@ describe('DealForm', () => {
         {...baseProps}
         clients={[makeClient('client-1', 'Существующий контакт')]}
         onSubmit={onSubmit}
-        preselectedClientId="created-client"
+        preselectedClient={{ id: 'created-client', name: 'Новый контакт' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
 
     const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
-    expect(clientInput).toHaveValue('');
-    expect(onPreselectedClientConsumed).not.toHaveBeenCalled();
+    expect(clientInput).toHaveValue('Новый контакт');
+    expect(onPreselectedClientConsumed).toHaveBeenCalledTimes(1);
 
     rerender(
       <DealForm
@@ -116,7 +116,7 @@ describe('DealForm', () => {
           makeClient('client-1', 'Существующий контакт'),
         ]}
         onSubmit={onSubmit}
-        preselectedClientId="created-client"
+        preselectedClient={{ id: 'created-client', name: 'Новый контакт' }}
         onPreselectedClientConsumed={onPreselectedClientConsumed}
       />,
     );
@@ -166,6 +166,37 @@ describe('DealForm', () => {
       />,
     );
 
+    expect(clientInput).toHaveValue('Клиент 2');
+  });
+
+  it('не перезаписывает ручной выбор после применения созданного клиента', async () => {
+    const onPreselectedClientConsumed = vi.fn();
+    const { rerender } = render(
+      <DealForm
+        {...baseProps}
+        clients={[makeClient('client-1', 'Клиент 1'), makeClient('client-2', 'Клиент 2')]}
+        preselectedClient={{ id: 'created-client', name: 'Новый контакт' }}
+        onPreselectedClientConsumed={onPreselectedClientConsumed}
+      />,
+    );
+
+    const clientInput = screen.getByPlaceholderText('Начните вводить имя контактного лица');
+    await waitFor(() => expect(clientInput).toHaveValue('Новый контакт'));
+    rerender(
+      <DealForm
+        {...baseProps}
+        clients={[
+          makeClient('created-client', 'Новый контакт'),
+          makeClient('client-1', 'Клиент 1'),
+          makeClient('client-2', 'Клиент 2'),
+        ]}
+        onPreselectedClientConsumed={onPreselectedClientConsumed}
+      />,
+    );
+
+    fireEvent.focus(clientInput);
+    fireEvent.change(clientInput, { target: { value: 'Клиент 2' } });
+    fireEvent.mouseDown(await screen.findByRole('option', { name: 'Клиент 2' }));
     expect(clientInput).toHaveValue('Клиент 2');
   });
 

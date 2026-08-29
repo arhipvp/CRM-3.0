@@ -61,7 +61,7 @@ describe('useAppRouteShell', () => {
         onRequestAddPolicy: () => undefined,
         onRequestEditPolicy: () => undefined,
         onRequestAddClient: () => undefined,
-        pendingDealClientId: null,
+        pendingDealClient: null,
         onPendingDealClientConsumed: () => undefined,
         onDeleteQuote: async () => undefined,
         onDeletePolicy: async () => undefined,

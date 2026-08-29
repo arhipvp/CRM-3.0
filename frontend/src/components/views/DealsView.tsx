@@ -18,7 +18,7 @@ import {
 import type { AddFinancialRecordFormValues } from '../forms/AddFinancialRecordForm';
 import type { AddPaymentFormValues } from '../forms/AddPaymentForm';
 import type { AddTaskFormValues } from '../forms/AddTaskForm';
-import type { DealFormValues } from '../forms/DealForm';
+import type { DealFormValues, PreselectedDealClient } from '../forms/DealForm';
 import type { DealMailboxCreateResult, DealMailboxSyncResult } from '../../api/deals';
 import { DealDetailsPanel } from './dealsView/DealDetailsPanel';
 import { DealsList } from './dealsView/DealsList';
@@ -63,7 +63,7 @@ interface DealsViewProps {
   onRequestAddPolicy: (dealId: string) => void;
   onRequestEditPolicy: (policy: Policy) => void;
   onRequestAddClient: () => void;
-  pendingDealClientId: string | null;
+  pendingDealClient: PreselectedDealClient | null;
   onPendingDealClientConsumed: () => void;
   onDeleteQuote: (dealId: string, quoteId: string) => Promise<void>;
   onDeletePolicy: (policyId: string) => Promise<void>;
@@ -179,7 +179,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
   onRequestAddPolicy,
   onRequestEditPolicy,
   onRequestAddClient,
-  pendingDealClientId,
+  pendingDealClient,
   onPendingDealClientConsumed,
   onDeleteQuote,
   onDeletePolicy,
@@ -352,7 +352,7 @@ export const DealsView: React.FC<DealsViewProps> = ({
             onRequestAddPolicy={onRequestAddPolicy}
             onRequestEditPolicy={onRequestEditPolicy}
             onRequestAddClient={onRequestAddClient}
-            pendingDealClientId={pendingDealClientId}
+            pendingDealClient={pendingDealClient}
             onPendingDealClientConsumed={onPendingDealClientConsumed}
             onDeleteQuote={onDeleteQuote}
             onDeletePolicy={onDeletePolicy}
