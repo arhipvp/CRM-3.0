@@ -42,3 +42,31 @@ class PolicyExpiryReminderTests(TestCase):
             send_policy_expiry_reminders()
 
         send_notification_mock.assert_not_called()
+
+    def test_send_policy_expiry_reminders_skips_closed_deals(self):
+        today = timezone.localdate()
+
+        for status in (Deal.DealStatus.WON, Deal.DealStatus.LOST):
+            with self.subTest(status=status):
+                deal = Deal.objects.create(
+                    title=f"Closed reminder deal: {status}",
+                    client=self.client_obj,
+                    seller=self.seller,
+                    status=status,
+                    stage_name="closed",
+                )
+                Policy.objects.create(
+                    number=f"POL-{status}",
+                    deal=deal,
+                    insurance_company=self.company,
+                    insurance_type=self.insurance_type,
+                    client=self.client_obj,
+                    end_date=today + timedelta(days=1),
+                )
+
+        with patch(
+            "apps.notifications.telegram_notifications.send_notification"
+        ) as send_notification_mock:
+            send_policy_expiry_reminders()
+
+        send_notification_mock.assert_not_called()

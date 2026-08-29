@@ -284,22 +284,28 @@ def send_payment_due_reminders() -> None:
 
 
 def send_policy_expiry_reminders() -> None:
+    from apps.deals.models import Deal
     from apps.policies.models import Policy
 
     today = timezone.localdate()
     reminder_window = max(_default_remind_days())
-    # Policy.status intentionally ignored; reminders rely solely on end_date.
+    closed_statuses = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
+    # Policy.status intentionally ignored; reminders rely on end_date and deal status.
     max_end_date = today + timedelta(days=reminder_window)
-    policies = Policy.objects.filter(
-        is_renewed=False,
-        end_date__isnull=False,
-        end_date__gte=today,
-        end_date__lte=max_end_date,
-    ).select_related(
-        "deal__seller",
-        "deal__executor",
-        "client",
-        "insured_client",
+    policies = (
+        Policy.objects.filter(
+            is_renewed=False,
+            end_date__isnull=False,
+            end_date__gte=today,
+            end_date__lte=max_end_date,
+        )
+        .exclude(deal__status__in=closed_statuses)
+        .select_related(
+            "deal__seller",
+            "deal__executor",
+            "client",
+            "insured_client",
+        )
     )
 
     for policy in policies:
