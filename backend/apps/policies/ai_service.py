@@ -1725,7 +1725,6 @@ def recognize_policy_from_bytes(
 
     text = ""
     text_error: PolicyRecognitionError | None = None
-    text_result: tuple[dict, str] | None = None
 
     try:
         text = extract_text_from_bytes(content, filename)
@@ -1758,7 +1757,6 @@ def recognize_policy_from_bytes(
                 not text_needs_vision and not is_policy_recognition_result_poor(data)
             ) or not can_use_vision:
                 return data, transcript
-            text_result = (data, transcript)
         except PolicyRecognitionError as exc:
             text_error = exc
 

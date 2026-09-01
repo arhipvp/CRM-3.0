@@ -1,6 +1,3 @@
-from unittest.mock import Mock
-
-import httpx
 import openai
 from apps.common.ai_errors import classify_ai_error, sanitize_provider_text
 from django.test import SimpleTestCase
@@ -37,8 +34,10 @@ class AIErrorClassificationTests(SimpleTestCase):
                 self.assertNotIn("<b>", error.message)
 
     def test_network_error_is_retryable_provider_unavailable(self):
-        request = httpx.Request("POST", "https://polza.ai/api/v1/chat/completions")
-        error = classify_ai_error(openai.APIConnectionError(request=request))
+        class NetworkError(openai.APIConnectionError):
+            pass
+
+        error = classify_ai_error(NetworkError.__new__(NetworkError))
         self.assertEqual(error.code, "ai_provider_unavailable")
         self.assertTrue(error.retryable)
 

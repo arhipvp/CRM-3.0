@@ -36,7 +36,7 @@ class AIDiagnosticsTests(SimpleTestCase):
                     "test",
                     content=b"personal data",
                     message="Паспорт 1234 567890",
-                    api_key="must-not-appear",
+                    api_key="must-not-appear",  # pragma: allowlist secret
                     headers={"Authorization": "Bearer must-not-appear"},
                 )
             log_path = Path(directory) / "ai-diagnostics.jsonl"
