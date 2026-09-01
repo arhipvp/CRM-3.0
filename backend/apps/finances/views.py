@@ -131,7 +131,11 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return super().get_serializer_class()
 
     def list(self, request, *args, **kwargs):
-        if request.query_params.get("projection") != "table":
+        includes_payment_summaries = bool(
+            request.query_params.get("statement")
+            or request.query_params.get("projection") == "table"
+        )
+        if not includes_payment_summaries:
             return super().list(request, *args, **kwargs)
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
@@ -185,7 +189,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 else detail_related_fields
             )
         )
-        if is_list and not is_statement_list:
+        if is_list:
             queryset = queryset.prefetch_related(
                 Prefetch(
                     "payment__financial_records",

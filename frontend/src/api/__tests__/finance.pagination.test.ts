@@ -4,6 +4,7 @@ import {
   fetchFinancialRecords,
   fetchFinanceStatements,
   fetchPaymentsWithPagination,
+  fetchStatementFinancialRecordsWithPagination,
 } from '../finance';
 import { request } from '../request';
 
@@ -158,5 +159,55 @@ describe('finance pagination', () => {
       recordType: 'Расход',
       date: null,
     });
+  });
+
+  it('maps statement payment summaries to every row of the same payment', async () => {
+    vi.mocked(request).mockResolvedValueOnce({
+      count: 2,
+      next: null,
+      previous: null,
+      results: [
+        {
+          id: 'record-1',
+          payment: 'payment-1',
+          amount: '-10.00',
+          created_at: '2026-08-08T00:00:00Z',
+          updated_at: '2026-08-08T00:00:00Z',
+        },
+        {
+          id: 'record-2',
+          payment: 'payment-1',
+          amount: '-20.00',
+          created_at: '2026-08-08T00:00:00Z',
+          updated_at: '2026-08-08T00:00:00Z',
+        },
+      ],
+      payment_summaries: {
+        'payment-1': {
+          paid_balance: '80.00',
+          paid_entries: [
+            { amount: '-20.00', date: '2026-08-07' },
+            { amount: '100.00', date: '2026-08-05' },
+          ],
+        },
+      },
+    });
+
+    const result = await fetchStatementFinancialRecordsWithPagination('statement-1');
+
+    expect(request).toHaveBeenCalledWith('/financial_records/?statement=statement-1', undefined);
+    expect(result.results).toHaveLength(2);
+    expect(result.results).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          paymentPaidBalance: '80.00',
+          paymentPaidEntries: [
+            { amount: '-20.00', date: '2026-08-07' },
+            { amount: '100.00', date: '2026-08-05' },
+          ],
+        }),
+      ]),
+    );
+    expect(result.results[1].paymentPaidEntries).toEqual(result.results[0].paymentPaidEntries);
   });
 });

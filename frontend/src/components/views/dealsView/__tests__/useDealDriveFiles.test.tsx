@@ -76,7 +76,11 @@ const renderDriveHook = (
   };
 
   const utils = render(<Wrapper deal={deal} />);
-  return { ...utils, resultRef };
+  return {
+    ...utils,
+    resultRef,
+    rerenderDeal: (nextDeal: Deal | null) => utils.rerender(<Wrapper deal={nextDeal} />),
+  };
 };
 
 describe('useDealDriveFiles', () => {
@@ -394,6 +398,53 @@ describe('useDealDriveFiles', () => {
     expect(onConfirmDeleteFile).toHaveBeenCalledWith(file.name, false);
     expect(trashDealDriveFilesMock).toHaveBeenCalledWith(deal.id, [file.id], false);
     expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears the deleting state after switching deals while deletion is pending', async () => {
+    const deal = createDeal();
+    const nextDeal = createDeal({ id: 'deal-2', title: 'Deal 2' });
+    const file = {
+      id: 'file-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: null,
+    };
+    let resolveTrash: (value: { movedFileIds: string[]; trashFolderId: string }) => void;
+    const pendingTrash = new Promise<{ movedFileIds: string[]; trashFolderId: string }>(
+      (resolve) => {
+        resolveTrash = resolve;
+      },
+    );
+    trashDealDriveFilesMock.mockReturnValueOnce(pendingTrash);
+    const onConfirmDeleteFile = vi.fn().mockResolvedValue(true);
+    const { resultRef, rerenderDeal } = renderDriveHook(deal, { onConfirmDeleteFile });
+
+    let deletion: Promise<void>;
+    await act(async () => {
+      deletion = resultRef.current!.handleTrashDriveFile(file);
+      await Promise.resolve();
+    });
+
+    expect(resultRef.current?.isTrashing).toBe(true);
+
+    await act(async () => {
+      rerenderDeal(nextDeal);
+    });
+
+    expect(resultRef.current?.isTrashing).toBe(false);
+
+    await act(async () => {
+      resolveTrash!({ movedFileIds: [file.id], trashFolderId: 'trash-1' });
+      await deletion!;
+    });
+
+    expect(resultRef.current?.isTrashing).toBe(false);
+    expect(fetchDealDriveFilesMock).not.toHaveBeenCalled();
   });
 
   it('trashes an empty folder when confirmed', async () => {

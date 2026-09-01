@@ -2116,6 +2116,78 @@ class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
         self.assertIn(str(payment.id), table.data["payment_summaries"])
         self.assertNotIn("payment_paid_entries", table.data["results"][0])
 
+    def test_statement_list_returns_paid_entries_in_payment_summaries(self):
+        payment = Payment.objects.create(
+            deal=self.deal,
+            policy=self.policy,
+            amount=Decimal("5000.00"),
+        )
+        statement = Statement.objects.create(
+            name="Statement with saldo operations",
+            statement_type=Statement.TYPE_EXPENSE,
+            created_by=self.seller,
+        )
+        statement_record = FinancialRecord.objects.create(
+            payment=payment,
+            statement=statement,
+            amount=Decimal("-200.00"),
+        )
+        second_statement_record = FinancialRecord.objects.create(
+            payment=payment,
+            statement=statement,
+            amount=Decimal("-150.00"),
+        )
+        paid_income = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("1000.00"),
+            date=date(2026, 8, 1),
+        )
+        paid_expense = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-420.52"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+            date=date(2026, 8, 5),
+        )
+        FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-50.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+        )
+        deleted_paid_record = FinancialRecord.objects.create(
+            payment=payment,
+            amount=Decimal("-10.00"),
+            record_type=FinancialRecord.RecordType.EXPENSE,
+            date=date(2026, 8, 7),
+        )
+        deleted_paid_record.delete()
+
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/", {"statement": str(statement.id)}
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(len(payload["results"]), 2)
+        self.assertEqual(
+            {record["id"] for record in payload["results"]},
+            {str(statement_record.id), str(second_statement_record.id)},
+        )
+        for record in payload["results"]:
+            self.assertNotIn("payment_paid_entries", record)
+            self.assertEqual(record["payment_paid_balance"], "579.48")
+        self.assertEqual(len(payload["payment_summaries"]), 1)
+        self.assertEqual(
+            payload["payment_summaries"][str(payment.id)],
+            {
+                "paid_balance": "579.48",
+                "paid_entries": [
+                    {"amount": "-420.52", "date": "2026-08-05"},
+                    {"amount": "1000.00", "date": "2026-08-01"},
+                ],
+            },
+        )
+
     def test_api_returns_paid_income_without_unpaid_expense_in_paid_balance(self):
         payment = Payment.objects.create(
             deal=self.deal,

@@ -202,4 +202,22 @@ describe('RecordsTable', () => {
 
     expect(onToggleCommentSort).toHaveBeenCalledOnce();
   });
+
+  it('shows the operations that form the saldo in statement mode', () => {
+    renderTable({
+      viewMode: 'statements',
+      row: buildRow({
+        paymentPaidBalance: 80,
+        paymentPaidEntries: [
+          { amount: '100.00', date: '2026-08-05' },
+          { amount: '-20.00', date: '2026-08-07' },
+        ],
+      }),
+    });
+
+    expect(screen.getByText('80,00 ₽')).toBeInTheDocument();
+    expect(screen.getByText('Доход 100,00 ₽ · 05.08.2026')).toBeInTheDocument();
+    expect(screen.getByText('Расход 20,00 ₽ · 07.08.2026')).toBeInTheDocument();
+    expect(screen.queryByText('Операций нет')).not.toBeInTheDocument();
+  });
 });

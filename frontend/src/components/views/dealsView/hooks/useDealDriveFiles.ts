@@ -173,6 +173,7 @@ export const useDealDriveFiles = ({
     setSelectedDriveFileIds(selectedDeal?.calculationSourceFileIds ?? []);
     setRecognitionResults([]);
     setRecognitionMessage(null);
+    setIsTrashing(false);
     setTrashMessage(null);
     setDownloadMessage(null);
     setRenameMessage(null);
