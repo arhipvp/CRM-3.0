@@ -120,6 +120,31 @@ const driveFile = (overrides: Partial<DriveFile>): DriveFile => ({
 });
 
 describe('FilesTab', () => {
+  it('shows a detailed AI recognition error for the failed file', () => {
+    renderWithProviders({
+      recognitionResults: [
+        {
+          fileId: 'file-1',
+          fileName: 'policy.jpg',
+          status: 'error',
+          message: 'На балансе Polza.ai недостаточно средств. Ответ Polza.ai: balance is empty.',
+          error: {
+            code: 'ai_insufficient_funds',
+            message: 'На балансе Polza.ai недостаточно средств. Ответ Polza.ai: balance is empty.',
+            retryable: false,
+          },
+        },
+      ],
+    });
+
+    expect(screen.getByText('policy.jpg')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'На балансе Polza.ai недостаточно средств. Ответ Polza.ai: balance is empty.',
+      ),
+    ).toBeInTheDocument();
+  });
+
   it('renders updated policy recognition button and hides document recognition action', () => {
     renderWithProviders();
 

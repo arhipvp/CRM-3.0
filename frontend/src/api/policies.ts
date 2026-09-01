@@ -17,6 +17,15 @@ import {
 } from './helpers';
 import { mapPayment, mapPolicy } from './mappers';
 
+const mapAiRecognitionError = (value: unknown) => {
+  if (!value || typeof value !== 'object') return undefined;
+  const error = value as Record<string, unknown>;
+  const code = toOptionalString(error.code);
+  const message = toOptionalString(error.message);
+  if (!code || !message) return undefined;
+  return { code, message, retryable: Boolean(error.retryable) };
+};
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const POLICY_DRAFT_ID_LABELS = {
@@ -313,11 +322,13 @@ export async function recognizeDealPolicies(
     results: rawResults.map((raw) => {
       const item = raw as Record<string, unknown>;
       const statusValue = toStringValue(item.status ?? item.state);
+      const error = mapAiRecognitionError(item.error);
       return {
         fileId: toStringValue(item.fileId ?? item.file_id),
         fileName: toNullableString(item.fileName ?? item.file_name),
         status: statusValue === 'parsed' ? 'parsed' : statusValue === 'exists' ? 'exists' : 'error',
-        message: toOptionalString(item.message),
+        message: toOptionalString(item.message) ?? error?.message,
+        ...(error ? { error } : {}),
         data:
           typeof item.data === 'object' && item.data !== null
             ? (item.data as Record<string, unknown>)

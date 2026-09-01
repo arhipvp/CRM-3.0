@@ -343,6 +343,48 @@ describe('recognizeDealPolicies', () => {
     ]);
     expect(result.results[0]).not.toHaveProperty('transcript');
   });
+
+  it('maps detailed AI errors from a failed file', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            results: [
+              {
+                file_id: 'file-1',
+                file_name: 'policy.jpg',
+                status: 'error',
+                error: {
+                  code: 'ai_insufficient_funds',
+                  message: 'На балансе недостаточно средств. Ответ Polza.ai: balance is empty.',
+                  retryable: false,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+
+    await expect(recognizeDealPolicies(DEAL_ID, ['file-1'])).resolves.toEqual({
+      results: [
+        {
+          fileId: 'file-1',
+          fileName: 'policy.jpg',
+          status: 'error',
+          message: 'На балансе недостаточно средств. Ответ Polza.ai: balance is empty.',
+          error: {
+            code: 'ai_insufficient_funds',
+            message: 'На балансе недостаточно средств. Ответ Polza.ai: balance is empty.',
+            retryable: false,
+          },
+          data: undefined,
+        },
+      ],
+    });
+  });
 });
 
 describe('updatePolicyDraft', () => {

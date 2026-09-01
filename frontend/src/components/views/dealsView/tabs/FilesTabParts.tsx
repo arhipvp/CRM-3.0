@@ -86,6 +86,9 @@ export function RecognitionResults({ results }: { results: PolicyRecognitionResu
           >
             {formatRecognitionSummary(result)}
           </p>
+          {result.error?.retryable && (
+            <p className="text-[11px] text-slate-500">Можно повторить попытку позже.</p>
+          )}
         </div>
       ))}
     </div>

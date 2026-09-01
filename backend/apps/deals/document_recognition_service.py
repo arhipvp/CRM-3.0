@@ -52,6 +52,7 @@ def recognize_deal_documents(deal, file_ids: list[str], user) -> dict:
                     "error": {
                         "code": "file_not_found",
                         "message": "Файл не найден в папке сделки.",
+                        "retryable": False,
                     },
                 }
             )
@@ -68,8 +69,9 @@ def recognize_deal_documents(deal, file_ids: list[str], user) -> dict:
                 _build_error_result(
                     file_id,
                     file_name,
-                    code="recognition_error",
+                    code=getattr(exc, "code", "recognition_error"),
                     message=str(exc),
+                    retryable=getattr(exc, "retryable", isinstance(exc, DriveError)),
                 )
             )
         except Exception:
@@ -80,6 +82,7 @@ def recognize_deal_documents(deal, file_ids: list[str], user) -> dict:
                     file_name,
                     code="internal_error",
                     message="Внутренняя ошибка распознавания документа.",
+                    retryable=False,
                 )
             )
 
@@ -126,6 +129,7 @@ def _build_error_result(
     *,
     code: str,
     message: str,
+    retryable: bool,
 ) -> dict[str, Any]:
     return {
         "fileId": file_id,
@@ -136,6 +140,7 @@ def _build_error_result(
         "error": {
             "code": code,
             "message": message,
+            "retryable": retryable,
         },
     }
 

@@ -12,13 +12,14 @@ from typing import Any
 
 import openai
 import pymupdf
+from apps.common.ai_errors import AIRecognitionError, classify_ai_error
 from django.conf import settings
 from PIL import Image, ImageOps
 
 logger = logging.getLogger(__name__)
 
 
-class DocumentRecognitionError(ValueError):
+class DocumentRecognitionError(AIRecognitionError):
     """Ошибка распознавания документа."""
 
 
@@ -982,17 +983,29 @@ def _create_with_retries(
                 timeout=request_timeout,
             )
         except Exception as exc:
-            last_exc = exc
+            classified = classify_ai_error(exc, timeout_seconds=request_timeout)
+            last_exc = classified
             if attempt >= max_retries:
+                break
+            if not classified.retryable:
                 break
             delay = retry_base_delay * (2**attempt)
             logger.warning(
                 "Повтор запроса к ИИ через %.2fs после ошибки: %s",
                 delay,
-                exc,
+                classified.code,
             )
             time.sleep(delay)
-    raise DocumentRecognitionError(f"Ошибка запроса к ИИ: {last_exc}") from last_exc
+    if isinstance(last_exc, AIRecognitionError):
+        raise DocumentRecognitionError(
+            last_exc.message,
+            code=last_exc.code,
+            retryable=last_exc.retryable,
+            status_code=last_exc.status_code,
+            cause=last_exc.cause,
+            provider_text=last_exc.provider_text,
+        ) from last_exc.cause
+    raise DocumentRecognitionError("Не удалось выполнить распознавание через Polza.ai.")
 
 
 def _recognize_from_images(

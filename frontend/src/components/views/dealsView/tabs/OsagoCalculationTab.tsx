@@ -344,6 +344,18 @@ export const OsagoCalculationTab: React.FC<OsagoCalculationTabProps> = ({
                 ))}
               </ul>
             )}
+            {(recognition.fileResults ?? []).some((file) => file.status === 'error') && (
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-rose-700">
+                {(recognition.fileResults ?? [])
+                  .filter((file) => file.status === 'error')
+                  .map((file) => (
+                    <li key={file.fileId}>
+                      {file.fileName ?? file.fileId}: {file.message ?? 'Ошибка распознавания'}
+                      {file.error?.retryable ? ' Можно повторить попытку позже.' : ''}
+                    </li>
+                  ))}
+              </ul>
+            )}
           </div>
         </div>
       )}

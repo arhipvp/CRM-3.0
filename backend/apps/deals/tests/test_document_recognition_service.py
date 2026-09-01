@@ -149,6 +149,34 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(payload.normalized_type, "passport")
 
     @patch("apps.deals.document_recognition._resolve_ai_config")
+    @patch("apps.deals.document_recognition.time.sleep")
+    @patch("apps.deals.document_recognition.openai.OpenAI")
+    @patch("apps.deals.document_recognition._render_image_with_rotations")
+    def test_does_not_retry_when_polza_balance_is_empty(
+        self,
+        render_mock: Mock,
+        openai_mock: Mock,
+        sleep_mock: Mock,
+        config_mock: Mock,
+    ):
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
+        render_mock.return_value = (b"img-0", [])
+        client = Mock()
+        error = RuntimeError("Insufficient funds")
+        error.status_code = 402
+        error.body = "<b>Insufficient funds</b>"
+        client.chat.completions.create.side_effect = error
+        openai_mock.return_value = client
+
+        with self.assertRaises(DocumentRecognitionError) as exc_info:
+            recognize_document_from_file(b"raw-image", "photo.png")
+
+        self.assertEqual(exc_info.exception.code, "ai_insufficient_funds")
+        self.assertFalse(exc_info.exception.retryable)
+        self.assertEqual(client.chat.completions.create.call_count, 1)
+        sleep_mock.assert_not_called()
+
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_pdf_pages")
     def test_empty_pdf_render_raises_error(

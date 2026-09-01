@@ -40,7 +40,20 @@ const recognitionPayload: OsagoRecognitionResponse = {
   warnings: ['Проверьте VIN'],
   confidence: 0.9,
   sources: { files: [{ id: 'file-1', name: 'sts.jpg' }], textIncluded: false },
-  fileResults: [],
+  fileResults: [
+    {
+      fileId: 'file-2',
+      fileName: 'passport.jpg',
+      status: 'error',
+      confidence: null,
+      message: 'Превышено время ожидания Polza.ai: 30 секунд.',
+      error: {
+        code: 'ai_timeout',
+        message: 'Превышено время ожидания Polza.ai: 30 секунд.',
+        retryable: true,
+      },
+    },
+  ],
 };
 
 const deal = {
@@ -172,6 +185,11 @@ describe('OsagoCalculationTab', () => {
     expect(screen.getByText('Проверка результата')).toBeInTheDocument();
     expect(screen.getByDisplayValue('ИВАНОВ ИВАН ИВАНОВИЧ')).toBeInTheDocument();
     expect(screen.getByText('Проверьте VIN')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'passport.jpg: Превышено время ожидания Polza.ai: 30 секунд. Можно повторить попытку позже.',
+      ),
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Назад к источникам' }));
     expect(screen.getByRole('button', { name: 'Далее: распознать' })).toBeInTheDocument();

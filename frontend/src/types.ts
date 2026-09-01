@@ -180,7 +180,14 @@ export interface PolicyRecognitionResult {
   fileName?: string | null;
   status: 'parsed' | 'error' | 'exists';
   message?: string;
+  error?: AiRecognitionError;
   data?: Record<string, unknown>;
+}
+
+export interface AiRecognitionError {
+  code: string;
+  message: string;
+  retryable: boolean;
 }
 
 export interface PolicyIssuanceLogEntry {
@@ -303,6 +310,7 @@ export interface OsagoRecognitionResponse {
     documentType?: string | null;
     confidence?: number | null;
     message?: string;
+    error?: AiRecognitionError;
   }>;
 }
 

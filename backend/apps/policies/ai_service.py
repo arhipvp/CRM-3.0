@@ -19,6 +19,7 @@ from typing import Callable, List, Tuple
 import openai
 import pymupdf
 import pytesseract
+from apps.common.ai_errors import AIRecognitionError, classify_ai_error
 from apps.deals.insurance_type_descriptions import AI_INSURANCE_TYPE_DESCRIPTIONS
 from django.conf import settings
 from docx import Document
@@ -568,12 +569,12 @@ def extract_text_from_bytes(content: bytes, filename: str) -> str:
         return content.decode("utf-8", "ignore")
 
 
-class PolicyRecognitionError(ValueError):
+class PolicyRecognitionError(AIRecognitionError):
     """Ошибка распознавания полиса."""
 
-    def __init__(self, message: str, transcript: str | None = None):
-        super().__init__(message)
-        self.transcript = transcript or ""
+    def __init__(self, message: str, transcript: str = "", **kwargs) -> None:
+        super().__init__(message, **kwargs)
+        self.transcript = transcript
 
 
 def _to_data_uri(image_bytes: bytes, mime_type: str) -> str:
@@ -1478,7 +1479,15 @@ def _chat(
             round((time.monotonic() - started_at) * 1000),
             type(exc).__name__,
         )
-        raise
+        classified = classify_ai_error(exc)
+        raise PolicyRecognitionError(
+            classified.message,
+            code=classified.code,
+            retryable=classified.retryable,
+            status_code=classified.status_code,
+            cause=classified.cause,
+            provider_text=classified.provider_text,
+        ) from exc
 
 
 def recognize_policy_interactive(

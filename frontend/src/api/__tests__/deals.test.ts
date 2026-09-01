@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { createDealEvent, updateDeal } from '../deals';
+import { createDealEvent, recognizeDealCalculation, updateDeal } from '../deals';
 
 describe('deal api', () => {
   beforeEach(() => {
@@ -71,5 +71,56 @@ describe('deal api', () => {
         reason: 'Ручной срок',
       }),
     );
+  });
+
+  it('maps detailed AI errors in calculation file results', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: {},
+            warnings: [],
+            confidence: null,
+            sources: { files: [], textIncluded: false },
+            file_results: [
+              {
+                file_id: 'file-1',
+                file_name: 'passport.jpg',
+                status: 'error',
+                error: {
+                  code: 'ai_timeout',
+                  message: 'Превышено время ожидания Polza.ai: 30 секунд.',
+                  retryable: true,
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    );
+
+    const result = await recognizeDealCalculation({
+      dealId: 'deal-1',
+      calculationType: 'osago',
+      fileIds: ['file-1'],
+      sourceText: '',
+    });
+
+    expect(result.fileResults).toEqual([
+      {
+        fileId: 'file-1',
+        fileName: 'passport.jpg',
+        status: 'error',
+        confidence: null,
+        message: 'Превышено время ожидания Polza.ai: 30 секунд.',
+        error: {
+          code: 'ai_timeout',
+          message: 'Превышено время ожидания Polza.ai: 30 секунд.',
+          retryable: true,
+        },
+      },
+    ]);
   });
 });

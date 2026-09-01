@@ -15,6 +15,15 @@ import type {
   Quote,
 } from '../types';
 
+const mapAiRecognitionError = (value: unknown) => {
+  if (!value || typeof value !== 'object') return undefined;
+  const error = value as Record<string, unknown>;
+  const code = error.code == null ? undefined : String(error.code);
+  const message = error.message == null ? undefined : String(error.message);
+  if (!code || !message) return undefined;
+  return { code, message, retryable: Boolean(error.retryable) };
+};
+
 export type DealEmbedField = 'quotes' | 'documents' | 'policies';
 
 type DealsQueryOptions = {
@@ -209,15 +218,27 @@ export async function recognizeDealCalculation(data: {
         (payload.sources as Record<string, unknown>).textIncluded,
       ),
     },
-    fileResults: Array.isArray(payload.fileResults)
-      ? (payload.fileResults as Array<Record<string, unknown>>).map((item) => ({
-          fileId: String(item.fileId ?? ''),
-          fileName: item.fileName == null ? undefined : String(item.fileName),
-          status: item.status === 'parsed' ? 'parsed' : 'error',
-          documentType: item.documentType == null ? undefined : String(item.documentType),
-          confidence: item.confidence == null ? null : Number(item.confidence),
-          message: item.message == null ? undefined : String(item.message),
-        }))
+    fileResults: Array.isArray(payload.fileResults ?? payload.file_results)
+      ? ((payload.fileResults ?? payload.file_results) as Array<Record<string, unknown>>).map(
+          (item) => {
+            const error = mapAiRecognitionError(item.error);
+            return {
+              fileId: String(item.fileId ?? item.file_id ?? ''),
+              fileName:
+                (item.fileName ?? item.file_name) == null
+                  ? undefined
+                  : String(item.fileName ?? item.file_name),
+              status: item.status === 'parsed' ? 'parsed' : 'error',
+              documentType:
+                (item.documentType ?? item.document_type) == null
+                  ? undefined
+                  : String(item.documentType ?? item.document_type),
+              confidence: item.confidence == null ? null : Number(item.confidence),
+              message: item.message == null ? error?.message : String(item.message),
+              ...(error ? { error } : {}),
+            };
+          },
+        )
       : [],
   };
 }

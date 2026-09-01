@@ -86,6 +86,11 @@ def recognize_osago_calculation(
                     "fileId": file_id,
                     "status": "error",
                     "message": "Файл не найден в папке сделки.",
+                    "error": {
+                        "code": "file_not_found",
+                        "message": "Файл не найден в папке сделки.",
+                        "retryable": False,
+                    },
                 }
             )
             warnings.append(f"Файл {file_id} не найден в папке сделки.")
@@ -102,6 +107,11 @@ def recognize_osago_calculation(
                     "fileName": file_name,
                     "status": "error",
                     "message": message,
+                    "error": {
+                        "code": "ai_timeout",
+                        "message": message,
+                        "retryable": True,
+                    },
                 }
             )
             warnings.append(f"{file_name}: {message}")
@@ -152,6 +162,13 @@ def recognize_osago_calculation(
                     "fileName": file_name,
                     "status": "error",
                     "message": str(exc),
+                    "error": {
+                        "code": getattr(exc, "code", "recognition_error"),
+                        "message": str(exc),
+                        "retryable": bool(
+                            getattr(exc, "retryable", isinstance(exc, DriveError))
+                        ),
+                    },
                 }
             )
             warnings.append(f"{file_name}: {exc}")
@@ -167,6 +184,11 @@ def recognize_osago_calculation(
                     "fileName": file_name,
                     "status": "error",
                     "message": "Внутренняя ошибка распознавания документа.",
+                    "error": {
+                        "code": "internal_error",
+                        "message": "Внутренняя ошибка распознавания документа.",
+                        "retryable": False,
+                    },
                 }
             )
             warnings.append(f"{file_name}: внутренняя ошибка распознавания.")

@@ -77,6 +77,11 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
                     "fileId": file_id,
                     "status": "error",
                     "message": "Файл не найден в папке сделки.",
+                    "error": {
+                        "code": "file_not_found",
+                        "message": "Файл не найден в папке сделки.",
+                        "retryable": False,
+                    },
                 }
             )
             continue
@@ -90,6 +95,11 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
                     "fileName": file_info["name"],
                     "status": "error",
                     "message": str(exc),
+                    "error": {
+                        "code": "drive_error",
+                        "message": str(exc),
+                        "retryable": True,
+                    },
                 }
             )
             continue
@@ -106,6 +116,11 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
                         "Неподдерживаемый формат изображения для распознавания "
                         "полиса. Поддерживаются JPG, JPEG и PNG."
                     ),
+                    "error": {
+                        "code": "unsupported_file_type",
+                        "message": "Неподдерживаемый формат изображения для распознавания полиса. Поддерживаются JPG, JPEG и PNG.",
+                        "retryable": False,
+                    },
                 }
             )
             continue
@@ -125,6 +140,7 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
                             "fileName": file_info["name"],
                             "status": "error",
                             "message": str(exc),
+                            "error": _recognition_error_payload(exc),
                         }
                     )
                     continue
@@ -219,6 +235,7 @@ def _append_recognition_results(
                     results,
                     downloaded_files,
                     message=f"{exc}; vision fallback: {vision_exc}",
+                    error=vision_exc,
                 )
                 return
         else:
@@ -226,6 +243,7 @@ def _append_recognition_results(
                 results,
                 downloaded_files,
                 message=str(exc),
+                error=exc,
             )
             return
 
@@ -260,6 +278,7 @@ def _append_recognition_error_results(
     downloaded_files: list[dict[str, object]],
     *,
     message: str,
+    error: Exception | None = None,
 ) -> None:
     for file_data in downloaded_files:
         results.append(
@@ -268,5 +287,22 @@ def _append_recognition_error_results(
                 "fileName": file_data["name"],
                 "status": "error",
                 "message": message,
+                "error": (
+                    _recognition_error_payload(error)
+                    if error
+                    else {
+                        "code": "recognition_error",
+                        "message": message,
+                        "retryable": False,
+                    }
+                ),
             }
         )
+
+
+def _recognition_error_payload(exc: Exception) -> dict:
+    return {
+        "code": getattr(exc, "code", "recognition_error"),
+        "message": str(exc),
+        "retryable": bool(getattr(exc, "retryable", False)),
+    }

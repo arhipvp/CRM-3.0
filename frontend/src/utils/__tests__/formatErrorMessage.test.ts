@@ -32,4 +32,30 @@ describe('formatErrorMessage', () => {
       'Google Drive временно не принял файл. Попробуйте ещё раз через минуту.',
     );
   });
+
+  it('keeps detailed AI diagnostics returned by the backend', () => {
+    const error = new APIError(
+      'На балансе Polza.ai недостаточно средств. Ответ Polza.ai: balance is empty.',
+      402,
+      '/policies/recognize/',
+      'ai_insufficient_funds',
+    );
+
+    expect(formatErrorMessage(error, 'Не удалось распознать документы')).toBe(
+      'На балансе Polza.ai недостаточно средств. Ответ Polza.ai: balance is empty.',
+    );
+  });
+
+  it('uses a friendly AI message when the server supplied no useful detail', () => {
+    const error = new APIError(
+      'Request /policies/recognize/ failed with status 429',
+      429,
+      '/policies/recognize/',
+      'ai_rate_limited',
+    );
+
+    expect(formatErrorMessage(error)).toBe(
+      'Слишком много запросов к Polza.ai. Попробуйте ещё раз немного позже.',
+    );
+  });
 });
