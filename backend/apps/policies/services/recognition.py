@@ -1,6 +1,7 @@
 import logging
 from typing import List
 
+from apps.common.ai_diagnostics import log_ai_diagnostic
 from apps.common.drive import (
     DriveError,
     build_drive_file_tree_map,
@@ -194,6 +195,14 @@ def _append_recognition_results(
             )
         )
         for file_data in downloaded_files
+    )
+    log_ai_diagnostic(
+        "policy.batch_mode_selected",
+        files=downloaded_files,
+        combined_text=combined_text,
+        can_use_vision=can_use_vision,
+        text_is_poor=text_is_poor,
+        mode="vision" if text_is_poor and can_use_vision else "text",
     )
     attempted_vision = False
     used_vision = False

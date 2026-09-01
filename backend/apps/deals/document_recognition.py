@@ -12,6 +12,7 @@ from typing import Any
 
 import openai
 import pymupdf
+from apps.common.ai_diagnostics import log_ai_diagnostic
 from apps.common.ai_errors import AIRecognitionError, classify_ai_error
 from django.conf import settings
 from PIL import Image, ImageOps
@@ -971,7 +972,15 @@ def _create_with_retries(
                 )
             request_timeout = min(request_timeout, remaining)
         try:
-            return client.chat.completions.create(
+            log_ai_diagnostic(
+                "document.request",
+                attempt=attempt + 1,
+                model=model,
+                timeout_seconds=request_timeout,
+                messages=messages,
+                tools=[{"type": "function", "function": DOCUMENT_FUNCTION}],
+            )
+            response = client.chat.completions.create(
                 model=model,
                 temperature=0,
                 messages=messages,
@@ -982,9 +991,27 @@ def _create_with_retries(
                 },
                 timeout=request_timeout,
             )
+            log_ai_diagnostic(
+                "document.response",
+                attempt=attempt + 1,
+                model=model,
+                provider_response=response,
+            )
+            return response
         except Exception as exc:
             classified = classify_ai_error(exc, timeout_seconds=request_timeout)
             last_exc = classified
+            log_ai_diagnostic(
+                "document.error",
+                attempt=attempt + 1,
+                model=model,
+                exception=exc,
+                classified_error={
+                    "code": classified.code,
+                    "message": classified.message,
+                    "retryable": classified.retryable,
+                },
+            )
             if attempt >= max_retries:
                 break
             if not classified.retryable:
@@ -1077,6 +1104,7 @@ def _needs_rotation_fallback(
 def recognize_document_from_file(
     content: bytes, filename: str, *, deadline: float | None = None
 ) -> RecognitionPayload:
+    log_ai_diagnostic("document.source_file", filename=filename, content=content)
     api_key, base_url, model = _resolve_ai_config()
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
     timeout_seconds = int(

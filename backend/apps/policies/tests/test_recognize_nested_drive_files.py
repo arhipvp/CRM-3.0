@@ -72,6 +72,50 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
         extract_mock.assert_called_once_with(b"policy-bytes", "policy.pdf")
         recognize_mock.assert_called_once()
 
+    def test_pdf_text_extraction_failure_uses_batch_vision_without_text_request(self):
+        file_map = {
+            "broken-pdf": {
+                "id": "broken-pdf",
+                "name": "policy.pdf",
+                "mime_type": "application/pdf",
+                "is_folder": False,
+                "parent_id": None,
+            }
+        }
+        expected = {"policyNumber": "VISION-123"}
+
+        with (
+            patch(
+                "apps.policies.services.recognition.build_drive_file_tree_map",
+                return_value=file_map,
+            ),
+            patch(
+                "apps.policies.services.recognition.download_drive_file",
+                return_value=b"%PDF-broken",
+            ),
+            patch(
+                "apps.policies.services.recognition.extract_text_from_bytes",
+                side_effect=PolicyRecognitionError("PDF extraction failed"),
+            ),
+            patch(
+                "apps.policies.services.recognition.recognize_policy_from_text"
+            ) as text_mock,
+            patch(
+                "apps.policies.services.recognition.recognize_policy_from_pdf_images",
+                return_value=(expected, "vision transcript"),
+            ) as vision_mock,
+        ):
+            response = self.api_client.post(
+                "/api/v1/policies/recognize/",
+                {"deal_id": str(self.deal.id), "file_ids": ["broken-pdf"]},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["results"][0]["data"], expected)
+        text_mock.assert_not_called()
+        vision_mock.assert_called_once()
+
     def test_recognize_docx_uses_same_text_pipeline(self):
         file_map = {
             "docx-file": {

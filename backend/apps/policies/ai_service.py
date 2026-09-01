@@ -19,6 +19,7 @@ from typing import Callable, List, Tuple
 import openai
 import pymupdf
 import pytesseract
+from apps.common.ai_diagnostics import log_ai_diagnostic
 from apps.common.ai_errors import AIRecognitionError, classify_ai_error
 from apps.deals.insurance_type_descriptions import AI_INSURANCE_TYPE_DESCRIPTIONS
 from django.conf import settings
@@ -416,12 +417,16 @@ def is_extracted_policy_text_poor(text: str) -> bool:
         return True
 
     lowered = stripped.lower()
+    if lowered.startswith("%pdf-") or (
+        "\nobj" in lowered and "stream" in lowered and "endstream" in lowered
+    ):
+        return True
     term_hits = sum(1 for term in POLICY_TEXT_TERMS if term in lowered)
     if len(stripped) < 40 and term_hits == 0:
         return True
 
     bad_control_count = len(BAD_CONTROL_CHARS_RE.findall(stripped))
-    if bad_control_count / max(len(stripped), 1) > 0.01:
+    if bad_control_count > 12 and bad_control_count / max(len(stripped), 1) > 0.001:
         return True
 
     cyrillic_count = len(re.findall(r"[а-яё]", lowered))
@@ -563,6 +568,9 @@ def extract_text_from_bytes(content: bytes, filename: str) -> str:
                 return text
         except Exception as exc:
             logger.warning("Не удалось прочитать PDF %s: %s", filename, exc)
+            raise PolicyRecognitionError(
+                f"Не удалось извлечь текст из PDF-файла {filename}."
+            ) from exc
     try:
         return content.decode("utf-8")
     except UnicodeDecodeError:
@@ -1358,6 +1366,15 @@ def _chat_request(
 
     tools = [{"type": "function", "function": POLICY_FUNCTION}]
     tool_choice = {"type": "function", "function": {"name": POLICY_FUNCTION["name"]}}
+    log_ai_diagnostic(
+        "policy.request",
+        model=model,
+        base_url=base_url,
+        streaming=bool(progress_cb),
+        messages=messages,
+        tools=tools,
+        tool_choice=tool_choice,
+    )
 
     def _check_cancel() -> None:
         if cancel_cb and cancel_cb():
@@ -1410,6 +1427,13 @@ def _chat_request(
             _vision_input_dimensions(messages),
             round((time.monotonic() - started_at) * 1000),
         )
+        log_ai_diagnostic(
+            "policy.response",
+            model=model,
+            streaming=True,
+            response=result,
+            duration_ms=round((time.monotonic() - started_at) * 1000),
+        )
         return result
 
     resp = client.chat.completions.create(
@@ -1438,6 +1462,14 @@ def _chat_request(
             ),
             _vision_input_dimensions(messages),
             round((time.monotonic() - started_at) * 1000),
+        )
+        log_ai_diagnostic(
+            "policy.response",
+            model=model,
+            streaming=False,
+            response=result,
+            provider_response=resp,
+            duration_ms=round((time.monotonic() - started_at) * 1000),
         )
         return result
     raise RuntimeError("AI-провайдер вернул пустой ответ")
@@ -1478,6 +1510,13 @@ def _chat(
             _vision_input_dimensions(messages),
             round((time.monotonic() - started_at) * 1000),
             type(exc).__name__,
+        )
+        log_ai_diagnostic(
+            "policy.error",
+            model=model,
+            messages=messages,
+            exception=exc,
+            duration_ms=round((time.monotonic() - started_at) * 1000),
         )
         classified = classify_ai_error(exc)
         raise PolicyRecognitionError(
@@ -1640,6 +1679,8 @@ def recognize_policy_from_pdf_images(
 ) -> Tuple[dict, str]:
     """Распознать полис по PDF-страницам и изображениям."""
 
+    log_ai_diagnostic("policy.vision_input", files=files)
+
     messages, source_text = _build_vision_messages(
         files,
         extra_companies=extra_companies,
@@ -1662,6 +1703,8 @@ def recognize_policy_from_bytes(
     extra_types: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
+
+    log_ai_diagnostic("policy.source_file", filename=filename, content=content)
 
     if is_image_filename(filename) and not is_policy_image_filename(filename):
         raise PolicyRecognitionError(
@@ -1688,6 +1731,13 @@ def recognize_policy_from_bytes(
         text = extract_text_from_bytes(content, filename)
     except PolicyRecognitionError as exc:
         text_error = exc
+    log_ai_diagnostic(
+        "policy.text_extraction",
+        filename=filename,
+        text=text,
+        error=text_error,
+        text_is_poor=is_extracted_policy_text_poor(text),
+    )
 
     can_use_vision = (
         policy_vision_fallback_enabled()
@@ -1720,11 +1770,6 @@ def recognize_policy_from_bytes(
                 extra_types=extra_types,
             )
         except PolicyRecognitionError as vision_exc:
-            if text_result is not None:
-                logger.warning(
-                    "Vision fallback failed after weak text result: %s", vision_exc
-                )
-                return text_result
             if text_error is not None:
                 raise PolicyRecognitionError(
                     f"{text_error}; vision fallback: {vision_exc}",

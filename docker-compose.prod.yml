@@ -47,7 +47,13 @@ services:
       AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
       AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash-lite}
       POLICY_RECOGNITION_MODEL: ${POLICY_RECOGNITION_MODEL:-google/gemini-2.5-flash-lite}
+      POLICY_RECOGNITION_VISION_FALLBACK_ENABLED: ${POLICY_RECOGNITION_VISION_FALLBACK_ENABLED:-true}
+      POLICY_RECOGNITION_PDF_RENDER_DPI: ${POLICY_RECOGNITION_PDF_RENDER_DPI:-180}
+      POLICY_RECOGNITION_MAX_VISION_PAGES: ${POLICY_RECOGNITION_MAX_VISION_PAGES:-6}
       POLICY_RECOGNITION_MAX_IMAGE_DIMENSION: ${POLICY_RECOGNITION_MAX_IMAGE_DIMENSION:-2048}
+      AI_DIAGNOSTICS_ENABLED: ${AI_DIAGNOSTICS_ENABLED:-false}
+      AI_DIAGNOSTICS_DIRECTORY: ${AI_DIAGNOSTICS_DIRECTORY:-}
+      AI_DIAGNOSTICS_RETENTION_DAYS: ${AI_DIAGNOSTICS_RETENTION_DAYS:-7}
       OPEN_NOTEBOOK_API_URL: ${OPEN_NOTEBOOK_API_URL}
       OPEN_NOTEBOOK_PASSWORD: ${OPEN_NOTEBOOK_PASSWORD}
       OPEN_NOTEBOOK_TIMEOUT_SECONDS: ${OPEN_NOTEBOOK_TIMEOUT_SECONDS:-300}
@@ -86,6 +92,11 @@ services:
       - backend_media:/app/media
       - backend_static:/app/staticfiles
       - ./runtime-secrets:/run/crm3-secrets
+      - type: bind
+        source: /var/lib/crm3/ai-diagnostics
+        target: /var/lib/crm3/ai-diagnostics
+        bind:
+          create_host_path: false
     networks:
       - crm_network
       - mailcow_network

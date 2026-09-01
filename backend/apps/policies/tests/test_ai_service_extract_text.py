@@ -96,6 +96,64 @@ class PolicyVisionFallbackTests(SimpleTestCase):
 
         self.assertTrue(is_extracted_policy_text_poor(text))
 
+    def test_raw_pdf_stream_is_poor_text_candidate(self):
+        text = "%PDF-1.7\n1 0 obj\n<< /Length 42 >>\nstream\npolicy\nendstream\n"
+
+        self.assertTrue(is_extracted_policy_text_poor(text))
+
+    @patch("apps.policies.ai_service.PdfReader", side_effect=Exception("bad pdf"))
+    def test_pdf_parse_failure_does_not_fallback_to_raw_bytes(
+        self, pdf_reader_mock: Mock
+    ):
+        with self.assertRaises(PolicyRecognitionError) as exc_info:
+            extract_text_from_bytes(b"%PDF-1.7\nstream", "broken.pdf")
+
+        self.assertIn("PDF", str(exc_info.exception))
+        pdf_reader_mock.assert_called_once()
+
+    @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
+    @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
+    @patch("apps.policies.ai_service.recognize_policy_from_text")
+    @patch("apps.policies.ai_service.extract_text_from_bytes")
+    def test_pdf_parse_failure_uses_vision_without_text_request(
+        self,
+        extract_mock: Mock,
+        text_recognize_mock: Mock,
+        vision_recognize_mock: Mock,
+    ):
+        extract_mock.side_effect = PolicyRecognitionError("PDF text extraction failed")
+        expected = {"policy": {"policy_number": "SYS-1"}, "payments": []}
+        vision_recognize_mock.return_value = (expected, "vision transcript")
+
+        data, transcript = recognize_policy_from_bytes(b"%PDF", filename="policy.pdf")
+
+        self.assertEqual(data, expected)
+        self.assertEqual(transcript, "vision transcript")
+        text_recognize_mock.assert_not_called()
+        vision_recognize_mock.assert_called_once()
+
+    @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
+    @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
+    @patch("apps.policies.ai_service.recognize_policy_from_text")
+    @patch("apps.policies.ai_service.extract_text_from_bytes")
+    def test_vision_failure_never_returns_weak_text_result(
+        self,
+        extract_mock: Mock,
+        text_recognize_mock: Mock,
+        vision_recognize_mock: Mock,
+    ):
+        extract_mock.return_value = (
+            "Полис ОСАГО номер SYS-1 страховая премия автомобиль договор"
+        )
+        text_recognize_mock.return_value = ({"policy": {}, "payments": []}, "weak text")
+        vision_recognize_mock.side_effect = PolicyRecognitionError("vision unavailable")
+
+        with self.assertRaises(PolicyRecognitionError):
+            recognize_policy_from_bytes(b"%PDF", filename="policy.pdf")
+
+        text_recognize_mock.assert_called_once()
+        vision_recognize_mock.assert_called_once()
+
     @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
     @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
     @patch("apps.policies.ai_service.recognize_policy_from_text")
