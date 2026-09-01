@@ -171,6 +171,7 @@ export const useDealDriveFiles = ({
 
   useEffect(() => {
     setSelectedDriveFileIds(selectedDeal?.calculationSourceFileIds ?? []);
+    setRecognizing(false);
     setRecognitionResults([]);
     setRecognitionMessage(null);
     setIsTrashing(false);

@@ -350,6 +350,107 @@ describe('useDealDriveFiles', () => {
     );
   });
 
+  it('clears the recognizing state after switching deals while recognition is pending', async () => {
+    const deal = createDeal();
+    const nextDeal = createDeal({ id: 'deal-2', title: 'Deal 2' });
+    const file = {
+      id: 'file-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: null,
+    };
+    let resolveRecognition: (value: { results: [] }) => void;
+    const pendingRecognition = new Promise<{ results: [] }>((resolve) => {
+      resolveRecognition = resolve;
+    });
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
+    recognizeDealPoliciesMock.mockReturnValueOnce(pendingRecognition);
+    const { resultRef, rerenderDeal } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    act(() => {
+      resultRef.current?.toggleDriveFileSelection(file.id);
+    });
+
+    let recognition: Promise<void>;
+    await act(async () => {
+      recognition = resultRef.current!.handleRecognizePolicies();
+      await Promise.resolve();
+    });
+
+    expect(resultRef.current?.isRecognizing).toBe(true);
+
+    await act(async () => {
+      rerenderDeal(nextDeal);
+    });
+
+    expect(resultRef.current?.isRecognizing).toBe(false);
+
+    await act(async () => {
+      resolveRecognition!({ results: [] });
+      await recognition!;
+    });
+
+    expect(resultRef.current?.isRecognizing).toBe(false);
+  });
+
+  it('clears the recognizing state after switching deals during upload and recognition', async () => {
+    const deal = createDeal();
+    const nextDeal = createDeal({ id: 'deal-2', title: 'Deal 2' });
+    const uploadedFile = {
+      id: 'uploaded-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      size: 1024,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/file',
+      isFolder: false,
+      parentId: null,
+    };
+    let resolveRecognition: (value: { results: [] }) => void;
+    const pendingRecognition = new Promise<{ results: [] }>((resolve) => {
+      resolveRecognition = resolve;
+    });
+    uploadDealDriveFileMock.mockResolvedValueOnce(uploadedFile);
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [uploadedFile], folderId: null });
+    recognizeDealPoliciesMock.mockReturnValueOnce(pendingRecognition);
+    const { resultRef, rerenderDeal } = renderDriveHook(deal);
+
+    let uploadAndRecognition: Promise<void>;
+    await act(async () => {
+      uploadAndRecognition = resultRef.current!.handleUploadAndRecognizePolicyFiles([
+        new File(['pdf'], uploadedFile.name, { type: uploadedFile.mimeType }),
+      ]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(recognizeDealPoliciesMock).toHaveBeenCalledWith(deal.id, [uploadedFile.id]);
+    });
+    expect(resultRef.current?.isRecognizing).toBe(true);
+
+    await act(async () => {
+      rerenderDeal(nextDeal);
+    });
+
+    expect(resultRef.current?.isRecognizing).toBe(false);
+
+    await act(async () => {
+      resolveRecognition!({ results: [] });
+      await uploadAndRecognition!;
+    });
+
+    expect(resultRef.current?.isRecognizing).toBe(false);
+  });
+
   it('rejects unsupported policy upload files before uploading', async () => {
     const deal = createDeal();
     const { resultRef } = renderDriveHook(deal);
