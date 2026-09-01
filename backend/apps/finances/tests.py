@@ -2137,12 +2137,12 @@ class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):
             statement=statement,
             amount=Decimal("-150.00"),
         )
-        paid_income = FinancialRecord.objects.create(
+        FinancialRecord.objects.create(
             payment=payment,
             amount=Decimal("1000.00"),
             date=date(2026, 8, 1),
         )
-        paid_expense = FinancialRecord.objects.create(
+        FinancialRecord.objects.create(
             payment=payment,
             amount=Decimal("-420.52"),
             record_type=FinancialRecord.RecordType.EXPENSE,
