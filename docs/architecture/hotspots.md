@@ -5,7 +5,7 @@
 - `frontend/src/features/app/*-shell`: orchestration теперь разнесён по shell-модулям, но это всё ещё чувствительный слой интеграции между auth/data/actions/routes/overlays.
 - `frontend/src/components/views/dealsView/`: крупный набор взаимосвязанных компонентов и хуков, высокая связанность логики сделок/полисов/платежей.
 - `backend/apps/deals/views.py` + `backend/apps/deals/view_mixins/*`: смешение доменной логики и транспорта, сложные операции (merge/restore/history/drive).
-- Интеграции: Google Drive / Open Notebook / Telegram / AI (OpenRouter) — внешние зависимости с нетривиальным поведением.
+- Интеграции: Google Drive / Open Notebook / Telegram / AI (Polza.ai) — внешние зависимости с нетривиальным поведением.
 
 ## Notes
 

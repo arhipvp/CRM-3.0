@@ -1,4 +1,4 @@
-"""Сервис распознавания полисов через OpenRouter."""
+"""Сервис распознавания полисов через AI-провайдера."""
 
 from __future__ import annotations
 
@@ -224,7 +224,7 @@ def _log_conversation(label: str, messages: List[dict]) -> str:
         if isinstance(item, dict) and item.get("type") == "image_url"
     )
     logger.info(
-        "OpenRouter policy recognition completed: label=%s messages=%s visual_inputs=%s",
+        "AI policy recognition completed: label=%s messages=%s visual_inputs=%s",
         label,
         len(messages),
         visual_inputs,
@@ -233,17 +233,15 @@ def _log_conversation(label: str, messages: List[dict]) -> str:
 
 
 def _resolve_ai_client_config(*, policy_model: bool = True) -> Tuple[str, str, str]:
-    """Вернуть настройки доступа к OpenRouter."""
+    """Вернуть настройки доступа к AI-провайдеру."""
 
-    api_key = getattr(settings, "OPENROUTER_API_KEY", "")
+    api_key = getattr(settings, "AI_API_KEY", "")
     if not api_key:
-        raise ValueError("OPENROUTER_API_KEY не задан")
-    model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-4o-mini"
+        raise ValueError("AI_API_KEY не задан")
+    model = getattr(settings, "AI_MODEL", "") or "google/gemini-2.5-flash-lite"
     if policy_model:
         model = getattr(settings, "POLICY_RECOGNITION_MODEL", "") or model
-    base_url = (
-        getattr(settings, "OPENROUTER_BASE_URL", "") or OPENROUTER_DEFAULT_BASE_URL
-    )
+    base_url = getattr(settings, "AI_BASE_URL", "") or AI_DEFAULT_BASE_URL
     return api_key, base_url, model
 
 
@@ -252,7 +250,7 @@ REMINDER = (
     "Ответ должен содержать только один валидный JSON (без ``` и без пояснений). "
     'Все строки должны быть в двойных кавычках; если значение неизвестно — поставь пустую строку ("").'
 )
-OPENROUTER_DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+AI_DEFAULT_BASE_URL = "https://polza.ai/api/v1"
 
 DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
@@ -1352,7 +1350,7 @@ def _chat_request(
     client_kwargs: dict[str, str] = {"api_key": api_key, "base_url": base_url}
     client = openai.OpenAI(**client_kwargs)
     logger.debug(
-        "Используем OpenRouter (model=%s, base_url=%s)",
+        "Используем AI-провайдера (model=%s, base_url=%s)",
         model,
         base_url,
     )
@@ -1362,8 +1360,8 @@ def _chat_request(
 
     def _check_cancel() -> None:
         if cancel_cb and cancel_cb():
-            logger.info("Запрос к OpenRouter отменён пользователем")
-            raise InterruptedError("Запрос к OpenRouter отменён")
+            logger.info("Запрос к AI-провайдеру отменён пользователем")
+            raise InterruptedError("Запрос к AI-провайдеру отменён")
 
     if progress_cb:
         stream = client.chat.completions.create(
@@ -1399,7 +1397,7 @@ def _chat_request(
                 close_method()
         result = "".join(parts) or "".join(content_parts)
         logger.info(
-            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
+            "AI policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
             model,
             sum(
                 1
@@ -1428,7 +1426,7 @@ def _chat_request(
         result = getattr(message, "content", None) or ""
     if result:
         logger.info(
-            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
+            "AI policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=success",
             model,
             sum(
                 1
@@ -1441,7 +1439,7 @@ def _chat_request(
             round((time.monotonic() - started_at) * 1000),
         )
         return result
-    raise RuntimeError("OpenRouter вернул пустой ответ")
+    raise RuntimeError("AI-провайдер вернул пустой ответ")
 
 
 def _chat(
@@ -1462,7 +1460,7 @@ def _chat(
             policy_model=policy_model,
         )
     except Exception as exc:
-        model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-4o-mini"
+        model = getattr(settings, "AI_MODEL", "") or "google/gemini-2.5-flash-lite"
         if policy_model:
             model = getattr(settings, "POLICY_RECOGNITION_MODEL", "") or model
         visual_inputs = sum(
@@ -1473,7 +1471,7 @@ def _chat(
             if isinstance(item, dict) and item.get("type") == "image_url"
         )
         logger.warning(
-            "OpenRouter policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=error reason=%s",
+            "AI policy request completed: model=%s visual_inputs=%s dimensions=%s duration_ms=%s status=error reason=%s",
             model,
             visual_inputs,
             _vision_input_dimensions(messages),

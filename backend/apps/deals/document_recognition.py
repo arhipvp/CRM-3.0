@@ -167,14 +167,12 @@ def _is_valid_passport_full_name(value: Any) -> bool:
     return all(re.fullmatch(r"[А-ЯЁ-]{2,}", word) for word in words)
 
 
-def _resolve_openrouter_config() -> tuple[str, str, str]:
-    api_key = getattr(settings, "OPENROUTER_API_KEY", "") or ""
+def _resolve_ai_config() -> tuple[str, str, str]:
+    api_key = getattr(settings, "AI_API_KEY", "") or ""
     if not api_key:
-        raise DocumentRecognitionError("OPENROUTER_API_KEY не задан")
-    base_url = (
-        getattr(settings, "OPENROUTER_BASE_URL", "") or "https://openrouter.ai/api/v1"
-    )
-    model = getattr(settings, "OPENROUTER_MODEL", "") or "gpt-5.2"
+        raise DocumentRecognitionError("AI_API_KEY не задан")
+    base_url = getattr(settings, "AI_BASE_URL", "") or "https://polza.ai/api/v1"
+    model = getattr(settings, "AI_MODEL", "") or "google/gemini-2.5-flash-lite"
     return api_key, base_url, model
 
 
@@ -1066,7 +1064,7 @@ def _needs_rotation_fallback(
 def recognize_document_from_file(
     content: bytes, filename: str, *, deadline: float | None = None
 ) -> RecognitionPayload:
-    api_key, base_url, model = _resolve_openrouter_config()
+    api_key, base_url, model = _resolve_ai_config()
     client = openai.OpenAI(api_key=api_key, base_url=base_url)
     timeout_seconds = int(
         getattr(

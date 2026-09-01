@@ -75,11 +75,11 @@ class Command(BaseCommand):
         return CheckResult(name=name, status="ok", detail=detail)
 
     def _check_ai(self) -> CheckResult:
-        if not getattr(settings, "OPENROUTER_API_KEY", "").strip():
+        if not getattr(settings, "AI_API_KEY", "").strip():
             return CheckResult(
-                name="ai_openrouter",
+                name="ai_provider",
                 status="missing",
-                detail="OPENROUTER_API_KEY is not configured.",
+                detail="AI_API_KEY is not configured.",
             )
 
         def probe() -> str:
@@ -87,14 +87,14 @@ class Command(BaseCommand):
             client = openai.OpenAI(api_key=api_key, base_url=base_url)
             models = client.models.list()
             model_ids = [item.id for item in models.data if getattr(item, "id", "")]
-            if model_ids and model not in model_ids:
-                return (
-                    f"Connected to {base_url}; configured model '{model}' was not "
-                    f"returned by /models."
+            if model not in model_ids:
+                raise RuntimeError(
+                    f"Connected to {base_url}, but configured model '{model}' was not "
+                    "returned by /models."
                 )
             return f"Connected to {base_url}; model '{model}' is available."
 
-        return self._run_check("ai_openrouter", probe)
+        return self._run_check("ai_provider", probe)
 
     def _check_drive(self) -> CheckResult:
         status = get_drive_connection_status()

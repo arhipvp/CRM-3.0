@@ -18,7 +18,7 @@
    - `runtime-secrets/google_drive_oauth_refresh_token`
 4. Заполнить секреты в `backend/.env`:
    - обязательно: `DJANGO_SECRET_KEY`
-   - для AI: `OPENROUTER_API_KEY`
+   - для AI: `AI_API_KEY` (Polza.ai); при необходимости также `AI_BASE_URL` и `AI_MODEL`
    - для Telegram: `TELEGRAM_BOT_TOKEN`
    - для Google Drive: `GOOGLE_DRIVE_*`
    - для mailcow: `MAILCOW_API_*`, `MAILCOW_IMAP_*`

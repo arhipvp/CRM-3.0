@@ -336,24 +336,41 @@ class PolicyVisionFallbackTests(SimpleTestCase):
         self.assertTrue(normalized.startswith(b"\x89PNG"))
 
     @override_settings(
-        POLICY_RECOGNITION_MODEL="google/gemini-2.5-pro",
-        OPENROUTER_MODEL="gpt-4o-mini",
-        OPENROUTER_API_KEY="test-key",  # pragma: allowlist secret
+        POLICY_RECOGNITION_MODEL="google/gemini-2.5-flash-lite",
+        AI_MODEL="gpt-4o-mini",
+        AI_API_KEY="test-key",  # pragma: allowlist secret
     )
     def test_policy_model_has_priority_over_common_model(self):
         _, _, model = _resolve_ai_client_config()
 
-        self.assertEqual(model, "google/gemini-2.5-pro")
+        self.assertEqual(model, "google/gemini-2.5-flash-lite")
 
     @override_settings(
         POLICY_RECOGNITION_MODEL="",
-        OPENROUTER_MODEL="gpt-4o-mini",
-        OPENROUTER_API_KEY="test-key",  # pragma: allowlist secret
+        AI_MODEL="gpt-4o-mini",
+        AI_API_KEY="test-key",  # pragma: allowlist secret
     )
     def test_policy_model_falls_back_to_common_model(self):
         _, _, model = _resolve_ai_client_config()
 
         self.assertEqual(model, "gpt-4o-mini")
+
+    @override_settings(
+        AI_API_KEY="test-key",  # pragma: allowlist secret
+        AI_BASE_URL="",
+        AI_MODEL="",
+        POLICY_RECOGNITION_MODEL="",
+    )
+    def test_ai_client_config_uses_polza_defaults(self):
+        _, base_url, model = _resolve_ai_client_config()
+
+        self.assertEqual(base_url, "https://polza.ai/api/v1")
+        self.assertEqual(model, "google/gemini-2.5-flash-lite")
+
+    @override_settings(AI_API_KEY="")
+    def test_ai_client_config_requires_api_key(self):
+        with self.assertRaisesMessage(ValueError, "AI_API_KEY не задан"):
+            _resolve_ai_client_config()
 
     def test_broken_image_raises_clear_error(self):
         with self.assertRaises(PolicyRecognitionError) as exc_info:

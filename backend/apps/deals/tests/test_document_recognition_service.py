@@ -23,7 +23,7 @@ def _response_with_json(payload: dict):
 
 
 class DocumentRecognitionServiceTests(SimpleTestCase):
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_image_sent_as_png_data_uri(
@@ -32,7 +32,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-primary", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -51,7 +51,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         image_url = call_kwargs["messages"][1]["content"][1]["image_url"]["url"]
         self.assertTrue(image_url.startswith("data:image/png;base64,"))
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_rotation_fallback_runs_only_for_low_confidence(
@@ -60,7 +60,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [b"img-90", b"img-180"])
         client = Mock()
         client.chat.completions.create.side_effect = [
@@ -88,7 +88,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(client.chat.completions.create.call_count, 2)
         self.assertEqual(payload.normalized_type, "sts")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_rotation_fallback_not_used_for_high_confidence(
@@ -97,7 +97,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [b"img-90", b"img-180"])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -115,7 +115,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(client.chat.completions.create.call_count, 1)
         self.assertEqual(payload.normalized_type, "passport")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.time.sleep")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
@@ -126,7 +126,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         sleep_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.side_effect = [
@@ -148,7 +148,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(sleep_mock.call_count, 1)
         self.assertEqual(payload.normalized_type, "passport")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_pdf_pages")
     def test_empty_pdf_render_raises_error(
@@ -157,14 +157,14 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_pdf_mock.return_value = []
         openai_mock.return_value = Mock()
 
         with self.assertRaises(DocumentRecognitionError):
             recognize_document_from_file(b"%PDF-1.7 broken", "broken.pdf")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_unknown_custom_type_is_preserved(
@@ -173,7 +173,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -191,7 +191,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(payload.document_type, "my_custom_vehicle_doc")
         self.assertIsNone(payload.normalized_type)
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_passport_data_is_inferred_from_extracted_text_when_empty(
@@ -200,7 +200,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -236,7 +236,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertIn("series", payload.accepted_fields)
         self.assertEqual(payload.rejected_fields, {})
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_passport_registration_page_does_not_set_issue_date(
@@ -245,7 +245,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -274,7 +274,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertIn("registration_address", payload.data)
         self.assertIn("issue_date", payload.rejected_fields)
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_sts_invalid_vin_is_rejected(
@@ -283,7 +283,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -309,7 +309,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(payload.data.get("sts_series"), "50ТТ")
         self.assertEqual(payload.data.get("sts_number"), "123456")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_sts_data_is_inferred_from_extracted_text_when_empty(
@@ -318,7 +318,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(
@@ -362,7 +362,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         self.assertEqual(payload.data.get("issued_by"), "1145044")
         self.assertEqual(payload.data.get("owner"), "КАЛАШНИКОВ МАКСИМ МИХАЙЛОВИЧ")
 
-    @patch("apps.deals.document_recognition._resolve_openrouter_config")
+    @patch("apps.deals.document_recognition._resolve_ai_config")
     @patch("apps.deals.document_recognition.openai.OpenAI")
     @patch("apps.deals.document_recognition._render_image_with_rotations")
     def test_passport_full_name_ignores_service_words(
@@ -371,7 +371,7 @@ class DocumentRecognitionServiceTests(SimpleTestCase):
         openai_mock: Mock,
         config_mock: Mock,
     ):
-        config_mock.return_value = ("key", "https://openrouter.ai/api/v1", "model")
+        config_mock.return_value = ("key", "https://polza.ai/api/v1", "model")
         render_mock.return_value = (b"img-0", [])
         client = Mock()
         client.chat.completions.create.return_value = _response_with_json(

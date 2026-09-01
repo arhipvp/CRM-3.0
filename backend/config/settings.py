@@ -217,9 +217,9 @@ GOOGLE_DRIVE_OAUTH_POST_UPDATE_COMMAND = config(
     "GOOGLE_DRIVE_OAUTH_POST_UPDATE_COMMAND", default=""
 )
 
-OPENROUTER_API_KEY = config("OPENROUTER_API_KEY", default="")
-OPENROUTER_BASE_URL = config("OPENROUTER_BASE_URL", default="")
-OPENROUTER_MODEL = config("OPENROUTER_MODEL", default="")
+AI_API_KEY = config("AI_API_KEY", default="")
+AI_BASE_URL = config("AI_BASE_URL", default="https://polza.ai/api/v1")
+AI_MODEL = config("AI_MODEL", default="google/gemini-2.5-flash-lite")
 POLICY_RECOGNITION_MODEL = config("POLICY_RECOGNITION_MODEL", default="")
 AI_POLICY_PROMPT = config("AI_POLICY_PROMPT", default="")
 AI_DOCUMENT_PROMPT = config("AI_DOCUMENT_PROMPT", default="")
