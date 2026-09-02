@@ -257,6 +257,10 @@ AI_DEFAULT_BASE_URL = "https://polza.ai/api/v1"
 DATE_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 VIN_PATTERN = r"^[A-Za-z0-9]{17}$"
 AMOUNT_PATTERN = r"^-?\d+(?:[.,]\d{1,2})?$"
+SOURCE_VIN_RE = re.compile(r"(?<![A-Za-z0-9])([A-Za-z0-9]{17})(?![A-Za-z0-9])")
+SEGMENTED_SOURCE_VIN_RE = re.compile(
+    r"(?<![A-Za-z0-9])([A-Za-z0-9](?:[ \t\r\n|]+[A-Za-z0-9]){16})(?![A-Za-z0-9])"
+)
 
 CODE_FENCE_RE = re.compile(
     r"```(?:json)?\s*(.*?)\s*```", flags=re.IGNORECASE | re.DOTALL
@@ -728,6 +732,61 @@ def _validate_policy_payload(data: dict) -> None:
         validate(instance=data, schema=POLICY_SCHEMA)
     else:
         _basic_policy_validate(data)
+
+
+def _extract_source_vin_candidates(source_text: str) -> list[str]:
+    """Вернуть уникальные VIN из текста, включая значения из ячеек таблицы."""
+
+    if not isinstance(source_text, str):
+        return []
+
+    candidates = set(SOURCE_VIN_RE.findall(source_text))
+    for segmented in SEGMENTED_SOURCE_VIN_RE.findall(source_text):
+        candidate = re.sub(r"[^A-Za-z0-9]", "", segmented)
+        if re.fullmatch(VIN_PATTERN, candidate):
+            candidates.add(candidate)
+    return sorted(candidates)
+
+
+def _reconcile_policy_vin(data: dict, source_text: str) -> dict:
+    """Сверить VIN из ответа AI с детерминированно извлечённым источником."""
+
+    policy = data.get("policy") if isinstance(data, dict) else None
+    if not isinstance(policy, dict) or "vehicle_vin" not in policy:
+        return data
+
+    source_vins = _extract_source_vin_candidates(source_text)
+    ai_vin = policy.get("vehicle_vin")
+    normalized_ai_vin = ai_vin.strip() if isinstance(ai_vin, str) else ai_vin
+    action = "kept_ai_value"
+
+    if len(source_vins) == 1:
+        confirmed_vin = source_vins[0]
+        policy["vehicle_vin"] = confirmed_vin
+        action = (
+            "confirmed_source_vin"
+            if normalized_ai_vin == confirmed_vin
+            else "replaced_with_source_vin"
+        )
+    elif source_vins and normalized_ai_vin not in source_vins:
+        policy["vehicle_vin"] = ""
+        action = "cleared_ambiguous_source_vin"
+    elif not isinstance(normalized_ai_vin, str) or not re.fullmatch(
+        VIN_PATTERN, normalized_ai_vin
+    ):
+        policy["vehicle_vin"] = ""
+        action = "cleared_invalid_ai_vin"
+
+    log_ai_diagnostic(
+        "policy.vin_reconciled",
+        source="text" if source_text.strip() else "vision_without_text",
+        source_vin_candidates=source_vins,
+        source_vin_candidate_count=len(source_vins),
+        ai_vin=normalized_ai_vin,
+        final_vin=policy.get("vehicle_vin"),
+        action=action,
+    )
+    return data
 
 
 def _parse_policy_answer(answer: str, *, validate_payload: bool = True) -> dict:
@@ -1624,7 +1683,9 @@ def recognize_policy_interactive(
         messages.append({"role": "assistant", "content": verify_answer})
 
         try:
-            data = _parse_policy_answer(verify_answer, validate_payload=True)
+            data = _parse_policy_answer(verify_answer, validate_payload=False)
+            data = _reconcile_policy_vin(data, text)
+            _validate_policy_payload(data)
         except json.JSONDecodeError as exc:
             if attempt == MAX_ATTEMPTS - 1:
                 transcript = _log_conversation("text", messages)

@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from apps.policies.ai_service import (
     _build_prompt,
+    _extract_source_vin_candidates,
     recognize_policy_from_pdf_images,
     recognize_policy_interactive,
 )
@@ -50,6 +51,13 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         }
         return json.dumps(payload, ensure_ascii=False)
 
+    def test_source_vin_candidates_support_plain_and_tabular_formats(self) -> None:
+        vin = "WAUZZZF4XNN010456"
+
+        for source_text in (vin, "\t".join(vin), "\n".join(vin), " | ".join(vin)):
+            with self.subTest(source_text=source_text):
+                self.assertEqual(_extract_source_vin_candidates(source_text), [vin])
+
     @patch("apps.policies.ai_service._chat")
     def test_second_ai_pass_corrects_formal_vin_issue(self, chat_mock) -> None:
         chat_mock.side_effect = [
@@ -69,6 +77,68 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         self.assertIn("Формальные замечания CRM", verification_message)
         self.assertIn("vehicle_vin", verification_message)
         self.assertEqual(transcript, "")
+
+    @patch("apps.policies.ai_service.log_ai_diagnostic")
+    @patch("apps.policies.ai_service._chat")
+    def test_table_cell_vin_overrides_invalid_ai_value(
+        self, chat_mock, diagnostics_mock
+    ) -> None:
+        confirmed_vin = "WAUZZZF4XNN010456"
+        invalid_vin = "WAUZZZ4XNN010456"
+        chat_mock.side_effect = [
+            self._build_answer(invalid_vin),
+            self._build_answer(invalid_vin),
+        ]
+
+        data, _, _ = recognize_policy_interactive("\t".join(confirmed_vin))
+
+        self.assertEqual(data["policy"]["vehicle_vin"], confirmed_vin)
+        self.assertEqual(chat_mock.call_count, 2)
+        diagnostics_mock.assert_called_with(
+            "policy.vin_reconciled",
+            source="text",
+            source_vin_candidates=[confirmed_vin],
+            source_vin_candidate_count=1,
+            ai_vin=invalid_vin,
+            final_vin=confirmed_vin,
+            action="replaced_with_source_vin",
+        )
+
+    @patch("apps.policies.ai_service._chat")
+    def test_invalid_final_vin_is_cleared_without_extra_retries(self, chat_mock) -> None:
+        for invalid_vin in (
+            "WP0ZZZYAZSL06092",
+            "WP0ZZZYAZSL060921X",
+            "WP0ZZZYAZSL06092-",
+        ):
+            with self.subTest(vin=invalid_vin):
+                chat_mock.reset_mock()
+                chat_mock.side_effect = [
+                    self._build_answer(invalid_vin),
+                    self._build_answer(invalid_vin),
+                ]
+
+                data, _, _ = recognize_policy_interactive("Полис № SYS2884597919")
+
+                self.assertEqual(data["policy"]["vehicle_vin"], "")
+                self.assertEqual(chat_mock.call_count, 2)
+
+    @patch("apps.policies.ai_service._chat")
+    def test_ambiguous_source_vin_does_not_keep_unmatched_ai_value(
+        self, chat_mock
+    ) -> None:
+        first_vin = "WP0ZZZYAZSL060921"
+        second_vin = "Z94CB41ABFR123456"
+        unmatched_vin = "XW8ZZZ5NZKG236893"
+        chat_mock.side_effect = [
+            self._build_answer(unmatched_vin),
+            self._build_answer(unmatched_vin),
+        ]
+
+        data, _, _ = recognize_policy_interactive(f"{first_vin} {second_vin}")
+
+        self.assertEqual(data["policy"]["vehicle_vin"], "")
+        self.assertEqual(chat_mock.call_count, 2)
 
     @patch("apps.policies.ai_service._chat")
     def test_dgo_type_comes_from_ai_using_catalog_descriptions(self, chat_mock) -> None:
@@ -128,6 +198,30 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
             if item["type"] == "image_url"
         ]
         self.assertEqual(verification_images, extraction_images)
+
+    @patch("apps.policies.ai_service._chat")
+    def test_vision_keeps_valid_vin_and_clears_invalid_one(self, chat_mock) -> None:
+        image = Image.new("RGB", (20, 10), "white")
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+
+        for vin, expected_vin in (
+            ("WP0ZZZYAZSL060921", "WP0ZZZYAZSL060921"),
+            ("WP0ZZZYAZSL06092", ""),
+        ):
+            with self.subTest(vin=vin):
+                chat_mock.reset_mock()
+                chat_mock.side_effect = [
+                    self._build_answer(vin),
+                    self._build_answer(vin),
+                ]
+
+                data, _ = recognize_policy_from_pdf_images(
+                    [{"name": "policy.jpg", "content": buffer.getvalue(), "text": ""}]
+                )
+
+                self.assertEqual(data["policy"]["vehicle_vin"], expected_vin)
+                self.assertEqual(chat_mock.call_count, 2)
 
     def test_prompt_adds_default_descriptions_for_known_type_names(self) -> None:
         prompt = _build_prompt(extra_types=["ОСАГО", "ДГО/ДСАГО"])
