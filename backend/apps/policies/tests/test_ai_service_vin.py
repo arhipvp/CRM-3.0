@@ -105,7 +105,9 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         )
 
     @patch("apps.policies.ai_service._chat")
-    def test_invalid_final_vin_is_cleared_without_extra_retries(self, chat_mock) -> None:
+    def test_invalid_final_vin_is_cleared_without_extra_retries(
+        self, chat_mock
+    ) -> None:
         for invalid_vin in (
             "WP0ZZZYAZSL06092",
             "WP0ZZZYAZSL060921X",
