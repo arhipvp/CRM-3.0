@@ -42,6 +42,12 @@ const looksLikeHtml = (value: string): boolean => {
 };
 
 const FIELD_ERROR_LABELS: Record<string, string> = {
+  name: 'Название',
+  number: 'Номер',
+  email: 'Электронная почта',
+  local_part: 'Локальная часть адреса',
+  notebook_id: 'Блокнот',
+  record_ids: 'Записи',
   deal: 'Сделка',
   insurance_company: 'Страховая компания',
   insurance_type: 'Тип страхования',

@@ -3,6 +3,7 @@ import secrets
 from datetime import timedelta
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from .models import (
@@ -39,13 +40,26 @@ def get_telegram_client() -> TelegramClient | None:
 
 
 def get_or_create_settings(user) -> NotificationSettings:
-    settings_obj, _ = NotificationSettings.objects.get_or_create(user=user)
-    return settings_obj
+    return _get_or_create_user_singleton(NotificationSettings, user)
 
 
 def get_or_create_profile(user) -> TelegramProfile:
-    profile, _ = TelegramProfile.objects.get_or_create(user=user)
-    return profile
+    return _get_or_create_user_singleton(TelegramProfile, user)
+
+
+def _get_or_create_user_singleton(model, user):
+    """Return a user OneToOne record even if another request created it first."""
+    try:
+        # get_or_create catches common races itself, but the savepoint also makes
+        # this path safe when it runs inside a larger atomic transaction.
+        with transaction.atomic():
+            instance, _ = model.objects.get_or_create(user=user)
+            return instance
+    except IntegrityError:
+        instance = model.objects.filter(user=user).first()
+        if instance is not None:
+            return instance
+        raise
 
 
 def generate_link_code(user) -> TelegramProfile:

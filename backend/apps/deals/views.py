@@ -14,6 +14,7 @@ from apps.policies.models import Policy
 from apps.policies.status import with_computed_status_flags
 from apps.users.models import AuditLog
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from django.db.models import (
     BooleanField,
     CharField,
@@ -80,6 +81,25 @@ from .view_mixins import (
     DealRestoreMixin,
     DealSimilarityMixin,
 )
+
+
+def _mailbox_integrity_error_message(error: IntegrityError) -> str:
+    """Recognize only the unique constraints used by deal mailbox creation."""
+    constraint_name = getattr(getattr(error, "__cause__", None), "diag", None)
+    constraint_name = getattr(constraint_name, "constraint_name", None)
+    error_text = str(error).lower()
+    if constraint_name == "mailboxes_mailbox_email_key" or (
+        "unique constraint failed" in error_text
+        and "mailboxes_mailbox.email" in error_text
+    ):
+        return "Такой ящик уже существует."
+    if constraint_name == "mailboxes_mailbox_deal_id_key" or (
+        "unique constraint failed" in error_text
+        and "mailboxes_mailbox.deal_id" in error_text
+    ):
+        return "Для этой сделки почтовый ящик уже создан."
+    raise error
+
 
 CLOSED_STATUSES = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
 
@@ -682,14 +702,21 @@ class DealViewSet(
                     status=status.HTTP_502_BAD_GATEWAY,
                 )
 
-        mailbox = Mailbox.objects.create(
-            user=request.user,
-            deal=deal,
-            email=email_address,
-            local_part=local_part,
-            domain=domain,
-            display_name=display_name,
-        )
+        try:
+            with transaction.atomic():
+                mailbox = Mailbox.objects.create(
+                    user=request.user,
+                    deal=deal,
+                    email=email_address,
+                    local_part=local_part,
+                    domain=domain,
+                    display_name=display_name,
+                )
+        except IntegrityError as error:
+            return Response(
+                {"detail": _mailbox_integrity_error_message(error)},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
         serializer = self.get_serializer(deal)
         payload = serializer.data

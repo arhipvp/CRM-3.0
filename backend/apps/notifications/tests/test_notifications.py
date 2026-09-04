@@ -13,6 +13,8 @@ from apps.notifications.models import (
     TelegramProfile,
 )
 from apps.notifications.telegram_notifications import (
+    get_or_create_profile,
+    get_or_create_settings,
     send_expected_close_reminders,
     send_payment_due_reminders,
     send_policy_expiry_reminders,
@@ -20,6 +22,7 @@ from apps.notifications.telegram_notifications import (
 from apps.policies.models import Policy
 from apps.tasks.models import Task
 from django.contrib.auth import get_user_model
+from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
@@ -34,6 +37,36 @@ class FakeTelegramClient:
         self.edited_messages = []
         self.commands = []
         self._next_message_id = 10_000
+
+
+class TelegramNotificationSingletonRaceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="telegram-singleton-race",
+            password="pass",  # pragma: allowlist secret
+        )
+
+    def test_settings_returns_concurrently_created_record(self):
+        existing = NotificationSettings.objects.create(user=self.user)
+        with patch.object(
+            NotificationSettings.objects,
+            "get_or_create",
+            side_effect=IntegrityError("duplicate user settings"),
+        ):
+            result = get_or_create_settings(self.user)
+
+        self.assertEqual(result.pk, existing.pk)
+
+    def test_profile_returns_concurrently_created_record(self):
+        existing = TelegramProfile.objects.create(user=self.user)
+        with patch.object(
+            TelegramProfile.objects,
+            "get_or_create",
+            side_effect=IntegrityError("duplicate user profile"),
+        ):
+            result = get_or_create_profile(self.user)
+
+        self.assertEqual(result.pk, existing.pk)
 
     def send_message(self, chat_id: int, text: str, reply_markup=None):
         self._next_message_id += 1

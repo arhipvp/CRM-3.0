@@ -1,4 +1,4 @@
-﻿from django.db import transaction
+﻿from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from rest_framework import serializers
 
@@ -20,6 +20,7 @@ RECORD_TYPE_INPUTS = {
 
 
 class StatementSerializer(serializers.ModelSerializer):
+    UNIQUE_NAME_ERROR = "Ведомость с таким названием уже существует."
     record_ids = serializers.PrimaryKeyRelatedField(
         queryset=FinancialRecord.objects.filter(deleted_at__isnull=True),
         many=True,
@@ -74,9 +75,7 @@ class StatementSerializer(serializers.ModelSerializer):
         if self.instance:
             queryset = queryset.exclude(pk=self.instance.pk)
         if queryset.exists():
-            raise serializers.ValidationError(
-                {"name": "Ведомость с таким названием уже существует."}
-            )
+            raise serializers.ValidationError({"name": self.UNIQUE_NAME_ERROR})
 
         attrs["name"] = clean_name
 
@@ -136,7 +135,9 @@ class StatementSerializer(serializers.ModelSerializer):
         validated_data["status"] = (
             Statement.STATUS_PAID if paid_at else Statement.STATUS_DRAFT
         )
-        statement = super().create(validated_data)
+        statement = self._save_statement_with_unique_name_handling(
+            lambda: super(StatementSerializer, self).create(validated_data)
+        )
         if record_ids:
             FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
                 statement=statement
@@ -160,7 +161,9 @@ class StatementSerializer(serializers.ModelSerializer):
                 if validated_data.get("paid_at")
                 else Statement.STATUS_DRAFT
             )
-        statement = super().update(instance, validated_data)
+        statement = self._save_statement_with_unique_name_handling(
+            lambda: super(StatementSerializer, self).update(instance, validated_data)
+        )
         if record_ids:
             FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
                 statement=statement
@@ -175,6 +178,26 @@ class StatementSerializer(serializers.ModelSerializer):
                 ).values_list("payment_id", flat=True)
             )
         return statement
+
+    def _save_statement_with_unique_name_handling(self, save_statement):
+        """Convert a concurrent name insert/update conflict into a field error."""
+        try:
+            # A savepoint keeps a surrounding request transaction usable after a
+            # database-level uniqueness conflict.
+            with transaction.atomic():
+                return save_statement()
+        except IntegrityError as exc:
+            error_text = " ".join(
+                str(value)
+                for value in (exc, getattr(exc, "__cause__", None))
+                if value
+            ).casefold()
+            if (
+                "uniq_active_statement_normalized_name" in error_text
+                or "name_normalized" in error_text
+            ):
+                raise serializers.ValidationError({"name": self.UNIQUE_NAME_ERROR})
+            raise
 
 
 class FinancialRecordSerializer(serializers.ModelSerializer):

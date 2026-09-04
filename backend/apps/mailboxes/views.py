@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.db import IntegrityError, transaction
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -13,6 +14,19 @@ from .services import (
     fetch_mailbox_messages,
     generate_mailbox_password,
 )
+
+
+def _raise_unexpected_mailbox_integrity_error(error: IntegrityError) -> None:
+    """Return a validation response only for the known email unique constraint."""
+    constraint_name = getattr(getattr(error, "__cause__", None), "diag", None)
+    constraint_name = getattr(constraint_name, "constraint_name", None)
+    error_text = str(error).lower()
+    if constraint_name == "mailboxes_mailbox_email_key" or (
+        "unique constraint failed" in error_text
+        and "mailboxes_mailbox.email" in error_text
+    ):
+        return
+    raise error
 
 
 class MailboxViewSet(viewsets.ModelViewSet):
@@ -82,13 +96,21 @@ class MailboxViewSet(viewsets.ModelViewSet):
                     {"detail": exc_text}, status=status.HTTP_502_BAD_GATEWAY
                 )
 
-        mailbox = Mailbox.objects.create(
-            user=request.user,
-            email=email_address,
-            local_part=local_part,
-            domain=domain,
-            display_name=display_name,
-        )
+        try:
+            with transaction.atomic():
+                mailbox = Mailbox.objects.create(
+                    user=request.user,
+                    email=email_address,
+                    local_part=local_part,
+                    domain=domain,
+                    display_name=display_name,
+                )
+        except IntegrityError as error:
+            _raise_unexpected_mailbox_integrity_error(error)
+            return Response(
+                {"detail": "Такой ящик уже существует."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         payload = MailboxSerializer(mailbox).data
         payload["initial_password"] = password
         return Response(payload, status=status.HTTP_201_CREATED)

@@ -17,7 +17,7 @@ from apps.tasks.models import Task
 from apps.users.models import AuditLog, Role, UserRole
 from django.contrib.auth.models import User
 from django.core.management import call_command
-from django.db import close_old_connections, connection
+from django.db import IntegrityError, close_old_connections, connection
 from django.test import TransactionTestCase
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
@@ -831,6 +831,47 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
 
         self.assertEqual(duplicate.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn("таким названием", str(duplicate.data.get("name")))
+
+    def test_concurrent_duplicate_name_create_returns_field_error(self):
+        self.authenticate(self.seller)
+        with patch.object(
+            Statement.objects,
+            "create",
+            side_effect=IntegrityError(
+                "UNIQUE constraint failed: finances_statement.name_normalized"
+            ),
+        ):
+            response = self.api_client.post(
+                "/api/v1/finance_statements/",
+                {"name": "Concurrent Sheet", "statement_type": "income"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("таким названием", str(response.data.get("name")))
+
+    def test_concurrent_duplicate_name_update_returns_field_error(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Concurrent Editable Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        with patch.object(
+            Statement,
+            "save",
+            side_effect=IntegrityError(
+                "UNIQUE constraint failed: finances_statement.name_normalized"
+            ),
+        ):
+            response = self.api_client.patch(
+                f"/api/v1/finance_statements/{statement.id}/",
+                {"name": "Concurrent Taken Sheet"},
+                format="json",
+            )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("таким названием", str(response.data.get("name")))
 
     def test_statement_duplicate_name_is_case_and_space_insensitive(self):
         self.authenticate(self.seller)

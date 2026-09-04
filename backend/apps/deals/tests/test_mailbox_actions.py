@@ -5,6 +5,7 @@ from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from apps.mailboxes.models import Mailbox
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.test import override_settings
 from rest_framework import status
 
@@ -96,6 +97,31 @@ class DealMailboxActionsTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.deal.refresh_from_db()
         self.assertEqual(self.deal.mailbox.local_part, "test_klient_1")
+
+    @patch(
+        "apps.deals.views.Mailbox.objects.create",
+        side_effect=IntegrityError(
+            "UNIQUE constraint failed: mailboxes_mailbox.deal_id"
+        ),
+    )
+    @patch("apps.deals.views.MailcowClient")
+    def test_create_mailbox_returns_clear_error_for_deal_conflict_after_mailcow(
+        self, mailcow_client_cls, _mailbox_create
+    ):
+        self.authenticate(self.seller)
+
+        response = self.api_client.post(
+            f"/api/v1/deals/{self.deal.id}/mailbox/create/",
+            {},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data["detail"], "Для этой сделки почтовый ящик уже создан."
+        )
+        mailcow_client_cls.return_value.create_mailbox.assert_called_once()
+        mailcow_client_cls.return_value.delete_mailbox.assert_not_called()
 
     @patch("apps.deals.views.process_mailbox_messages")
     def test_seller_can_check_mailbox(self, process_mailbox_messages):

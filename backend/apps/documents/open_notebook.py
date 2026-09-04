@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 from django.conf import settings
+from django.db import IntegrityError, transaction
 
 from .models import OpenNotebookSession
 
@@ -364,10 +365,22 @@ class OpenNotebookSyncService:
         if not session_id:
             raise OpenNotebookError("Open Notebook не вернул id сессии чата.")
 
-        OpenNotebookSession.objects.update_or_create(
-            notebook_id=notebook_id,
-            defaults={"chat_session_id": session_id},
-        )
+        try:
+            # Do not overwrite a chat session persisted by a concurrent request:
+            # the remote session created above may be redundant, but it is not
+            # safe to delete without a confirmed client API for that operation.
+            with transaction.atomic():
+                OpenNotebookSession.objects.create(
+                    notebook_id=notebook_id,
+                    chat_session_id=session_id,
+                )
+        except IntegrityError:
+            existing = OpenNotebookSession.objects.filter(
+                notebook_id=notebook_id
+            ).first()
+            if existing is None:
+                raise
+            return existing.chat_session_id
         return session_id
 
     def _reset_session_id(self, notebook_id: str) -> str:

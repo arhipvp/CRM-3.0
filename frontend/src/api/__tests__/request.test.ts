@@ -228,6 +228,29 @@ describe('request error normalization', () => {
     await expect(request('/policies/draft/')).rejects.toThrow('Сделка: Must be a valid UUID.');
   });
 
+  it('translates field labels used by duplicate and external-service flows', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            name: ['Ведомость с таким названием уже существует.'],
+            email: ['Такой почтовый ящик уже существует.'],
+            notebook_id: ['Выберите блокнот.'],
+          }),
+          {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      ),
+    );
+
+    await expect(request('/finance_statements/')).rejects.toThrow(
+      'Название: Ведомость с таким названием уже существует. Электронная почта: Такой почтовый ящик уже существует. Блокнот: Выберите блокнот.',
+    );
+  });
+
   it('keeps structured error codes on api errors', async () => {
     vi.stubGlobal(
       'fetch',

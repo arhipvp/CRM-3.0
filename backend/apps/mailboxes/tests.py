@@ -1,8 +1,11 @@
+from unittest.mock import patch
+
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
 from apps.deals.models import Deal
 from django.contrib.auth.models import User
-from django.test import SimpleTestCase
+from django.db import IntegrityError
+from django.test import SimpleTestCase, override_settings
 
 from .models import Mailbox
 from .serializers import MailboxSerializer
@@ -101,3 +104,34 @@ class MailboxListAPITests(AuthenticatedAPITestCase):
         self.assertEqual(len(response.data["results"]), 1)
         self.assertEqual(response.data["results"][0]["email"], "owned@example.com")
         self.assertEqual(response.data["results"][0]["deal_id"], str(self.deal.id))
+
+
+@override_settings(MAILCOW_DOMAIN="example.com", MAILCOW_MAILBOX_QUOTA_MB=3072)
+class MailboxCreateAPITests(AuthenticatedAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.user = User.objects.create_user(
+            username="mailbox_creator",
+            password="pass",  # pragma: allowlist secret
+        )
+
+    @patch(
+        "apps.mailboxes.views.Mailbox.objects.create",
+        side_effect=IntegrityError("UNIQUE constraint failed: mailboxes_mailbox.email"),
+    )
+    @patch("apps.mailboxes.views.MailcowClient")
+    def test_create_returns_clear_error_for_email_conflict_after_mailcow(
+        self, mailcow_client_cls, _mailbox_create
+    ):
+        self.authenticate(self.user)
+
+        response = self.api_client.post(
+            "/api/v1/mailboxes/",
+            {"local_part": "duplicate", "display_name": "Duplicate"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["detail"], "Такой ящик уже существует.")
+        mailcow_client_cls.return_value.create_mailbox.assert_called_once()
+        mailcow_client_cls.return_value.delete_mailbox.assert_not_called()
