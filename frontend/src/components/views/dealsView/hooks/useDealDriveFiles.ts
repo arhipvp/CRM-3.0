@@ -50,6 +50,25 @@ const normalizeParent = (files: DriveFile[], parentId: string | null): DriveFile
     parentId: file.parentId ?? parentId,
   }));
 
+const getReachableFolderIds = (
+  rootFiles: DriveFile[],
+  childrenByParentId: Record<string, DriveFile[]>,
+): Set<string> => {
+  const reachableFolderIds = new Set<string>();
+  const visitFiles = (files: DriveFile[]) => {
+    files.forEach((file) => {
+      if (!file.isFolder || reachableFolderIds.has(file.id)) {
+        return;
+      }
+      reachableFolderIds.add(file.id);
+      visitFiles(childrenByParentId[file.id] ?? []);
+    });
+  };
+
+  visitFiles(rootFiles);
+  return reachableFolderIds;
+};
+
 const isRecognizablePolicyFile = (file: Pick<DriveFile, 'mimeType' | 'name'>): boolean => {
   const mimeType = (file.mimeType ?? '').toLowerCase();
   const normalizedName = (file.name ?? '').toLowerCase();
@@ -164,6 +183,7 @@ export const useDealDriveFiles = ({
   const [isMoving, setIsMoving] = useState(false);
   const [moveMessage, setMoveMessage] = useState<string | null>(null);
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
+  const reachableFolderIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     latestDealIdRef.current = selectedDeal?.id ?? null;
@@ -183,6 +203,7 @@ export const useDealDriveFiles = ({
     setExpandedFolderIds(new Set());
     setLoadingFolderIds(new Set());
     setFolderErrors({});
+    reachableFolderIdsRef.current = new Set();
   }, [selectedDeal?.calculationSourceFileIds, selectedDeal?.id]);
 
   const sortedRootFiles = useMemo(
@@ -216,15 +237,27 @@ export const useDealDriveFiles = ({
 
       try {
         const { files } = await fetchDealDriveFiles(currentDealId, includeDeleted, folderId);
-        if (latestDealIdRef.current !== currentDealId) {
+        if (
+          latestDealIdRef.current !== currentDealId ||
+          !reachableFolderIdsRef.current.has(folderId)
+        ) {
           return;
         }
+        const normalizedFiles = normalizeParent(files, folderId);
+        normalizedFiles.forEach((file) => {
+          if (file.isFolder) {
+            reachableFolderIdsRef.current.add(file.id);
+          }
+        });
         setChildrenByParentId((prev) => ({
           ...prev,
-          [folderId]: normalizeParent(files, folderId),
+          [folderId]: normalizedFiles,
         }));
       } catch (error) {
-        if (latestDealIdRef.current !== currentDealId) {
+        if (
+          latestDealIdRef.current !== currentDealId ||
+          !reachableFolderIdsRef.current.has(folderId)
+        ) {
           return;
         }
         setFolderErrors((prev) => ({
@@ -265,14 +298,34 @@ export const useDealDriveFiles = ({
         return;
       }
 
-      setRootFiles(normalizeParent(files, null));
+      const nextRootFiles = normalizeParent(files, null);
+      const reachableFolderIds = getReachableFolderIds(nextRootFiles, childrenByParentId);
+      reachableFolderIdsRef.current = reachableFolderIds;
+      const foldersToRefresh = Array.from(expandedFolderIds).filter((folderId) =>
+        reachableFolderIds.has(folderId),
+      );
+
+      setRootFiles(nextRootFiles);
       setDriveError(null);
+      setExpandedFolderIds(new Set(foldersToRefresh));
+      setChildrenByParentId((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([folderId]) => reachableFolderIds.has(folderId)),
+        ),
+      );
+      setLoadingFolderIds(
+        (prev) => new Set(Array.from(prev).filter((folderId) => reachableFolderIds.has(folderId))),
+      );
+      setFolderErrors((prev) =>
+        Object.fromEntries(
+          Object.entries(prev).filter(([folderId]) => reachableFolderIds.has(folderId)),
+        ),
+      );
 
       if (folderId && folderId !== previousFolderId) {
         onDriveFolderCreated(currentDealId, folderId);
       }
 
-      const foldersToRefresh = Array.from(expandedFolderIds);
       if (foldersToRefresh.length) {
         await Promise.all(
           foldersToRefresh.map((expandedFolderId) => loadFolderContents(expandedFolderId)),
@@ -291,7 +344,13 @@ export const useDealDriveFiles = ({
         setIsDriveLoading(false);
       }
     }
-  }, [expandedFolderIds, loadFolderContents, onDriveFolderCreated, selectedDeal]);
+  }, [
+    childrenByParentId,
+    expandedFolderIds,
+    loadFolderContents,
+    onDriveFolderCreated,
+    selectedDeal,
+  ]);
 
   const handleDriveFileUpload = useCallback(
     async (file: File) => {

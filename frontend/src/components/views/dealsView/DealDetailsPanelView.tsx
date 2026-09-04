@@ -274,8 +274,11 @@ export function DealDetailsPanelView(viewModel: DealDetailsPanelViewModel) {
               icon="close"
               label="Снять фокус со сделки"
               size="sm"
-              onClick={onClearDealFocus}
-              className="absolute right-3 top-3 z-10"
+              onClick={(event) => {
+                event.stopPropagation();
+                onClearDealFocus?.();
+              }}
+              className="absolute right-3 top-3 z-20"
               title="Снять фокус со сделки"
             />
             <div className="flex flex-col gap-4">

@@ -32,6 +32,7 @@ export const useDealPreviewController = (): DealPreviewController => {
   const [previewDealId, setPreviewDealId] = useState<string | null>(null);
   const dealRowFocusNonceRef = useRef(0);
   const selectedDealIdRef = useRef(selectedDealId);
+  const isClearSelectionNavigationPendingRef = useRef(false);
   const pathnameRef = useRef(location.pathname);
   const searchParamsRef = useRef(searchParams);
   const setSearchParamsRef = useRef(setSearchParams);
@@ -43,6 +44,10 @@ export const useDealPreviewController = (): DealPreviewController => {
     setPreviewDealId(searchParams.get('previewDeal'));
     if (location.pathname === '/deals') {
       const nextSelectedDealId = searchParams.get('dealId');
+      if (isClearSelectionNavigationPendingRef.current && nextSelectedDealId) {
+        return;
+      }
+      isClearSelectionNavigationPendingRef.current = false;
       selectedDealIdRef.current = nextSelectedDealId;
       setSelectedDealId(nextSelectedDealId);
     }
@@ -73,6 +78,7 @@ export const useDealPreviewController = (): DealPreviewController => {
     setSelectedDealId(null);
     setIsDealFocusCleared(true);
     if (pathnameRef.current === '/deals') {
+      isClearSelectionNavigationPendingRef.current = true;
       setSearchParamsRef.current((current) => {
         const next = new URLSearchParams(current);
         next.delete('dealId');
@@ -83,6 +89,7 @@ export const useDealPreviewController = (): DealPreviewController => {
   }, []);
 
   const selectDealById = useCallback((dealId: string) => {
+    isClearSelectionNavigationPendingRef.current = false;
     selectedDealIdRef.current = dealId;
     setSelectedDealId(dealId);
     setIsDealFocusCleared(false);
@@ -96,12 +103,14 @@ export const useDealPreviewController = (): DealPreviewController => {
   }, []);
 
   const resetDealSelection = useCallback(() => {
+    isClearSelectionNavigationPendingRef.current = false;
     selectedDealIdRef.current = null;
     setSelectedDealId(null);
     setIsDealFocusCleared(false);
   }, []);
 
   const handleOpenDealPreview = useCallback((dealId: string) => {
+    isClearSelectionNavigationPendingRef.current = false;
     setPreviewDealId(dealId);
     selectedDealIdRef.current = dealId;
     setSelectedDealId(dealId);

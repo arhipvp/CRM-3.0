@@ -173,6 +173,51 @@ describe('useDealDriveFiles', () => {
     ]);
   });
 
+  it('does not refresh a previously expanded folder that disappeared from the root', async () => {
+    const deal = createDeal();
+    const folder = {
+      id: 'stale-folder',
+      name: 'Stale folder',
+      mimeType: 'application/vnd.google-apps.folder',
+      size: null,
+      createdAt: '2025-01-01T00:00:00Z',
+      modifiedAt: '2025-01-01T00:00:00Z',
+      webViewLink: 'https://drive.google.com/folder',
+      isFolder: true,
+      parentId: null,
+    };
+    fetchDealDriveFilesMock
+      .mockResolvedValueOnce({ files: [folder], folderId: null })
+      .mockRejectedValueOnce(new Error('Folder no longer exists'))
+      .mockResolvedValue({ files: [], folderId: null });
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    await act(async () => {
+      resultRef.current?.toggleFolderExpanded(folder.id);
+    });
+    await waitFor(() => {
+      expect(resultRef.current?.folderErrors[folder.id]).toBe('Folder no longer exists');
+    });
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+
+    expect(resultRef.current?.expandedFolderIds).toEqual(new Set());
+    expect(resultRef.current?.folderErrors).toEqual({});
+    expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(3);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+
+    expect(fetchDealDriveFilesMock).toHaveBeenCalledTimes(4);
+    expect(fetchDealDriveFilesMock).toHaveBeenLastCalledWith(deal.id, false);
+  });
+
   it('shows a message when recognition is triggered without selection', async () => {
     const deal = createDeal();
     const { resultRef } = renderDriveHook(deal);

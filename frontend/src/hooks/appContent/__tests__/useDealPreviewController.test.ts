@@ -1,6 +1,6 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { createElement, type PropsWithChildren } from 'react';
 
 import { useDealPreviewController } from '../useDealPreviewController';
@@ -22,6 +22,57 @@ describe('useDealPreviewController', () => {
     });
     expect(result.current.selectedDealId).toBe('deal-1');
     expect(result.current.isDealFocusCleared).toBe(false);
+  });
+
+  it('снимает фокус из deep link и удаляет только параметры сделки из URL', async () => {
+    const FocusHarness = () => {
+      const controller = useDealPreviewController();
+      const location = useLocation();
+      return createElement(
+        'div',
+        null,
+        createElement(
+          'button',
+          { type: 'button', onClick: () => controller.clearSelectedDealFocus() },
+          'Снять фокус',
+        ),
+        createElement(
+          'output',
+          { 'data-testid': 'selected-deal' },
+          controller.selectedDealId ?? 'none',
+        ),
+        createElement(
+          'output',
+          { 'data-testid': 'location' },
+          `${location.pathname}${location.search}`,
+        ),
+        createElement(
+          'div',
+          null,
+          controller.selectedDealId ? 'Карточка сделки' : 'Выберите сделку',
+        ),
+      );
+    };
+
+    render(
+      createElement(
+        MemoryRouter,
+        { initialEntries: ['/deals?dealId=deal-1&tab=policies&filter=open'] },
+        createElement(FocusHarness),
+      ),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('deal-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Снять фокус' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('selected-deal')).toHaveTextContent('none');
+      expect(screen.getByText('Выберите сделку')).toBeInTheDocument();
+      expect(screen.getByTestId('location')).toHaveTextContent('/deals?filter=open');
+    });
   });
 
   it('не очищает фокус новой сделки по завершении операции над прежней', () => {

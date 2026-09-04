@@ -230,3 +230,8 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
 
         self.assertIn("ОСАГО: обязательное страхование", prompt)
         self.assertIn("ДГО/ДСАГО: добровольная дополнительная", prompt)
+        self.assertIn(
+            "Первый элемент массива payments всегда должен иметь payment_date, "
+            "равную start_date полиса",
+            prompt,
+        )

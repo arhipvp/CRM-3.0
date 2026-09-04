@@ -100,6 +100,24 @@ class InsuranceCompanySerializerTests(TestCase):
             data["logo_url"], self.request.build_absolute_uri(company.logo.url)
         )
 
+    @override_settings(ALLOWED_HOSTS=["zoom78.com"])
+    def test_serializes_https_logo_url_behind_tls_terminating_proxy(self):
+        company = InsuranceCompany.objects.create(
+            name="Proxied Logo", logo=make_png_upload()
+        )
+        request = APIRequestFactory().get(
+            "/api/v1/insurance_companies/",
+            HTTP_HOST="zoom78.com",
+            HTTP_X_FORWARDED_PROTO="https",
+        )
+
+        data = InsuranceCompanySerializer(company, context={"request": request}).data
+
+        self.assertTrue(request.is_secure())
+        self.assertEqual(
+            data["logo_url"], f"https://zoom78.com{company.logo.url}"
+        )
+
     def test_policy_serializer_includes_insurance_company_logo_url(self):
         client = Client.objects.create(name="Logo Client")
         company = InsuranceCompany.objects.create(

@@ -68,6 +68,9 @@ CSRF_TRUSTED_ORIGINS = [
 if DEBUG and not CSRF_TRUSTED_ORIGINS:
     CSRF_TRUSTED_ORIGINS = ["http://localhost:8000"]
 
+# Nginx terminates TLS and passes the original scheme to Django.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 
 # Application definition
 
