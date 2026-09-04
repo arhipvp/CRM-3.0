@@ -7,12 +7,16 @@ import { fetchInsuranceTypes } from '../../../api';
 import { AddPolicyForm } from '../AddPolicyForm';
 import type { PolicyFormValues } from '../addPolicy/types';
 
-vi.mock('../../../api', () => ({
-  fetchInsuranceCompanies: vi.fn().mockResolvedValue([]),
-  fetchInsuranceTypes: vi.fn().mockResolvedValue([]),
-  fetchVehicleBrands: vi.fn().mockResolvedValue([]),
-  fetchVehicleModels: vi.fn().mockResolvedValue([]),
-}));
+vi.mock('../../../api', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../api')>();
+  return {
+    ...actual,
+    fetchInsuranceCompanies: vi.fn().mockResolvedValue([]),
+    fetchInsuranceTypes: vi.fn().mockResolvedValue([]),
+    fetchVehicleBrands: vi.fn().mockResolvedValue([]),
+    fetchVehicleModels: vi.fn().mockResolvedValue([]),
+  };
+});
 
 const buildInitialValues = (payments: PolicyFormValues['payments']): PolicyFormValues => ({
   number: 'POL-001',
@@ -714,6 +718,33 @@ describe('AddPolicyForm', () => {
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledTimes(1);
     });
+  });
+
+  it('shows the duplicate policy number message returned by saving', async () => {
+    const onSubmit = vi
+      .fn()
+      .mockRejectedValue(new Error('Этот номер полиса уже существует. Укажите другой номер.'));
+
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '16859.00',
+          description: '',
+          scheduledDate: '2026-04-27',
+          actualDate: '2026-04-04',
+          incomes: [],
+          expenses: [],
+        },
+      ]),
+      { onSubmit },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    expect(
+      await screen.findByText('Этот номер полиса уже существует. Укажите другой номер.'),
+    ).toBeInTheDocument();
   });
 
   it('allows saving when there are only warnings', async () => {

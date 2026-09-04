@@ -4,7 +4,7 @@ from apps.clients.models import Client
 from apps.deals.deadline_service import recalculate_deal_deadline
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
 from ..models import Policy
@@ -33,6 +33,32 @@ POLICY_DRAFT_FIELDS = (
     "start_date",
     "end_date",
 )
+
+DUPLICATE_POLICY_NUMBER_MESSAGE = (
+    "Этот номер полиса уже существует. Укажите другой номер."
+)
+
+
+def _ensure_policy_number_is_available(
+    number: str, policy: Policy | None = None
+) -> None:
+    queryset = Policy.objects.alive().filter(number=number)
+    if policy is not None:
+        queryset = queryset.exclude(pk=policy.pk)
+    if queryset.exists():
+        raise ValidationError({"detail": DUPLICATE_POLICY_NUMBER_MESSAGE})
+
+
+def _raise_duplicate_policy_number_if_needed(error: IntegrityError) -> None:
+    constraint_name = getattr(getattr(error, "__cause__", None), "diag", None)
+    constraint_name = getattr(constraint_name, "constraint_name", None)
+    error_text = str(error).lower()
+    if constraint_name == "policies_unique_active_number" or (
+        "unique constraint failed" in error_text
+        and "policies_policy.number" in error_text
+    ):
+        raise ValidationError({"detail": DUPLICATE_POLICY_NUMBER_MESSAGE}) from error
+    raise error
 
 
 def _resolve_client(deal: Deal, data: dict) -> Client | None:
@@ -241,16 +267,21 @@ def apply_policy_draft(
     source_file_ids = data.pop("source_file_ids", []) or []
     payments = data.pop("payments", []) or []
     data["client"] = _resolve_client(deal, data)
+    _ensure_policy_number_is_available(data["number"], policy)
 
-    if policy is None:
-        policy_data = {field: data.get(field) for field in POLICY_DRAFT_FIELDS}
-        policy_data["deal"] = deal
-        policy = Policy.objects.create(**policy_data)
-    else:
-        for field in POLICY_DRAFT_FIELDS:
-            if field in data:
-                setattr(policy, field, data[field])
-        policy.save()
+    try:
+        with transaction.atomic():
+            if policy is None:
+                policy_data = {field: data.get(field) for field in POLICY_DRAFT_FIELDS}
+                policy_data["deal"] = deal
+                policy = Policy.objects.create(**policy_data)
+            else:
+                for field in POLICY_DRAFT_FIELDS:
+                    if field in data:
+                        setattr(policy, field, data[field])
+                policy.save()
+    except IntegrityError as error:
+        _raise_duplicate_policy_number_if_needed(error)
 
     _apply_payments(policy, payments)
 

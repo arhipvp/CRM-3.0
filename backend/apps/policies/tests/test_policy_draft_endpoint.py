@@ -99,6 +99,30 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
         self.assertIn("policy", response.json())
         self.assertEqual(len(response.json()["payments"]), 1)
 
+    def test_draft_create_rejects_duplicate_active_policy_number(self):
+        self.authenticate(self.seller)
+        Policy.objects.create(
+            number="DUPLICATE-DRAFT",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            client=self.client_obj,
+        )
+
+        response = self.api_client.post(
+            "/api/v1/policies/draft/",
+            self._draft_payload(number="DUPLICATE-DRAFT"),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json()["detail"],
+            "Этот номер полиса уже существует. Укажите другой номер.",
+        )
+        self.assertEqual(Policy.objects.filter(number="DUPLICATE-DRAFT").count(), 1)
+        self.assertEqual(Payment.objects.count(), 0)
+
     def test_draft_create_recalculates_deal_deadline(self):
         self.authenticate(self.seller)
 
@@ -192,6 +216,55 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
         self.assertEqual(keep_record.amount, Decimal("70.00"))
         self.assertIsNotNone(remove_payment.deleted_at)
         self.assertIsNotNone(remove_record.deleted_at)
+
+    def test_draft_update_rejects_another_policy_active_number(self):
+        self.authenticate(self.seller)
+        policy = Policy.objects.create(
+            number="DRAFT-TO-UPDATE",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            client=self.client_obj,
+        )
+        Policy.objects.create(
+            number="DRAFT-ALREADY-EXISTS",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            client=self.client_obj,
+        )
+
+        response = self.api_client.patch(
+            f"/api/v1/policies/{policy.id}/draft/",
+            self._draft_payload(number="DRAFT-ALREADY-EXISTS", payments=[]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.json()["detail"],
+            "Этот номер полиса уже существует. Укажите другой номер.",
+        )
+        policy.refresh_from_db()
+        self.assertEqual(policy.number, "DRAFT-TO-UPDATE")
+
+    def test_draft_update_allows_its_own_number(self):
+        self.authenticate(self.seller)
+        policy = Policy.objects.create(
+            number="DRAFT-UNCHANGED",
+            deal=self.deal,
+            insurance_company=self.company,
+            insurance_type=self.insurance_type,
+            client=self.client_obj,
+        )
+
+        response = self.api_client.patch(
+            f"/api/v1/policies/{policy.id}/draft/",
+            self._draft_payload(number=policy.number, payments=[]),
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
 
     def test_draft_rolls_back_policy_when_nested_record_is_invalid(self):
         self.authenticate(self.seller)

@@ -758,7 +758,6 @@ export const useAddPolicyFormController = ({
       });
     } catch (err) {
       setError(formatErrorMessage(err, 'Не удалось сохранить полис. Попробуйте позже.'));
-      throw err;
     } finally {
       setSubmitting(false);
     }
