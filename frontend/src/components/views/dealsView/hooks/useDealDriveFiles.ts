@@ -184,10 +184,20 @@ export const useDealDriveFiles = ({
   const [moveMessage, setMoveMessage] = useState<string | null>(null);
   const latestDealIdRef = useRef<string | null>(selectedDeal?.id ?? null);
   const reachableFolderIdsRef = useRef<Set<string>>(new Set());
+  const childrenByParentIdRef = useRef(childrenByParentId);
+  const expandedFolderIdsRef = useRef(expandedFolderIds);
 
   useEffect(() => {
     latestDealIdRef.current = selectedDeal?.id ?? null;
   }, [selectedDeal?.id]);
+
+  useEffect(() => {
+    childrenByParentIdRef.current = childrenByParentId;
+  }, [childrenByParentId]);
+
+  useEffect(() => {
+    expandedFolderIdsRef.current = expandedFolderIds;
+  }, [expandedFolderIds]);
 
   useEffect(() => {
     setSelectedDriveFileIds(selectedDeal?.calculationSourceFileIds ?? []);
@@ -204,6 +214,8 @@ export const useDealDriveFiles = ({
     setLoadingFolderIds(new Set());
     setFolderErrors({});
     reachableFolderIdsRef.current = new Set();
+    childrenByParentIdRef.current = {};
+    expandedFolderIdsRef.current = new Set();
   }, [selectedDeal?.calculationSourceFileIds, selectedDeal?.id]);
 
   const sortedRootFiles = useMemo(
@@ -249,10 +261,11 @@ export const useDealDriveFiles = ({
             reachableFolderIdsRef.current.add(file.id);
           }
         });
-        setChildrenByParentId((prev) => ({
-          ...prev,
-          [folderId]: normalizedFiles,
-        }));
+        setChildrenByParentId((prev) => {
+          const next = { ...prev, [folderId]: normalizedFiles };
+          childrenByParentIdRef.current = next;
+          return next;
+        });
       } catch (error) {
         if (
           latestDealIdRef.current !== currentDealId ||
@@ -299,20 +312,27 @@ export const useDealDriveFiles = ({
       }
 
       const nextRootFiles = normalizeParent(files, null);
-      const reachableFolderIds = getReachableFolderIds(nextRootFiles, childrenByParentId);
+      const reachableFolderIds = getReachableFolderIds(
+        nextRootFiles,
+        childrenByParentIdRef.current,
+      );
       reachableFolderIdsRef.current = reachableFolderIds;
-      const foldersToRefresh = Array.from(expandedFolderIds).filter((folderId) =>
+      const foldersToRefresh = Array.from(expandedFolderIdsRef.current).filter((folderId) =>
         reachableFolderIds.has(folderId),
       );
 
       setRootFiles(nextRootFiles);
       setDriveError(null);
-      setExpandedFolderIds(new Set(foldersToRefresh));
-      setChildrenByParentId((prev) =>
-        Object.fromEntries(
-          Object.entries(prev).filter(([folderId]) => reachableFolderIds.has(folderId)),
+      const nextExpandedFolderIds = new Set(foldersToRefresh);
+      expandedFolderIdsRef.current = nextExpandedFolderIds;
+      setExpandedFolderIds(nextExpandedFolderIds);
+      const nextChildrenByParentId = Object.fromEntries(
+        Object.entries(childrenByParentIdRef.current).filter(([folderId]) =>
+          reachableFolderIds.has(folderId),
         ),
       );
+      childrenByParentIdRef.current = nextChildrenByParentId;
+      setChildrenByParentId(nextChildrenByParentId);
       setLoadingFolderIds(
         (prev) => new Set(Array.from(prev).filter((folderId) => reachableFolderIds.has(folderId))),
       );
@@ -344,13 +364,7 @@ export const useDealDriveFiles = ({
         setIsDriveLoading(false);
       }
     }
-  }, [
-    childrenByParentId,
-    expandedFolderIds,
-    loadFolderContents,
-    onDriveFolderCreated,
-    selectedDeal,
-  ]);
+  }, [loadFolderContents, onDriveFolderCreated, selectedDeal]);
 
   const handleDriveFileUpload = useCallback(
     async (file: File) => {

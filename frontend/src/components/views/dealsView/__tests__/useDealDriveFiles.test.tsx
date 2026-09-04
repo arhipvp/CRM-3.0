@@ -107,6 +107,7 @@ describe('useDealDriveFiles', () => {
 
     const onDriveFolderCreated = vi.fn();
     const { resultRef } = renderDriveHook(deal, { onDriveFolderCreated });
+    const initialLoadDriveFiles = resultRef.current?.loadDriveFiles;
 
     await act(async () => {
       await resultRef.current?.loadDriveFiles();
@@ -114,7 +115,9 @@ describe('useDealDriveFiles', () => {
 
     expect(fetchDealDriveFilesMock).toHaveBeenCalledWith(deal.id, false);
     expect(resultRef.current?.sortedDriveFiles).toEqual([file]);
+    expect(resultRef.current?.isDriveLoading).toBe(false);
     expect(onDriveFolderCreated).toHaveBeenCalledWith(deal.id, folderId);
+    expect(resultRef.current?.loadDriveFiles).toBe(initialLoadDriveFiles);
   });
 
   it('loads folder children lazily and allows folder selection', async () => {
