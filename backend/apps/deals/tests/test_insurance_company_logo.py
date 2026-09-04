@@ -114,9 +114,7 @@ class InsuranceCompanySerializerTests(TestCase):
         data = InsuranceCompanySerializer(company, context={"request": request}).data
 
         self.assertTrue(request.is_secure())
-        self.assertEqual(
-            data["logo_url"], f"https://zoom78.com{company.logo.url}"
-        )
+        self.assertEqual(data["logo_url"], f"https://zoom78.com{company.logo.url}")
 
     def test_policy_serializer_includes_insurance_company_logo_url(self):
         client = Client.objects.create(name="Logo Client")
