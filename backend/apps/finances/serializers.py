@@ -188,9 +188,7 @@ class StatementSerializer(serializers.ModelSerializer):
                 return save_statement()
         except IntegrityError as exc:
             error_text = " ".join(
-                str(value)
-                for value in (exc, getattr(exc, "__cause__", None))
-                if value
+                str(value) for value in (exc, getattr(exc, "__cause__", None)) if value
             ).casefold()
             if (
                 "uniq_active_statement_normalized_name" in error_text

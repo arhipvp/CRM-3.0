@@ -14,11 +14,15 @@ from rest_framework import status
 class DealMailboxActionsTests(AuthenticatedAPITestCase):
     def setUp(self):
         super().setUp()
-        self.seller = User.objects.create_user(username="seller_mail", password="pass")
-        self.executor = User.objects.create_user(
-            username="executor_mail", password="pass"
+        self.seller = User.objects.create_user(
+            username="seller_mail", password="pass"  # pragma: allowlist secret
         )
-        self.viewer = User.objects.create_user(username="viewer_mail", password="pass")
+        self.executor = User.objects.create_user(
+            username="executor_mail", password="pass"  # pragma: allowlist secret
+        )
+        self.viewer = User.objects.create_user(
+            username="viewer_mail", password="pass"  # pragma: allowlist secret
+        )
         self.client_record = Client.objects.create(name="Тест Клиент")
         self.deal = Deal.objects.create(
             title="Сделка по почте",

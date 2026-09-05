@@ -38,36 +38,6 @@ class FakeTelegramClient:
         self.commands = []
         self._next_message_id = 10_000
 
-
-class TelegramNotificationSingletonRaceTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(
-            username="telegram-singleton-race",
-            password="pass",  # pragma: allowlist secret
-        )
-
-    def test_settings_returns_concurrently_created_record(self):
-        existing = NotificationSettings.objects.create(user=self.user)
-        with patch.object(
-            NotificationSettings.objects,
-            "get_or_create",
-            side_effect=IntegrityError("duplicate user settings"),
-        ):
-            result = get_or_create_settings(self.user)
-
-        self.assertEqual(result.pk, existing.pk)
-
-    def test_profile_returns_concurrently_created_record(self):
-        existing = TelegramProfile.objects.create(user=self.user)
-        with patch.object(
-            TelegramProfile.objects,
-            "get_or_create",
-            side_effect=IntegrityError("duplicate user profile"),
-        ):
-            result = get_or_create_profile(self.user)
-
-        self.assertEqual(result.pk, existing.pk)
-
     def send_message(self, chat_id: int, text: str, reply_markup=None):
         self._next_message_id += 1
         self.sent_messages.append(
@@ -105,6 +75,36 @@ class TelegramNotificationSingletonRaceTests(TestCase):
     def set_my_commands(self, commands: list[dict[str, str]]):
         self.commands = commands
         return True
+
+
+class TelegramNotificationSingletonRaceTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="telegram-singleton-race",
+            password="pass",  # pragma: allowlist secret
+        )
+
+    def test_settings_returns_concurrently_created_record(self):
+        existing = NotificationSettings.objects.create(user=self.user)
+        with patch.object(
+            NotificationSettings.objects,
+            "get_or_create",
+            side_effect=IntegrityError("duplicate user settings"),
+        ):
+            result = get_or_create_settings(self.user)
+
+        self.assertEqual(result.pk, existing.pk)
+
+    def test_profile_returns_concurrently_created_record(self):
+        existing = TelegramProfile.objects.create(user=self.user)
+        with patch.object(
+            TelegramProfile.objects,
+            "get_or_create",
+            side_effect=IntegrityError("duplicate user profile"),
+        ):
+            result = get_or_create_profile(self.user)
+
+        self.assertEqual(result.pk, existing.pk)
 
 
 class FakeCallbackClient:
