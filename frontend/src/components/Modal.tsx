@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, type CSSProperties, type ReactNode } from 'react';
 
 import { IconButton } from './common/Button';
 
@@ -33,8 +33,11 @@ interface ModalProps {
   size?: ModalSize;
   zIndex?: number;
   panelClassName?: string;
+  panelStyle?: CSSProperties;
   bodyClassName?: string;
   bodyScrollable?: boolean;
+  headerActions?: ReactNode;
+  resizeHandle?: ReactNode;
 }
 
 export function Modal({
@@ -47,8 +50,11 @@ export function Modal({
   size = 'md',
   zIndex = 40,
   panelClassName = '',
+  panelStyle,
   bodyClassName = '',
   bodyScrollable = true,
+  headerActions,
+  resizeHandle,
 }: ModalProps) {
   const titleId = useId();
   const sizeClass = MODAL_SIZE_TO_CLASS[size];
@@ -147,7 +153,8 @@ export function Modal({
     >
       <div
         ref={dialogRef}
-        className={`flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-white shadow-[var(--app-shadow-overlay)] sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
+        className={`relative flex max-h-[calc(100dvh-1rem)] min-w-0 w-full flex-col overflow-hidden rounded-[var(--app-radius-lg)] border border-[var(--app-border)] bg-white shadow-[var(--app-shadow-overlay)] sm:max-h-[calc(100dvh-2rem)] ${sizeClass} ${panelClassName}`}
+        style={panelStyle}
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -158,7 +165,10 @@ export function Modal({
           <h2 id={titleId} className="min-w-0 break-words text-base font-semibold text-slate-900">
             {title}
           </h2>
-          {!hideCloseButton && <IconButton icon="close" label="Закрыть" onClick={onClose} />}
+          <div className="flex shrink-0 items-center gap-2">
+            {headerActions}
+            {!hideCloseButton && <IconButton icon="close" label="Закрыть" onClick={onClose} />}
+          </div>
         </div>
         <div
           className={`min-h-0 min-w-0 flex-1 p-4 ${
@@ -167,6 +177,7 @@ export function Modal({
         >
           {children}
         </div>
+        {resizeHandle}
       </div>
     </div>
   );
