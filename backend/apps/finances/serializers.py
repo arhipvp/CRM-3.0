@@ -32,7 +32,7 @@ class StatementSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Statement
-        fields = "__all__"
+        exclude = ("deletion_snapshot",)
         read_only_fields = (
             "id",
             "created_at",
@@ -128,6 +128,24 @@ class StatementSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({"record_ids": errors})
         return attrs
 
+    def _attach_locked_records(self, statement, records):
+        ids = [record.pk for record in records]
+        locked = list(
+            FinancialRecord.objects.select_for_update()
+            .filter(pk__in=ids)
+            .order_by("pk")
+        )
+        if len(locked) != len(ids) or any(
+            record.statement_id not in (None, statement.pk)
+            or record.record_type != statement.statement_type
+            for record in locked
+        ):
+            raise serializers.ValidationError(
+                {"record_ids": "Записи изменились или уже включены в другую ведомость."}
+            )
+        FinancialRecord.objects.filter(pk__in=ids).update(statement=statement)
+
+    @transaction.atomic
     def create(self, validated_data):
         record_ids = validated_data.pop("record_ids", [])
         # Держим legacy-статус согласованным, но бизнес-логика должна опираться на paid_at.
@@ -139,9 +157,7 @@ class StatementSerializer(serializers.ModelSerializer):
             lambda: super(StatementSerializer, self).create(validated_data)
         )
         if record_ids:
-            FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
-                statement=statement
-            )
+            self._attach_locked_records(statement, record_ids)
         if statement.paid_at:
             FinancialRecord.objects.filter(
                 statement=statement, deleted_at__isnull=True
@@ -153,7 +169,11 @@ class StatementSerializer(serializers.ModelSerializer):
             )
         return statement
 
+    @transaction.atomic
     def update(self, instance, validated_data):
+        instance = Statement.objects.select_for_update().filter(pk=instance.pk).first()
+        if instance is None or instance.paid_at:
+            raise serializers.ValidationError("Ведомость удалена или выплачена.")
         record_ids = validated_data.pop("record_ids", None)
         if "paid_at" in validated_data:
             validated_data["status"] = (
@@ -165,9 +185,7 @@ class StatementSerializer(serializers.ModelSerializer):
             lambda: super(StatementSerializer, self).update(instance, validated_data)
         )
         if record_ids:
-            FinancialRecord.objects.filter(id__in=[r.id for r in record_ids]).update(
-                statement=statement
-            )
+            self._attach_locked_records(statement, record_ids)
         if "paid_at" in validated_data and statement.paid_at:
             FinancialRecord.objects.filter(
                 statement=statement, deleted_at__isnull=True
@@ -320,6 +338,17 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
                 amount,
             )
         return attrs
+
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        """Do not save a stale relation while a statement is being restored.
+
+        ``statement`` is read-only here, but DRF's default implementation still
+        saves every field on the serializer's old instance. Reloading under a
+        row lock preserves a relation attached by a concurrent restoration.
+        """
+        locked_instance = FinancialRecord.objects.select_for_update().get(pk=instance.pk)
+        return super().update(locked_instance, validated_data)
 
 
 class InitialFinancialRecordSerializer(serializers.Serializer):

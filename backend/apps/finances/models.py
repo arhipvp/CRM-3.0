@@ -123,6 +123,7 @@ class Statement(SoftDeleteModel):
         help_text="Дата выплаты ведомости. Если заполнено — ведомость считается выплаченной.",
     )
     comment = models.TextField(blank=True, help_text="Комментарий")
+    deletion_snapshot = models.JSONField(null=True, blank=True, editable=False)
     drive_folder_id = models.CharField(
         max_length=255,
         blank=True,
@@ -170,9 +171,9 @@ class Statement(SoftDeleteModel):
         super().save(*args, **kwargs)
 
     def delete(self, *args, **kwargs):
-        """Мягкое удаление: отвязать записи от ведомости."""
-        self.records.update(statement=None)
-        super().delete(*args, **kwargs)
+        from .services.statement_restore import delete_statement
+
+        delete_statement(self)
 
 
 class FinancialRecord(SoftDeleteModel):

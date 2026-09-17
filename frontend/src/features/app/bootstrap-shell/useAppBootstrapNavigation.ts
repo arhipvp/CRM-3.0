@@ -4,7 +4,10 @@ import { consumePostLoginRedirect, getPostLoginRedirect } from '../../../api';
 import { formatErrorMessage } from '../../../utils/formatErrorMessage';
 
 export interface UseAppBootstrapNavigationArgs {
-  ensureCommissionsDataLoaded: (options?: { force?: boolean }) => Promise<void>;
+  ensureCommissionsDataLoaded: (options?: {
+    force?: boolean;
+    showDeleted?: boolean;
+  }) => Promise<void>;
   ensureFinanceDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureReferenceData: (options?: { force?: boolean }) => Promise<void>;
   ensureSalesChannelsLoaded?: () => Promise<void>;
@@ -57,6 +60,9 @@ export const useAppBootstrapNavigation = ({
     return new URLSearchParams(locationSearch).get('dealId');
   }, [isDealsRoute, locationSearch]);
 
+  const showDeletedStatements =
+    new URLSearchParams(locationSearch).get('showDeletedStatements') === '1';
+
   useEffect(() => {
     if (!pendingPostLoginRedirect) {
       return;
@@ -108,7 +114,7 @@ export const useAppBootstrapNavigation = ({
       return;
     }
     if (isCommissionsRoute) {
-      ensureCommissionsDataLoaded().catch((err) => {
+      ensureCommissionsDataLoaded({ showDeleted: showDeletedStatements }).catch((err) => {
         setError(formatErrorMessage(err, 'Ошибка при загрузке данных ведомостей'));
       });
       return;
@@ -124,6 +130,7 @@ export const useAppBootstrapNavigation = ({
     isAuthenticated,
     isCommissionsRoute,
     isPoliciesRoute,
+    showDeletedStatements,
     setError,
   ]);
 

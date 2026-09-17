@@ -78,6 +78,38 @@ describe('useAppBootstrapNavigation', () => {
     });
   });
 
+  it('restores the deleted statements filter from the URL and follows navigation changes', async () => {
+    const { rerender } = renderHook(
+      ({ search }) =>
+        useAppBootstrapNavigation({
+          ensureCommissionsDataLoaded,
+          ensureFinanceDataLoaded,
+          ensureReferenceData,
+          ensureTasksLoaded,
+          isAuthenticated: true,
+          isClientsRoute: false,
+          isCommissionsRoute: true,
+          isDealsRoute: false,
+          isLoginRoute: false,
+          isPoliciesRoute: false,
+          isTasksRoute: false,
+          locationSearch: search,
+          navigate,
+          refreshPolicies,
+          selectDealById,
+          setError,
+        }),
+      { initialProps: { search: '?showDeletedStatements=1' } },
+    );
+    await waitFor(() =>
+      expect(ensureCommissionsDataLoaded).toHaveBeenLastCalledWith({ showDeleted: true }),
+    );
+    rerender({ search: '' });
+    await waitFor(() =>
+      expect(ensureCommissionsDataLoaded).toHaveBeenLastCalledWith({ showDeleted: false }),
+    );
+  });
+
   it('loads only commissions snapshot on commissions route', async () => {
     renderHook(() =>
       useAppBootstrapNavigation({

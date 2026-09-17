@@ -115,6 +115,8 @@ export const useAppData = () => {
   const dealsRequestRef = useRef(0);
   const dealsAbortControllerRef = useRef<AbortController | null>(null);
   const commissionsRequestRef = useRef(0);
+  const commissionsShowDeletedRef = useRef(false);
+  const statementsMoreRequestRef = useRef<number | null>(null);
   const financeRequestRef = useRef(0);
   const tasksRequestRef = useRef(0);
   const commissionsLoadPromiseRef = useRef<Promise<void> | null>(null);
@@ -555,22 +557,38 @@ export const useAppData = () => {
   }, [refreshDeals]);
 
   const ensureCommissionsDataLoaded = useCallback(
-    async (options?: { force?: boolean }) => {
+    async (options?: { force?: boolean; showDeleted?: boolean }) => {
       const force = options?.force ?? false;
-      if (commissionsDataLoadedRef.current && !force) {
+      const showDeleted = options?.showDeleted ?? commissionsShowDeletedRef.current;
+      const filterChanged = showDeleted !== commissionsShowDeletedRef.current;
+      if (commissionsDataLoadedRef.current && !force && !filterChanged) {
         return;
       }
-      if (commissionsLoadPromiseRef.current) {
+      if (commissionsLoadPromiseRef.current && !filterChanged && !force) {
         return commissionsLoadPromiseRef.current;
       }
+      commissionsShowDeletedRef.current = showDeleted;
       commissionsRequestRef.current += 1;
       const requestId = commissionsRequestRef.current;
+      statementsMoreRequestRef.current = null;
+      setIsLoadingMoreStatements(false);
+      setStatementsHasMore(false);
+      if (filterChanged) {
+        commissionsDataLoadedRef.current = false;
+        setHasCommissionsSnapshotLoaded(false);
+        setStatementsPage(1);
+        setStatementsTotalCount(0);
+        setAppData({ statements: [] });
+      }
       setIsCommissionsDataLoading(true);
       const loadPromise = (async () => {
         try {
           while (commissionsRequestRef.current === requestId) {
             const startedRevision = financeRevisionRef.current;
-            const statementsPageData = await fetchFinanceStatementsWithPagination({ page: 1 });
+            const statementsPageData = await fetchFinanceStatementsWithPagination({
+              page: 1,
+              show_deleted: showDeleted,
+            });
             if (commissionsRequestRef.current !== requestId) {
               return;
             }
@@ -588,9 +606,10 @@ export const useAppData = () => {
             return;
           }
         } catch (err) {
-          if (commissionsRequestRef.current === requestId) {
-            setError(formatErrorMessage(err, 'Ошибка при загрузке данных раздела комиссий'));
+          if (commissionsRequestRef.current !== requestId) {
+            return;
           }
+          setError(formatErrorMessage(err, 'Ошибка при загрузке данных раздела комиссий'));
           throw err;
         } finally {
           if (commissionsRequestRef.current === requestId) {
@@ -606,11 +625,18 @@ export const useAppData = () => {
   );
 
   const loadMoreStatements = useCallback(async () => {
-    if (!statementsHasMore || isLoadingMoreStatements) return;
+    if (!statementsHasMore || isCommissionsDataLoading || statementsMoreRequestRef.current !== null)
+      return;
+    const requestId = commissionsRequestRef.current;
+    statementsMoreRequestRef.current = requestId;
     setIsLoadingMoreStatements(true);
     try {
       const nextPage = statementsPage + 1;
-      const payload = await fetchFinanceStatementsWithPagination({ page: nextPage });
+      const payload = await fetchFinanceStatementsWithPagination({
+        page: nextPage,
+        show_deleted: commissionsShowDeletedRef.current,
+      });
+      if (commissionsRequestRef.current !== requestId) return;
       setAppData({
         statements: [
           ...dataStateRef.current.statements,
@@ -622,10 +648,16 @@ export const useAppData = () => {
       setStatementsPage(nextPage);
       setStatementsTotalCount(payload.count);
       setStatementsHasMore(Boolean(payload.next));
+    } catch (err) {
+      if (commissionsRequestRef.current !== requestId) return;
+      throw err;
     } finally {
-      setIsLoadingMoreStatements(false);
+      if (statementsMoreRequestRef.current === requestId) {
+        statementsMoreRequestRef.current = null;
+        setIsLoadingMoreStatements(false);
+      }
     }
-  }, [isLoadingMoreStatements, setAppData, statementsHasMore, statementsPage]);
+  }, [isCommissionsDataLoading, setAppData, statementsHasMore, statementsPage]);
 
   const ensureFullFinanceSnapshotLoaded = useCallback(
     async (options?: { force?: boolean }) => {
@@ -633,7 +665,7 @@ export const useAppData = () => {
       if (financeDataLoadedRef.current && !force) {
         return;
       }
-      if (financeLoadPromiseRef.current) {
+      if (financeLoadPromiseRef.current && !force) {
         return financeLoadPromiseRef.current;
       }
       financeRequestRef.current += 1;
@@ -641,29 +673,34 @@ export const useAppData = () => {
       setIsFinanceDataLoading(true);
       const loadPromise = (async () => {
         try {
-          const startedRevision = financeRevisionRef.current;
-          const financePage = await fetchFinancePage();
+          while (financeRequestRef.current === requestId) {
+            const startedRevision = financeRevisionRef.current;
+            const financePage = await fetchFinancePage();
+            if (financeRequestRef.current !== requestId) {
+              return;
+            }
+            if (financeRevisionRef.current !== startedRevision) {
+              if (force) continue;
+              return;
+            }
+            setAppData({
+              payments: financePage.payments,
+              financialRecords: financePage.financialRecords,
+            });
+            financeDataLoadedRef.current = true;
+            setHasFinanceSnapshotLoaded(true);
+            return;
+          }
+        } catch (err) {
           if (financeRequestRef.current !== requestId) {
             return;
           }
-          if (financeRevisionRef.current !== startedRevision) {
-            return;
-          }
-          setAppData({
-            payments: financePage.payments,
-            financialRecords: financePage.financialRecords,
-          });
-          financeDataLoadedRef.current = true;
-          setHasFinanceSnapshotLoaded(true);
-        } catch (err) {
-          if (financeRequestRef.current === requestId) {
-            setError(
-              formatErrorMessage(
-                err,
-                '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0444\u0438\u043d\u0430\u043d\u0441\u043e\u0432\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445',
-              ),
-            );
-          }
+          setError(
+            formatErrorMessage(
+              err,
+              '\u041e\u0448\u0438\u0431\u043a\u0430 \u043f\u0440\u0438 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0435 \u0444\u0438\u043d\u0430\u043d\u0441\u043e\u0432\u044b\u0445 \u0434\u0430\u043d\u043d\u044b\u0445',
+            ),
+          );
           throw err;
         } finally {
           if (financeRequestRef.current === requestId) {

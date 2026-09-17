@@ -27,6 +27,9 @@ export const useStatementRecordsController = ({
   const loadStatementRecords = useCallback(
     async (mode: 'reset' | 'more' = 'reset') => {
       if (viewMode !== 'statements' || !selectedStatementId) {
+        requestRef.current += 1;
+        abortControllerRef.current?.abort();
+        setIsStatementRecordsLoadingMore(false);
         setStatementRecords([]);
         setStatementRecordsError(null);
         setIsStatementRecordsLoading(false);

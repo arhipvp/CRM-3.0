@@ -1,5 +1,8 @@
 export interface AppBootstrapShellArgs {
-  ensureCommissionsDataLoaded: (options?: { force?: boolean }) => Promise<void>;
+  ensureCommissionsDataLoaded: (options?: {
+    force?: boolean;
+    showDeleted?: boolean;
+  }) => Promise<void>;
   ensureFinanceDataLoaded: (options?: { force?: boolean }) => Promise<void>;
   ensureReferenceData: (options?: { force?: boolean }) => Promise<void>;
   ensureSalesChannelsLoaded: () => Promise<void>;

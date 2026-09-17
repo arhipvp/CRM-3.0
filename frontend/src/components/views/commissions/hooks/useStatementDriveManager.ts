@@ -100,6 +100,8 @@ export const useStatementDriveManager = ({
 
   useEffect(() => {
     if (viewMode !== 'statements' || !selectedStatement) {
+      driveFilesRequestRef.current += 1;
+      setStatementDriveLoading(false);
       driveFilesAbortControllerRef.current?.abort();
       setStatementDriveFiles([]);
       setStatementDriveError(null);

@@ -18,7 +18,10 @@ export interface CommissionsViewProps {
   currentUser?: User | null;
   isLoading?: boolean;
   hasCommissionsSnapshotLoaded?: boolean;
-  onRefreshStatements?: () => Promise<void>;
+  onRefreshStatements?: (options?: {
+    showDeleted?: boolean;
+    refreshFinance?: boolean;
+  }) => Promise<void>;
   onLoadMoreStatements?: () => Promise<void>;
   statementsTotalCount?: number;
   statementsHasMore?: boolean;

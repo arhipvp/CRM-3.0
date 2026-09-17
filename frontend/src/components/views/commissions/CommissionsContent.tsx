@@ -8,6 +8,7 @@ import { CreateStatementModal } from './CreateStatementModal';
 import { DeleteStatementModal } from './DeleteStatementModal';
 import { EditStatementModal } from './EditStatementModal';
 import { AllRecordsPanel } from './AllRecordsPanel';
+import { RestoreStatementModal, RestoreStatementReport } from './RestoreStatementModal';
 import { PageHeader } from '../../common/layoutPrimitives';
 
 const STATEMENT_TAB_IDS = ['records', 'files'] as const;
@@ -17,12 +18,25 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
     isLoading,
     viewMode,
     setViewMode,
-    statements,
+    statements = [],
     statementsTotalCount,
     onCreateStatement,
     setStatementModalOpen,
     showPaidStatements,
     setShowPaidStatements,
+    showDeletedStatements,
+    setShowDeletedStatements,
+    restoringStatement,
+    setRestoringStatement,
+    restoreName,
+    setRestoreName,
+    restoreError,
+    isRestoringStatement,
+    restoreReport,
+    setRestoreReport,
+    restoreMessage,
+    handleRestoreOpen,
+    handleRestoreSubmit,
     shouldShowStatementsPendingState,
     statementsHasMore,
     isLoadingMoreStatements,
@@ -193,6 +207,15 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                     />
                     Показывать оплаченные ведомости
                   </label>
+                  <label className="flex items-center gap-2 text-xs font-semibold text-slate-500">
+                    <input
+                      type="checkbox"
+                      checked={showDeletedStatements}
+                      onChange={(event) => setShowDeletedStatements(event.target.checked)}
+                      className="check"
+                    />
+                    Показывать удалённые ведомости
+                  </label>
                 </div>
               )}
               {!shouldShowStatementsPendingState && statementsHasMore && (
@@ -225,7 +248,11 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                       : '—';
                     const recordsCount = statement.recordsCount ?? 0;
                     const paidAt = statement.paidAt ? formatDateRu(statement.paidAt) : null;
-                    const statusLabel = statement.paidAt ? 'Выплачена' : 'Черновик';
+                    const statusLabel = statement.deletedAt
+                      ? `Удалена ${formatDateRu(statement.deletedAt)}`
+                      : statement.paidAt
+                        ? 'Выплачена'
+                        : 'Черновик';
                     const typeLabel = statement.statementType === 'income' ? 'Доходы' : 'Расходы';
 
                     return (
@@ -282,6 +309,11 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
               )}
             </div>
 
+            {restoreMessage && (
+              <p role="status" className="px-4 py-3 text-sm text-slate-700">
+                {restoreMessage}
+              </p>
+            )}
             <div className="px-4 py-5 bg-white">
               {shouldShowStatementsPendingState ? (
                 <div className="bg-white px-6 py-10 text-center">
@@ -304,6 +336,9 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                             ? ` · ${normalizeText(selectedStatement.counterparty)}`
                             : ''}
                           {selectedStatementPaidAt ? ` · Выплата ${selectedStatementPaidAt}` : ''}
+                          {selectedStatement.deletedAt
+                            ? ` · ${formatDateRu(selectedStatement.deletedAt)}`
+                            : ''}
                         </p>
                         {selectedStatement.paidAt && (
                           <p className={'ui-status-danger-text-xs'}>
@@ -312,159 +347,171 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                         )}
                       </div>
 
-                      <div className="flex flex-wrap items-center justify-end gap-3">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Button
-                            type="button"
-                            onClick={() => void handleExportStatement()}
-                            disabled={isStatementExporting}
-                            variant="secondary"
-                            title="Сформировать XLSX-файл ведомости и сохранить в Google Drive"
-                          >
-                            {isStatementExporting ? 'Формируем...' : 'Сформировать ведомость'}
-                          </Button>
-                          {onUpdateStatement && (
+                      {selectedStatement.deletedAt ? (
+                        <Button type="button" variant="primary" onClick={handleRestoreOpen}>
+                          Восстановить
+                        </Button>
+                      ) : (
+                        <div className="flex flex-wrap items-center justify-end gap-3">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Button
                               type="button"
-                              onClick={() => handleEditStatementOpen(selectedStatement)}
-                              disabled={isSelectedStatementPaid}
-                              variant="primary"
-                              icon="edit"
-                            >
-                              Редактировать
-                            </Button>
-                          )}
-                          {selectedStatement.paidAt && canReopenStatement && (
-                            <Button
-                              type="button"
-                              onClick={() => void handleReopenStatement()}
-                              disabled={isReopeningStatement}
-                              variant="danger"
-                              icon="close"
-                            >
-                              {isReopeningStatement ? 'Отменяем…' : 'Отменить выплату'}
-                            </Button>
-                          )}
-                          {reopenStatementError && (
-                            <span role="alert" className={'ui-status-danger-text-xs'}>
-                              {reopenStatementError}
-                            </span>
-                          )}
-                          {onDeleteStatement && (
-                            <Button
-                              type="button"
-                              onClick={() => setDeletingStatement(selectedStatement)}
-                              disabled={isSelectedStatementPaid}
-                              variant="danger"
-                              icon="delete"
-                            >
-                              Удалить
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {statementExportError && (
-                      <p className="app-alert app-alert-danger">{statementExportError}</p>
-                    )}
-
-                    <div
-                      role="tablist"
-                      aria-label="Разделы ведомости"
-                      className="app-segmented-control scrollbar-none"
-                    >
-                      {statementTabs.map((tab) => {
-                        const isActive = statementTab === tab.id;
-                        return (
-                          <Button
-                            key={tab.id}
-                            id={`statement-tab-${tab.id}`}
-                            role="tab"
-                            aria-label={tab.label}
-                            aria-selected={isActive}
-                            aria-controls={`statement-tabpanel-${tab.id}`}
-                            tabIndex={isActive ? 0 : -1}
-                            type="button"
-                            onClick={() => setStatementTab(tab.id)}
-                            onKeyDown={(event) =>
-                              handleTabKeyboardNavigation({
-                                event,
-                                tabs: STATEMENT_TAB_IDS,
-                                activeTab: statementTab,
-                                onChange: setStatementTab,
-                                getTabElementId: (tabId) => `statement-tab-${tabId}`,
-                              })
-                            }
-                            className={`app-segmented-control-button min-w-[120px] ${
-                              isActive
-                                ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
-                                : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
-                            }`}
-                          >
-                            <span className="flex items-center justify-center gap-2">
-                              <span className={isActive ? 'font-semibold' : 'font-medium'}>
-                                {tab.label}
-                              </span>
-                              <span className="app-counter" aria-hidden="true">
-                                {tab.count}
-                              </span>
-                            </span>
-                          </Button>
-                        );
-                      })}
-                    </div>
-
-                    <div
-                      role="tabpanel"
-                      id="statement-tabpanel-records"
-                      aria-labelledby="statement-tab-records"
-                      tabIndex={0}
-                      className="outline-none"
-                      hidden={statementTab !== 'records'}
-                    >
-                      {statementRecordsError && (
-                        <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <span>{statementRecordsError}</span>
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                void loadStatementRecords();
-                              }}
+                              onClick={() => void handleExportStatement()}
+                              disabled={isStatementExporting}
                               variant="secondary"
-                              size="sm"
+                              title="Сформировать XLSX-файл ведомости и сохранить в Google Drive"
                             >
-                              Повторить
+                              {isStatementExporting ? 'Формируем...' : 'Сформировать ведомость'}
                             </Button>
+                            {onUpdateStatement && (
+                              <Button
+                                type="button"
+                                onClick={() => handleEditStatementOpen(selectedStatement)}
+                                disabled={isSelectedStatementPaid}
+                                variant="primary"
+                                icon="edit"
+                              >
+                                Редактировать
+                              </Button>
+                            )}
+                            {selectedStatement.paidAt && canReopenStatement && (
+                              <Button
+                                type="button"
+                                onClick={() => void handleReopenStatement()}
+                                disabled={isReopeningStatement}
+                                variant="danger"
+                                icon="close"
+                              >
+                                {isReopeningStatement ? 'Отменяем…' : 'Отменить выплату'}
+                              </Button>
+                            )}
+                            {reopenStatementError && (
+                              <span role="alert" className={'ui-status-danger-text-xs'}>
+                                {reopenStatementError}
+                              </span>
+                            )}
+                            {onDeleteStatement && (
+                              <Button
+                                type="button"
+                                onClick={() => setDeletingStatement(selectedStatement)}
+                                disabled={isSelectedStatementPaid}
+                                variant="danger"
+                                icon="delete"
+                              >
+                                Удалить
+                              </Button>
+                            )}
                           </div>
                         </div>
                       )}
-                      {recordsTable}
-                      {statementRecordsHasMore && (
-                        <div className="mt-4 flex justify-center">
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            size="sm"
-                            disabled={isStatementRecordsLoading || isStatementRecordsLoadingMore}
-                            onClick={() => void loadStatementRecords('more')}
-                          >
-                            {isStatementRecordsLoadingMore ? 'Загружаем...' : 'Показать ещё'}
-                          </Button>
+                    </div>
+
+                    {!selectedStatement.deletedAt && (
+                      <>
+                        {statementExportError && (
+                          <p className="app-alert app-alert-danger">{statementExportError}</p>
+                        )}
+
+                        <div
+                          role="tablist"
+                          aria-label="Разделы ведомости"
+                          className="app-segmented-control scrollbar-none"
+                        >
+                          {statementTabs.map((tab) => {
+                            const isActive = statementTab === tab.id;
+                            return (
+                              <Button
+                                key={tab.id}
+                                id={`statement-tab-${tab.id}`}
+                                role="tab"
+                                aria-label={tab.label}
+                                aria-selected={isActive}
+                                aria-controls={`statement-tabpanel-${tab.id}`}
+                                tabIndex={isActive ? 0 : -1}
+                                type="button"
+                                onClick={() => setStatementTab(tab.id)}
+                                onKeyDown={(event) =>
+                                  handleTabKeyboardNavigation({
+                                    event,
+                                    tabs: STATEMENT_TAB_IDS,
+                                    activeTab: statementTab,
+                                    onChange: setStatementTab,
+                                    getTabElementId: (tabId) => `statement-tab-${tabId}`,
+                                  })
+                                }
+                                className={`app-segmented-control-button min-w-[120px] ${
+                                  isActive
+                                    ? 'border border-[var(--app-border)] bg-white font-semibold text-sky-700 shadow-sm'
+                                    : 'text-slate-600 hover:bg-white/70 hover:text-slate-900'
+                                }`}
+                              >
+                                <span className="flex items-center justify-center gap-2">
+                                  <span className={isActive ? 'font-semibold' : 'font-medium'}>
+                                    {tab.label}
+                                  </span>
+                                  <span className="app-counter" aria-hidden="true">
+                                    {tab.count}
+                                  </span>
+                                </span>
+                              </Button>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                    <div
-                      role="tabpanel"
-                      id="statement-tabpanel-files"
-                      aria-labelledby="statement-tab-files"
-                      tabIndex={0}
-                      className="outline-none"
-                      hidden={statementTab !== 'files'}
-                    >
-                      {statementFilesTab}
-                    </div>
+
+                        <div
+                          role="tabpanel"
+                          id="statement-tabpanel-records"
+                          aria-labelledby="statement-tab-records"
+                          tabIndex={0}
+                          className="outline-none"
+                          hidden={statementTab !== 'records'}
+                        >
+                          {statementRecordsError && (
+                            <div className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <span>{statementRecordsError}</span>
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    void loadStatementRecords();
+                                  }}
+                                  variant="secondary"
+                                  size="sm"
+                                >
+                                  Повторить
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          {recordsTable}
+                          {statementRecordsHasMore && (
+                            <div className="mt-4 flex justify-center">
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                disabled={
+                                  isStatementRecordsLoading || isStatementRecordsLoadingMore
+                                }
+                                onClick={() => void loadStatementRecords('more')}
+                              >
+                                {isStatementRecordsLoadingMore ? 'Загружаем...' : 'Показать ещё'}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <div
+                          role="tabpanel"
+                          id="statement-tabpanel-files"
+                          aria-labelledby="statement-tab-files"
+                          tabIndex={0}
+                          className="outline-none"
+                          hidden={statementTab !== 'files'}
+                        >
+                          {statementFilesTab}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               ) : (
@@ -525,7 +572,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
             isRecordTypeLocked={isRecordTypeLocked}
             targetStatementId={targetStatementId}
             onTargetStatementChange={setTargetStatementId}
-            statements={statements}
+            statements={statements.filter((statement) => !statement.deletedAt)}
             normalizeText={normalizeText}
             shownRecordsCount={allRecords.length}
             totalRecordsCount={allRecordsTotalCount}
@@ -539,6 +586,21 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
         </div>
       </div>
 
+      {restoringStatement && (
+        <RestoreStatementModal
+          name={restoreName}
+          onNameChange={setRestoreName}
+          error={restoreError}
+          busy={isRestoringStatement}
+          onClose={() => {
+            if (!isRestoringStatement) setRestoringStatement(null);
+          }}
+          onSubmit={handleRestoreSubmit}
+        />
+      )}
+      {restoreReport && (
+        <RestoreStatementReport result={restoreReport} onClose={() => setRestoreReport(null)} />
+      )}
       <CreateStatementModal
         isOpen={isStatementModalOpen}
         isSubmitting={isStatementCreating}

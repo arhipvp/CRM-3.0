@@ -457,6 +457,38 @@ export async function deleteFinanceStatement(id: string): Promise<void> {
   await request(`/finance_statements/${id}/`, { method: 'DELETE' });
 }
 
+export interface RestoreFinanceStatementResult {
+  statement: Statement;
+  restored_count: number;
+  restored_record_ids: string[];
+  skipped_records: {
+    id: string;
+    reason: string;
+    message: string;
+    client?: string;
+    deal?: string;
+    policy?: string;
+    description?: string;
+    amount?: string;
+  }[];
+  snapshot_missing: boolean;
+}
+
+export async function restoreFinanceStatement(
+  id: string,
+  name?: string,
+): Promise<RestoreFinanceStatementResult> {
+  const payload = await request<
+    Omit<RestoreFinanceStatementResult, 'statement'> & {
+      statement: Record<string, unknown>;
+    }
+  >(`/finance_statements/${id}/restore/`, {
+    method: 'POST',
+    body: JSON.stringify({ name }),
+  });
+  return { ...payload, statement: mapStatement(payload.statement) };
+}
+
 export async function removeFinanceStatementRecords(
   id: string,
   recordIds: string[],

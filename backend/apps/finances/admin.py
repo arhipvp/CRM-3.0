@@ -192,6 +192,34 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
 class StatementAdmin(SoftDeleteImportExportAdmin):
     resource_class = StatementResource
 
+    @admin.action(description="Восстановить выбранные ведомости")
+    def restore_selected(self, request, queryset):
+        from rest_framework.exceptions import APIException
+
+        from .services.statement_restore import restore_statement
+
+        for statement in queryset.filter(deleted_at__isnull=False):
+            try:
+                restored, report = restore_statement(statement.pk, user=request.user)
+            except APIException as exc:
+                self.message_user(
+                    request, f"{statement.name}: {exc.detail}", level="error"
+                )
+                continue
+            self.message_user(
+                request,
+                f"{restored.name}: восстановлено записей {report['restored_count']}, "
+                f"пропущено {len(report['skipped_records'])}."
+                + (
+                    " Прежний состав не сохранён." if report["snapshot_missing"] else ""
+                ),
+                level=(
+                    "warning"
+                    if report["skipped_records"] or report["snapshot_missing"]
+                    else "success"
+                ),
+            )
+
     list_display = (
         "name",
         "statement_type",

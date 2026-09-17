@@ -607,6 +607,144 @@ describe('useAppData loading strategy', () => {
     expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
   });
 
+  it('passes the deleted filter to every statement page and resets pagination', async () => {
+    const page = { count: 3, next: '/finance_statements/?page=2', previous: null, results: [] };
+    mockedFetchFinanceStatements.mockResolvedValue(page);
+    const { result } = renderHook(() => useAppData());
+
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ showDeleted: true });
+    });
+    await act(async () => {
+      await result.current.loadMoreStatements();
+    });
+    expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(1, {
+      page: 1,
+      show_deleted: true,
+    });
+    expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(2, {
+      page: 2,
+      show_deleted: true,
+    });
+
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ showDeleted: false });
+    });
+    await act(async () => {
+      await result.current.loadMoreStatements();
+    });
+    expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(3, {
+      page: 1,
+      show_deleted: false,
+    });
+    expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(4, {
+      page: 2,
+      show_deleted: false,
+    });
+  });
+
+  it('ignores an old first page when the deleted filter changes during loading', async () => {
+    const oldPage = deferred<Awaited<ReturnType<typeof fetchFinanceStatementsWithPagination>>>();
+    mockedFetchFinanceStatements.mockReturnValueOnce(oldPage.promise);
+    const { result } = renderHook(() => useAppData());
+    let oldLoad: Promise<void> | undefined;
+    await act(async () => {
+      oldLoad = result.current.ensureCommissionsDataLoaded();
+    });
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ showDeleted: true });
+    });
+    await act(async () => {
+      oldPage.resolve({ count: 99, next: '/old', previous: null, results: [] });
+      await oldLoad;
+    });
+    expect(result.current.statementsTotalCount).toBe(0);
+    expect(result.current.statementsHasMore).toBe(false);
+    expect(result.current.isCommissionsDataLoading).toBe(false);
+  });
+
+  it('discards a stale next page and its error after changing the deleted filter', async () => {
+    const oldPage = deferred<Awaited<ReturnType<typeof fetchFinanceStatementsWithPagination>>>();
+    mockedFetchFinanceStatements
+      .mockResolvedValueOnce({ count: 3, next: '/next', previous: null, results: [] })
+      .mockReturnValueOnce(oldPage.promise);
+    const { result } = renderHook(() => useAppData());
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded();
+    });
+    let oldLoad: Promise<void> | undefined;
+    await act(async () => {
+      oldLoad = result.current.loadMoreStatements();
+    });
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ showDeleted: true });
+    });
+    await act(async () => {
+      oldPage.reject(new Error('Old filter request failed'));
+      await oldLoad;
+    });
+    expect(result.current.statementsTotalCount).toBe(0);
+    expect(result.current.statementsHasMore).toBe(false);
+    expect(result.current.isLoadingMoreStatements).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('ignores stale next-page rows after a forced refresh following restoration', async () => {
+    const oldPage = deferred<Awaited<ReturnType<typeof fetchFinanceStatementsWithPagination>>>();
+    mockedFetchFinanceStatements
+      .mockResolvedValueOnce({ count: 3, next: '/next', previous: null, results: [] })
+      .mockReturnValueOnce(oldPage.promise);
+    const { result } = renderHook(() => useAppData());
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ showDeleted: true });
+    });
+    let oldLoad: Promise<void> | undefined;
+    await act(async () => {
+      oldLoad = result.current.loadMoreStatements();
+    });
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded({ force: true });
+    });
+    await act(async () => {
+      oldPage.resolve({
+        count: 99,
+        next: '/old',
+        previous: null,
+        results: [{ id: 'stale' } as never],
+      });
+      await oldLoad;
+    });
+    expect(mockedFetchFinanceStatements).toHaveBeenLastCalledWith({ page: 1, show_deleted: true });
+    expect(result.current.dataState.statements).toEqual([]);
+    expect(result.current.statementsTotalCount).toBe(0);
+    expect(result.current.isLoadingMoreStatements).toBe(false);
+  });
+
+  it('forces a fresh finance request after restoration instead of reusing a pending snapshot', async () => {
+    const oldPayments = deferred<Awaited<ReturnType<typeof fetchPaymentsWithPagination>>>();
+    mockedFetchPaymentsWithPagination.mockReturnValueOnce(oldPayments.promise);
+    const { result } = renderHook(() => useAppData());
+    let oldLoad: Promise<void> | undefined;
+    await act(async () => {
+      oldLoad = result.current.ensureFinanceDataLoaded();
+    });
+    await act(async () => {
+      await result.current.ensureFinanceDataLoaded({ force: true });
+    });
+    expect(mockedFetchPaymentsWithPagination).toHaveBeenCalledTimes(2);
+    await act(async () => {
+      oldPayments.resolve({
+        count: 1,
+        next: null,
+        previous: null,
+        results: [{ id: 'stale-payment' } as never],
+      });
+      await oldLoad;
+    });
+    expect(result.current.dataState.payments).toEqual([]);
+    expect(result.current.hasFinanceSnapshotLoaded).toBe(true);
+  });
+
   it('reuses the same in-flight finance load promise', async () => {
     const paymentsDeferred = deferred<{
       count: number;

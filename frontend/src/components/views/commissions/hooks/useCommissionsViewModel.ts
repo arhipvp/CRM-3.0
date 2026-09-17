@@ -48,20 +48,25 @@ export const useCommissionsViewModel = ({
       : 'Расходы'
     : '';
   const selectedStatementStatusLabel = selectedStatement
-    ? selectedStatement.paidAt
-      ? 'Выплачена'
-      : 'Черновик'
+    ? selectedStatement.deletedAt
+      ? 'Удалена'
+      : selectedStatement.paidAt
+        ? 'Выплачена'
+        : 'Черновик'
     : '';
   const selectedStatementPaidAt = selectedStatement?.paidAt
     ? formatDateRu(selectedStatement.paidAt)
     : null;
 
-  const attachStatement =
+  const candidateAttachStatement =
     viewMode === 'all'
       ? targetStatementId
         ? statementsById.get(targetStatementId)
         : undefined
       : selectedStatement;
+  const attachStatement = candidateAttachStatement?.deletedAt
+    ? undefined
+    : candidateAttachStatement;
   const isAttachStatementPaid = Boolean(attachStatement?.paidAt);
 
   return {

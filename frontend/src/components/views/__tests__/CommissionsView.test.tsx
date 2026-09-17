@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,10 +7,11 @@ import {
   fetchFinancialRecordsWithPagination,
   fetchFinancialRecordsSummary,
   fetchPolicy,
+  restoreFinanceStatement,
   fetchStatementFinancialRecordsWithPagination,
 } from '../../../api';
 import { NotificationProvider } from '../../../contexts/NotificationProvider';
-import type { FinancialRecord, Policy } from '../../../types';
+import type { FinancialRecord, Policy, Statement } from '../../../types';
 import { CommissionsView } from '../CommissionsView';
 
 vi.mock('../../../api', async () => {
@@ -21,6 +22,7 @@ vi.mock('../../../api', async () => {
     fetchFinancialRecordsWithPagination: vi.fn(),
     fetchFinancialRecordsSummary: vi.fn(),
     fetchPolicy: vi.fn(),
+    restoreFinanceStatement: vi.fn(),
   };
 });
 
@@ -406,3 +408,109 @@ describe('CommissionsView', () => {
     expect(onRequestEditPolicy).toHaveBeenCalledWith(fetchedPolicy);
   });
 }, 20000);
+
+const deletedStatement: Statement = {
+  id: 'deleted-1',
+  name: 'Удалённая тестовая',
+  statementType: 'income',
+  status: 'draft',
+  deletedAt: '2026-09-15T12:00:00Z',
+  createdAt: '2026-09-01',
+  updatedAt: '2026-09-15',
+};
+
+function renderDeletedStatement(onRefreshStatements = vi.fn().mockResolvedValue(undefined)) {
+  return render(
+    <MemoryRouter initialEntries={['/?showDeletedStatements=1&statementId=deleted-1']}>
+      <NotificationProvider>
+        <CommissionsView
+          payments={[]}
+          policies={[]}
+          salesChannels={[]}
+          statements={[deletedStatement]}
+          hasCommissionsSnapshotLoaded
+          onRefreshStatements={onRefreshStatements}
+          onCreateStatement={vi.fn()}
+          onUpdateStatement={vi.fn()}
+          onDeleteStatement={vi.fn()}
+        />
+      </NotificationProvider>
+    </MemoryRouter>,
+  );
+}
+
+describe('deleted statements', () => {
+  it('shows only restore action for a deleted card and hides it when the filter is cleared', async () => {
+    const user = userEvent.setup();
+    renderDeletedStatement();
+    expect(screen.getByRole('checkbox', { name: 'Показывать удалённые ведомости' })).toBeChecked();
+    expect(screen.getByRole('button', { name: 'Восстановить' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Редактировать' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Удалить' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Сформировать ведомость' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Файлы' })).not.toBeInTheDocument();
+    expect(mockedFetchStatementFinancialRecords).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('checkbox', { name: 'Показывать удалённые ведомости' }));
+    await waitFor(() => expect(screen.queryAllByText('Удалённая тестовая')).toHaveLength(0));
+  });
+
+  it('keeps name errors in the dialog and refreshes records after successful recovery', async () => {
+    const user = userEvent.setup();
+    const refresh = vi.fn().mockResolvedValue(undefined);
+    vi.mocked(restoreFinanceStatement)
+      .mockRejectedValueOnce(new Error('Название уже занято.'))
+      .mockResolvedValueOnce({
+        statement: { ...deletedStatement, name: 'Новое название', deletedAt: null },
+        restored_count: 1,
+        restored_record_ids: ['record-1'],
+        skipped_records: [],
+        snapshot_missing: false,
+      });
+    renderDeletedStatement(refresh);
+    await user.click(screen.getByRole('button', { name: 'Восстановить' }));
+    const dialog = screen.getByRole('dialog');
+    await user.click(within(dialog).getByRole('button', { name: 'Восстановить' }));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('Название уже занято.');
+    await user.clear(within(dialog).getByLabelText('Название'));
+    await user.type(within(dialog).getByLabelText('Название'), 'Новое название');
+    await user.click(within(dialog).getByRole('button', { name: 'Восстановить' }));
+    await waitFor(() =>
+      expect(restoreFinanceStatement).toHaveBeenLastCalledWith('deleted-1', 'Новое название'),
+    );
+    await waitFor(() => expect(refresh).toHaveBeenCalledWith({ refreshFinance: true }));
+    await waitFor(() =>
+      expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith(
+        'deleted-1',
+        expect.anything(),
+        expect.anything(),
+      ),
+    );
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Редактировать' })).toBeInTheDocument();
+  });
+
+  it('retains the partial restoration report when refreshing data fails', async () => {
+    const user = userEvent.setup();
+    vi.mocked(restoreFinanceStatement).mockResolvedValue({
+      statement: { ...deletedStatement, deletedAt: null },
+      restored_count: 0,
+      restored_record_ids: [],
+      skipped_records: [
+        { id: 'record-2', reason: 'posted', message: 'Уже проведена', client: 'Иванов' },
+      ],
+      snapshot_missing: false,
+    });
+    renderDeletedStatement(vi.fn().mockRejectedValue(new Error('Сеть недоступна')));
+    await user.click(screen.getByRole('button', { name: 'Восстановить' }));
+    await user.click(
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'Восстановить' }),
+    );
+    expect(
+      await screen.findByRole('dialog', { name: 'Результат восстановления ведомости' }),
+    ).toHaveTextContent('record-2');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Иванов');
+    expect(screen.getByRole('dialog')).toHaveTextContent('Уже проведена');
+  });
+});

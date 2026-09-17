@@ -199,7 +199,10 @@ export interface AppRouteLoadingState {
   }) => Promise<void>;
   tasksPage?: number;
   tasksTotalCount?: number;
-  onRefreshCommissionsSnapshot?: () => Promise<void>;
+  onRefreshCommissionsSnapshot?: (options?: {
+    showDeleted?: boolean;
+    refreshFinance?: boolean;
+  }) => Promise<void>;
   onLoadMoreStatements?: () => Promise<void>;
   statementsTotalCount?: number;
   statementsHasMore?: boolean;

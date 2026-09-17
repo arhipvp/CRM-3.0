@@ -811,8 +811,11 @@ export const useAppContentController = () => {
       onRefreshTasks: ensureTasksLoaded,
       tasksPage,
       tasksTotalCount,
-      onRefreshCommissionsSnapshot: async () => {
-        await ensureCommissionsDataLoaded({ force: true });
+      onRefreshCommissionsSnapshot: async (options) => {
+        await ensureCommissionsDataLoaded({ force: true, showDeleted: options?.showDeleted });
+        if (options?.refreshFinance) {
+          await ensureFinanceDataLoaded({ force: true });
+        }
       },
       onLoadMoreStatements: loadMoreStatements,
       statementsTotalCount,
@@ -840,6 +843,7 @@ export const useAppContentController = () => {
       dealsHasMore,
       dealsTotalCount,
       ensureCommissionsDataLoaded,
+      ensureFinanceDataLoaded,
       loadMoreStatements,
       statementsHasMore,
       statementsTotalCount,

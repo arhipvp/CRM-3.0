@@ -39,6 +39,7 @@ from django.db.models import (
 )
 from django.db.models.functions import Cast, Coalesce, NullIf
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.encoding import iri_to_uri
 from django.utils.text import get_valid_filename
@@ -54,7 +55,12 @@ from rest_framework.views import APIView
 
 from .filters import PaymentFilterSet
 from .models import FinancialRecord, Payment, Statement
-from .permissions import get_deal_from_payment, is_admin_user, user_has_deal_access
+from .permissions import (
+    get_deal_from_payment,
+    is_admin_user,
+    parse_bool,
+    user_has_deal_access,
+)
 from .record_filters import apply_financial_record_filters, parse_sales_channel_ids
 from .serializers import (
     FinancialRecordSerializer,
@@ -66,6 +72,7 @@ from .serializers import (
 )
 from .services import build_finance_summary_payload
 from .services.balances import recalculate_payment_paid_balances
+from .services.statement_restore import restore_statement
 from .services.statements import (
     ensure_unique_zip_path,
     normalize_statement_amount,
@@ -95,6 +102,10 @@ class StatementDriveDownloadSerializer(serializers.Serializer):
 
 class StatementMarkPaidSerializer(serializers.Serializer):
     paid_at = serializers.DateField(required=False, allow_null=True)
+
+
+class StatementRestoreSerializer(serializers.Serializer):
+    name = serializers.CharField(max_length=255, required=False, allow_blank=False)
 
 
 class StatementApplyAmountSerializer(serializers.Serializer):
@@ -401,8 +412,16 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        include_deleted = self.action == "list" and parse_bool(
+            self.request.query_params.get("show_deleted")
+        )
+        base = (
+            Statement.objects.with_deleted()
+            if include_deleted
+            else Statement.objects.all()
+        )
         queryset = (
-            Statement.objects.annotate(
+            base.annotate(
                 records_count=Count(
                     "records", filter=Q(records__deleted_at__isnull=True), distinct=True
                 ),
@@ -430,7 +449,26 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
             | build_deal_visibility_q(user, prefix="payment__policy__deal__")
         )
         return queryset.annotate(has_visible_record=Exists(visible_records)).filter(
-            Q(created_by=user) | Q(has_visible_record=True)
+            Q(created_by=user) | Q(deleted_at__isnull=True, has_visible_record=True)
+        )
+
+    @action(detail=True, methods=["post"], url_path="restore")
+    def restore(self, request, *args, **kwargs):
+        serializer = StatementRestoreSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        statement, report = restore_statement(
+            self.kwargs[self.lookup_field],
+            user=request.user,
+            name=serializer.validated_data.get("name"),
+        )
+        self._set_statement_summary(statement)
+        return Response(
+            {
+                "statement": StatementSerializer(
+                    statement, context={"request": request}
+                ).data,
+                **report,
+            }
         )
 
     def perform_create(self, serializer):
@@ -473,7 +511,9 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         return statement
 
     def _locked_statement(self, statement_id):
-        statement = Statement.objects.select_for_update().get(pk=statement_id)
+        statement = get_object_or_404(
+            Statement.objects.select_for_update(), pk=statement_id
+        )
         if not self._can_modify(self.request.user, statement):
             raise PermissionDenied(
                 "Только администратор или владелец может изменять ведомость."
@@ -739,8 +779,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
         if not is_admin_user(request.user):
             raise PermissionDenied("Отменить выплату может только администратор.")
         with transaction.atomic():
-            statement = Statement.objects.select_for_update().get(
-                pk=self.kwargs[self.lookup_field]
+            statement = get_object_or_404(
+                Statement.objects.select_for_update(), pk=self.kwargs[self.lookup_field]
             )
             if not statement.paid_at:
                 raise ValidationError("Ведомость уже является черновиком.")

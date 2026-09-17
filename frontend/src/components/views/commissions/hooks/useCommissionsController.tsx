@@ -2,7 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import type { Statement } from '../../../../types';
-import { fetchPolicy, reopenFinanceStatement } from '../../../../api';
+import {
+  fetchPolicy,
+  reopenFinanceStatement,
+  restoreFinanceStatement,
+  type RestoreFinanceStatementResult,
+} from '../../../../api';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import { useConfirm } from '../../../../hooks/useConfirm';
 import { RecordsTable, type IncomeExpenseRow } from '../RecordsTable';
@@ -11,10 +16,12 @@ import { useAllRecordsController } from './useAllRecordsController';
 import { useCommissionsRows } from './useCommissionsRows';
 import { useCommissionsViewModel } from './useCommissionsViewModel';
 import { useRecordAmountEditing } from './useRecordAmountEditing';
+import { useRestoredStatement } from './useRestoredStatement';
 import { useStatementDriveManager } from './useStatementDriveManager';
 import { useStatementRecordsController } from './useStatementRecordsController';
 import { useStatementRecordsSelection } from './useStatementRecordsSelection';
 import { useStatementsManager } from './useStatementsManager';
+import { MISSING_STATEMENT_SNAPSHOT } from '../statementRestoreUtils';
 
 import type { CommissionsViewProps } from '../commissionsViewTypes';
 
@@ -39,14 +46,14 @@ const normalizeText = (value?: string | null) => {
 export const useCommissionsController = ({
   payments,
   policies,
-  statements,
+  statements: loadedStatements,
   salesChannels,
   currentUser,
   isLoading = false,
   hasCommissionsSnapshotLoaded = false,
   onRefreshStatements,
   onLoadMoreStatements,
-  statementsTotalCount = statements.length,
+  statementsTotalCount = loadedStatements.length,
   statementsHasMore = false,
   isLoadingMoreStatements = false,
   onDealSelect,
@@ -60,8 +67,10 @@ export const useCommissionsController = ({
   onCreateStatement,
   onUpdateStatement,
 }: CommissionsViewProps) => {
+  const { statements, setRestoredStatement } = useRestoredStatement(loadedStatements);
   const navigate = useNavigate();
   const [financeSearchParams, setFinanceSearchParams] = useSearchParams();
+  const financeSearch = financeSearchParams.toString();
   const { confirm, ConfirmDialogRenderer } = useConfirm();
   const [isReopeningStatement, setIsReopeningStatement] = useState(false);
   const [reopenStatementError, setReopenStatementError] = useState<string | null>(null);
@@ -78,6 +87,19 @@ export const useCommissionsController = ({
   );
   const [showPaidStatements, setShowPaidStatements] = useState(
     () => financeSearchParams.get('showPaidStatements') === '1',
+  );
+  const [showDeletedStatements, setShowDeletedStatementsState] = useState(
+    () => financeSearchParams.get('showDeletedStatements') === '1',
+  );
+  const [restoringStatement, setRestoringStatement] = useState<Statement | null>(null);
+  const [restoreName, setRestoreName] = useState('');
+  const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [isRestoringStatement, setIsRestoringStatement] = useState(false);
+  const [restoreReport, setRestoreReport] = useState<RestoreFinanceStatementResult | null>(null);
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  const visibleByDeletion = useMemo(
+    () => statements.filter((statement) => showDeletedStatements || !statement.deletedAt),
+    [statements, showDeletedStatements],
   );
   const [editingPolicyRecordId, setEditingPolicyRecordId] = useState<string | null>(null);
   const [policyEditError, setPolicyEditError] = useState<string | null>(null);
@@ -153,14 +175,23 @@ export const useCommissionsController = ({
     attachStatement,
     isAttachStatementPaid,
   } = useCommissionsViewModel({
-    statements,
+    statements: visibleByDeletion,
     statementsById,
     viewMode,
     targetStatementId,
     initialSelectedStatementId: financeSearchParams.get('statementId'),
   });
+  const setShowDeletedStatements = (value: boolean) => {
+    setShowDeletedStatementsState(value);
+    if (!value && selectedStatement?.deletedAt) {
+      setSelectedStatementId(null);
+    }
+  };
   useEffect(() => {
-    const next = new URLSearchParams(financeSearchParams);
+    if (!showDeletedStatements && selectedStatement?.deletedAt) setSelectedStatementId(null);
+  }, [showDeletedStatements, selectedStatement, setSelectedStatementId]);
+  useEffect(() => {
+    const next = new URLSearchParams(financeSearch);
     if (viewMode === 'all') next.set('financeView', 'all');
     else next.delete('financeView');
     if (selectedStatementId) next.set('statementId', selectedStatementId);
@@ -169,25 +200,30 @@ export const useCommissionsController = ({
     else next.delete('statementTab');
     if (showPaidStatements) next.set('showPaidStatements', '1');
     else next.delete('showPaidStatements');
-    if (next.toString() !== financeSearchParams.toString()) {
+    if (showDeletedStatements) next.set('showDeletedStatements', '1');
+    else next.delete('showDeletedStatements');
+    if (next.toString() !== financeSearch) {
       setFinanceSearchParams(next, { replace: true });
     }
   }, [
-    financeSearchParams,
+    financeSearch,
     selectedStatementId,
     setFinanceSearchParams,
     showPaidStatements,
+    showDeletedStatements,
     statementTab,
     viewMode,
   ]);
 
   useLayoutEffect(() => {
-    setViewMode(financeSearchParams.get('financeView') === 'all' ? 'all' : 'statements');
-    setStatementTab(financeSearchParams.get('statementTab') === 'files' ? 'files' : 'records');
-    setShowPaidStatements(financeSearchParams.get('showPaidStatements') === '1');
-    const statementId = financeSearchParams.get('statementId');
+    const params = new URLSearchParams(financeSearch);
+    setViewMode(params.get('financeView') === 'all' ? 'all' : 'statements');
+    setStatementTab(params.get('statementTab') === 'files' ? 'files' : 'records');
+    setShowPaidStatements(params.get('showPaidStatements') === '1');
+    setShowDeletedStatementsState(params.get('showDeletedStatements') === '1');
+    const statementId = params.get('statementId');
     if (statementId) setSelectedStatementId(statementId);
-  }, [financeSearchParams, setSelectedStatementId]);
+  }, [financeSearch, setSelectedStatementId]);
   const handleReopenStatement = useCallback(async () => {
     if (!selectedStatementId || isReopeningStatement) return;
     const confirmed = await confirm({
@@ -222,7 +258,7 @@ export const useCommissionsController = ({
     getCommentSortIndicator,
     getCommentSortLabel,
   } = useStatementRecordsController({
-    selectedStatementId,
+    selectedStatementId: selectedStatement?.deletedAt ? null : selectedStatementId,
     viewMode,
   });
   const {
@@ -287,7 +323,7 @@ export const useCommissionsController = ({
     handleStatementDriveDelete,
     handleUploadStatementDriveFile,
   } = useStatementDriveManager({
-    selectedStatement,
+    selectedStatement: selectedStatement?.deletedAt ? undefined : selectedStatement,
     statementTab,
     viewMode,
     confirm,
@@ -396,6 +432,7 @@ export const useCommissionsController = ({
     },
     onUpdateStatement: async (statementId, values) => {
       const updated = await onUpdateStatement?.(statementId, values);
+      setRestoredStatement(null);
       await onRefreshStatements?.();
       if (viewMode === 'statements') {
         await loadStatementRecords();
@@ -404,6 +441,7 @@ export const useCommissionsController = ({
     },
     onDeleteStatement: async (statementId) => {
       await onDeleteStatement?.(statementId);
+      setRestoredStatement(null);
       await onRefreshStatements?.();
     },
     confirm,
@@ -413,6 +451,44 @@ export const useCommissionsController = ({
     loadStatementDriveFiles,
     setStatementDriveDownloadMessage,
   });
+
+  const handleRestoreOpen = () => {
+    if (!selectedStatement?.deletedAt) return;
+    setRestoreName(selectedStatement.name);
+    setRestoreError(null);
+    setRestoringStatement(selectedStatement);
+  };
+  const handleRestoreSubmit = async () => {
+    if (!restoringStatement || isRestoringStatement) return;
+    setIsRestoringStatement(true);
+    setRestoreError(null);
+    let result: RestoreFinanceStatementResult;
+    try {
+      result = await restoreFinanceStatement(restoringStatement.id, restoreName.trim());
+    } catch (error) {
+      setRestoreError(formatErrorMessage(error, 'Не удалось восстановить ведомость.'));
+      setIsRestoringStatement(false);
+      return;
+    }
+    setRestoringStatement(null);
+    setRestoredStatement(result.statement);
+    setSelectedStatementId(result.statement.id);
+    setStatementTab('records');
+    setRestoreMessage(
+      result.snapshot_missing ? MISSING_STATEMENT_SNAPSHOT : 'Ведомость восстановлена.',
+    );
+    if (result.skipped_records.length) setRestoreReport(result);
+    try {
+      await onRefreshStatements?.({ refreshFinance: true });
+      await loadAllRecords('reset');
+    } catch (error) {
+      setRestoreMessage(
+        `Ведомость восстановлена. ${formatErrorMessage(error, 'Не удалось обновить данные. Обновите страницу.')}`,
+      );
+    } finally {
+      setIsRestoringStatement(false);
+    }
+  };
 
   // Ведомость считается выплаченной по факту наличия paidAt.
 
@@ -477,9 +553,9 @@ export const useCommissionsController = ({
     { id: 'records' as const, label: 'Записи', count: selectedStatement?.recordsCount ?? 0 },
     { id: 'files' as const, label: 'Файлы', count: sortedStatementDriveFiles.length },
   ];
-  const visibleStatements = showPaidStatements
-    ? statements
-    : statements.filter((statement) => !statement.paidAt);
+  const visibleStatements = visibleByDeletion.filter(
+    (statement) => showPaidStatements || !statement.paidAt,
+  );
   const hasAnyFinanceData = statements.length > 0;
   const shouldShowStatementsPendingState =
     viewMode === 'statements' && !hasCommissionsSnapshotLoaded && (isLoading || hasAnyFinanceData);
@@ -530,6 +606,19 @@ export const useCommissionsController = ({
     setStatementModalOpen,
     showPaidStatements,
     setShowPaidStatements,
+    showDeletedStatements,
+    setShowDeletedStatements,
+    restoringStatement,
+    setRestoringStatement,
+    restoreName,
+    setRestoreName,
+    restoreError,
+    isRestoringStatement,
+    restoreReport,
+    setRestoreReport,
+    restoreMessage,
+    handleRestoreOpen,
+    handleRestoreSubmit,
     shouldShowStatementsPendingState,
     statementsHasMore,
     isLoadingMoreStatements,
