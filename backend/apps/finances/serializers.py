@@ -347,7 +347,9 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         saves every field on the serializer's old instance. Reloading under a
         row lock preserves a relation attached by a concurrent restoration.
         """
-        locked_instance = FinancialRecord.objects.select_for_update().get(pk=instance.pk)
+        locked_instance = FinancialRecord.objects.select_for_update().get(
+            pk=instance.pk
+        )
         return super().update(locked_instance, validated_data)
 
 

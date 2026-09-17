@@ -279,9 +279,15 @@ class StatementRestoreConcurrencyTests(TransactionTestCase):
         client = Client.objects.create(name="Concurrent client")
         deal = Deal.objects.create(title="Concurrent deal", client=client, seller=owner)
         payment = Payment.objects.create(deal=deal, amount=100)
-        deleted = Statement.objects.create(name="Restore", statement_type="income", created_by=owner)
-        other = Statement.objects.create(name="Attach", statement_type="income", created_by=owner)
-        record = FinancialRecord.objects.create(payment=payment, amount=10, statement=deleted)
+        deleted = Statement.objects.create(
+            name="Restore", statement_type="income", created_by=owner
+        )
+        other = Statement.objects.create(
+            name="Attach", statement_type="income", created_by=owner
+        )
+        record = FinancialRecord.objects.create(
+            payment=payment, amount=10, statement=deleted
+        )
         deleted.delete()
         barrier = Barrier(2)
 
@@ -302,13 +308,17 @@ class StatementRestoreConcurrencyTests(TransactionTestCase):
                 close_old_connections()
 
         with ThreadPoolExecutor(max_workers=2) as executor:
-            restore_result, attach_result = list(executor.map(perform, ["restore", "attach-records"]))
+            restore_result, attach_result = list(
+                executor.map(perform, ["restore", "attach-records"])
+            )
         self.assertEqual(restore_result[0], 200)
         record.refresh_from_db()
         if attach_result[0] == 200:
             self.assertEqual(record.statement_id, other.pk)
             self.assertEqual(restore_result[1]["restored_count"], 0)
-            self.assertEqual(restore_result[1]["skipped_records"][0]["reason"], "already_assigned")
+            self.assertEqual(
+                restore_result[1]["skipped_records"][0]["reason"], "already_assigned"
+            )
         else:
             self.assertEqual(attach_result[0], 400)
             self.assertEqual(record.statement_id, deleted.pk)
