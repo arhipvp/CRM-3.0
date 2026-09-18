@@ -32,6 +32,7 @@ type AddNotification = NotificationContextType['addNotification'];
 type ClientFormValues = {
   name: string;
   isCounterparty?: boolean;
+  referredBy?: string | null;
   phone?: string;
   email?: string | null;
   birthDate?: string | null;
@@ -173,7 +174,13 @@ export const useClientActions = ({
     try {
       await deleteClient(clientDeleteTarget.id);
       updateAppData((prev) => ({
-        clients: prev.clients.filter((client) => client.id !== clientDeleteTarget.id),
+        clients: prev.clients
+          .filter((client) => client.id !== clientDeleteTarget.id)
+          .map((client) =>
+            client.referredBy === clientDeleteTarget.id
+              ? { ...client, referredByDeleted: true }
+              : client,
+          ),
       }));
       addNotification('Клиент удалён', 'success', 4000);
       setClientDeleteTarget(null);
@@ -307,7 +314,18 @@ export const useClientActions = ({
       updateAppData((prev) => ({
         clients: prev.clients
           .filter((client) => !mergedIds.has(client.id))
-          .map((client) => (client.id === result.targetClient.id ? result.targetClient : client)),
+          .map((client) => {
+            if (client.id === result.targetClient.id) return result.targetClient;
+            if (client.referredBy && mergedIds.has(client.referredBy)) {
+              return {
+                ...client,
+                referredBy: result.targetClient.id,
+                referredByName: result.targetClient.name,
+                referredByDeleted: Boolean(result.targetClient.deletedAt),
+              };
+            }
+            return client;
+          }),
         deals: prev.deals.map((deal) =>
           mergedIds.has(deal.clientId)
             ? {

@@ -51,6 +51,7 @@ type AppOverlayShellProps = {
   handleUpdateClient: (values: {
     name: string;
     isCounterparty?: boolean;
+    referredBy?: string | null;
     phone?: string;
     email?: string | null;
     birthDate?: string | null;
@@ -169,9 +170,14 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
     {editingClient && (
       <Modal title="Редактировать клиента" onClose={onCloseEditClient}>
         <ClientForm
+          clients={appModalsProps.clients}
           initial={{
+            id: editingClient.id,
             name: editingClient.name,
             isCounterparty: editingClient.isCounterparty,
+            referredBy: editingClient.referredBy,
+            referredByName: editingClient.referredByName,
+            referredByDeleted: editingClient.referredByDeleted,
             phone: editingClient.phone ?? '',
             email: editingClient.email ?? '',
             birthDate: editingClient.birthDate ?? '',

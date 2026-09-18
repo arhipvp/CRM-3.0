@@ -397,7 +397,30 @@ class ClientMergeService:
                 return
             raise
 
+    def resolve_referred_by(self, *, lock: bool = False):
+        clients = Client.objects.with_deleted().filter(
+            pk__in=[self.target_client.pk, *[c.pk for c in self.source_clients]]
+        )
+        if lock:
+            clients = clients.select_for_update()
+        referrer_ids = {
+            client.referred_by_id for client in clients if client.referred_by_id
+        }
+        if len(referrer_ids) > 1:
+            raise ValueError(
+                "У объединяемых клиентов разные значения «Клиент от…». "
+                "Выберите одного рекомендателя перед объединением."
+            )
+        referred_by_id = next(iter(referrer_ids), None)
+        if referred_by_id in {
+            self.target_client.pk,
+            *[c.pk for c in self.source_clients],
+        }:
+            return None
+        return referred_by_id
+
     def merge(self, *, sync_drive: bool = True) -> dict:
+        self.resolve_referred_by()
         self._apply_field_overrides()
 
         deal_manager = self._deal_manager()
@@ -418,6 +441,7 @@ class ClientMergeService:
 
         merged_ids: list[str] = []
         with transaction.atomic():
+            self.target_client.referred_by_id = self.resolve_referred_by(lock=True)
             self.target_client.save()
 
             for source in self.source_clients:
@@ -456,6 +480,10 @@ class ClientMergeService:
                     source._audit_actor = self.actor
                 source.delete()
                 merged_ids.append(str(source.id))
+
+            Client.objects.with_deleted().filter(
+                referred_by_id__in=[source.pk for source in self.source_clients]
+            ).exclude(pk=self.target_client.pk).update(referred_by=self.target_client)
 
         return {
             "target_client": self.target_client,
@@ -498,6 +526,9 @@ class ClientMergeSessionService:
         field_overrides: dict,
         preview_snapshot_id: str = "",
     ) -> ClientMergeSession:
+        ClientMergeService(
+            target_client=target_client, source_clients=source_clients
+        ).resolve_referred_by()
         session = ClientMergeSession(
             target_client_id=target_client.id,
             source_client_ids=[str(client.id) for client in source_clients],

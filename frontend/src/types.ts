@@ -34,6 +34,10 @@ export interface Client {
   id: string;
   name: string;
   isCounterparty?: boolean;
+  referredBy?: string | null;
+  referredByName?: string | null;
+  referredByDeleted?: boolean;
+  deletedAt?: string | null;
   phone?: string;
   email?: string | null;
   birthDate?: string | null;

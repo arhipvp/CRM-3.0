@@ -5,11 +5,32 @@ from .models import Client
 
 class ClientSerializer(serializers.ModelSerializer):
     deal_count = serializers.IntegerField(read_only=True)
+    referred_by = serializers.PrimaryKeyRelatedField(
+        queryset=Client.objects.with_deleted(), required=False, allow_null=True
+    )
+    referred_by_name = serializers.CharField(
+        source="referred_by.name", read_only=True, default=None
+    )
+    referred_by_deleted = serializers.SerializerMethodField()
     email = serializers.EmailField(
         required=False,
         allow_blank=True,
         allow_null=True,
     )
+
+    def get_referred_by_deleted(self, obj):
+        return bool(obj.referred_by_id and obj.referred_by.deleted_at)
+
+    def validate_referred_by(self, value):
+        if value is None:
+            return value
+        if self.instance and value.pk == self.instance.pk:
+            raise serializers.ValidationError("Нельзя выбрать самого клиента.")
+        if value.deleted_at and (
+            not self.instance or self.instance.referred_by_id != value.pk
+        ):
+            raise serializers.ValidationError("Удалённого клиента нельзя выбрать.")
+        return value
 
     class Meta:
         model = Client

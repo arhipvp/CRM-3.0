@@ -70,6 +70,13 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Client.objects.alive().order_by("-created_at")
+        if getattr(self, "action", None) in {
+            "list",
+            "retrieve",
+            "partial_update",
+            "update",
+        }:
+            queryset = queryset.select_related("referred_by")
         if getattr(self, "action", None) == "list":
             queryset = queryset.annotate(
                 deal_count=Count(
@@ -561,20 +568,16 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     def _can_update_counterparty_flag(self, user, client: Client, data) -> bool:
         if not user or not user.is_authenticated:
             return False
-        if "is_counterparty" not in data:
+        allowed_fields = {"is_counterparty", "referred_by"}
+        if not allowed_fields.intersection(data):
             return False
         if not Deal.objects.alive().filter(client=client, seller_id=user.id).exists():
             return False
 
-        unchanged_fields = {
-            "name": client.name,
-            "phone": client.phone,
-            "email": client.email,
-            "birth_date": client.birth_date.isoformat() if client.birth_date else None,
-            "notes": client.notes,
-        }
-        for field, current_value in unchanged_fields.items():
-            if field in data and data.get(field) != current_value:
+        serializer = self.get_serializer(client, data=data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        for field, value in serializer.validated_data.items():
+            if field not in allowed_fields and value != getattr(client, field):
                 return False
         return True
 

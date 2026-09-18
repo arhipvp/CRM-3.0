@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ComponentProps } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -9,7 +10,13 @@ import type { Client, FinancialRecord, Payment, Policy, User } from '../../../ty
 
 const users: User[] = [];
 
-const DealClientFlowHarness = ({ onDealSubmit }: { onDealSubmit: (clientId: string) => void }) => {
+const DealClientFlowHarness = ({
+  onDealSubmit,
+  overrides,
+}: {
+  onDealSubmit: (clientId: string) => void;
+  overrides?: Partial<ComponentProps<typeof AppModals>>;
+}) => {
   const [modal, setModal] = useState<'deal' | 'client' | null>('deal');
   const [isClientModalOverlayOpen, setClientModalOverlayOpen] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
@@ -64,11 +71,34 @@ const DealClientFlowHarness = ({ onDealSubmit }: { onDealSubmit: (clientId: stri
       financialRecords={[]}
       setEditingQuote={vi.fn()}
       confirm={vi.fn()}
+      {...overrides}
     />
   );
 };
 
 describe('AppModals deal client flow', () => {
+  it('gates the policy form on client loading and offers an explicit retry', () => {
+    const retry = vi.fn();
+    const overrides = { modal: null, policyDealId: 'deal-1', retryPolicyClientLoad: retry };
+    const { rerender } = render(
+      <DealClientFlowHarness
+        onDealSubmit={vi.fn()}
+        overrides={{ ...overrides, isPolicyClientLoading: true }}
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Загрузка клиента сделки');
+    expect(screen.queryByRole('button', { name: 'Создать полис' })).not.toBeInTheDocument();
+    rerender(
+      <DealClientFlowHarness
+        onDealSubmit={vi.fn()}
+        overrides={{ ...overrides, policyClientError: 'Ошибка сети' }}
+      />,
+    );
+    expect(screen.getByRole('alert')).toHaveTextContent('Ошибка сети');
+    fireEvent.click(screen.getByRole('button', { name: 'Повторить загрузку' }));
+    expect(retry).toHaveBeenCalledOnce();
+  });
+
   it('selects a client created from the deal form and submits its id', async () => {
     const onDealSubmit = vi.fn();
     render(<DealClientFlowHarness onDealSubmit={onDealSubmit} />);

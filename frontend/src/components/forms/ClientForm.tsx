@@ -1,14 +1,22 @@
 import React, { useState } from 'react';
+import type { Client } from '../../types';
+import { useClientLookup } from '../../hooks/useClientLookup';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
+import { Combobox } from '../common/forms/Combobox';
 import { DateInput } from '../common/forms/DateInput';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
 
 interface ClientFormProps {
+  clients?: Client[];
   initial?: {
+    id?: string;
     name: string;
     isCounterparty?: boolean;
+    referredBy?: string | null;
+    referredByName?: string | null;
+    referredByDeleted?: boolean;
     phone?: string;
     email?: string;
     birthDate?: string | null;
@@ -17,6 +25,7 @@ interface ClientFormProps {
   onSubmit: (data: {
     name: string;
     isCounterparty?: boolean;
+    referredBy?: string | null;
     phone?: string;
     email?: string | null;
     birthDate?: string | null;
@@ -27,11 +36,21 @@ interface ClientFormProps {
 
 export const ClientForm: React.FC<ClientFormProps> = ({
   initial,
+  clients = [],
   onSubmit,
   submitLabel = 'Сохранить',
 }) => {
   const [name, setName] = useState(initial?.name ?? '');
   const [isCounterparty, setIsCounterparty] = useState(initial?.isCounterparty ?? false);
+  const [referredBy, setReferredBy] = useState(initial?.referredBy ?? null);
+  const [referrerQuery, setReferrerQuery] = useState(initial?.referredByName ?? '');
+  const [showReferrers, setShowReferrers] = useState(false);
+  const referrerCandidates = useClientLookup(referrerQuery, clients).filter(
+    (client) =>
+      client.id !== initial?.id &&
+      !client.deletedAt &&
+      client.name.toLocaleLowerCase().includes(referrerQuery.trim().toLocaleLowerCase()),
+  );
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
@@ -45,12 +64,17 @@ export const ClientForm: React.FC<ClientFormProps> = ({
       setError('Имя клиента обязательно.');
       return;
     }
+    if (referrerQuery.trim() && !referredBy) {
+      setError('Выберите рекомендателя из списка или очистите поле «Клиент от…».');
+      return;
+    }
     setError(null);
     setSubmitting(true);
     try {
       await onSubmit({
         name: name.trim(),
         isCounterparty,
+        referredBy,
         phone: phone.trim() || undefined,
         email: email.trim() || null,
         birthDate: birthDate || null,
@@ -107,6 +131,49 @@ export const ClientForm: React.FC<ClientFormProps> = ({
           />
           <span>Клиент является контрагентом</span>
         </label>
+      </FormField>
+
+      <FormField label="Клиент от…" htmlFor="client-referrer">
+        <div className="flex items-center gap-2">
+          <Combobox
+            id="client-referrer"
+            value={referrerQuery}
+            options={referrerCandidates.slice(0, 20)}
+            isOpen={showReferrers}
+            onOpen={() => setShowReferrers(true)}
+            onClose={() => setShowReferrers(false)}
+            onChange={(value) => {
+              setReferrerQuery(value);
+              setReferredBy(null);
+            }}
+            onSelect={(client) => {
+              setReferredBy(client.id);
+              setReferrerQuery(client.name);
+              setShowReferrers(false);
+            }}
+            getOptionKey={(client) => client.id}
+            getOptionLabel={(client) => client.name}
+            placeholder="Начните вводить имя рекомендателя"
+            emptyMessage="Клиент не найден"
+          />
+          {(referredBy || referrerQuery) && (
+            <button
+              type="button"
+              className="text-sm text-slate-600 hover:text-slate-900"
+              onClick={() => {
+                setReferredBy(null);
+                setReferrerQuery('');
+              }}
+            >
+              Очистить рекомендателя
+            </button>
+          )}
+        </div>
+        {referredBy && referredBy === initial?.referredBy && initial.referredByDeleted && (
+          <p className="mt-2 text-sm text-amber-700">
+            Рекомендатель удалён. Вознаграждение по новым полисам не создаётся.
+          </p>
+        )}
       </FormField>
 
       <FormField label="Дата рождения">

@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapDeal, mapDealTimelineEvent, mapTask } from '../mappers';
+import { mapClient, mapDeal, mapDealTimelineEvent, mapTask } from '../mappers';
+
+describe('mapClient', () => {
+  it('maps referrer identity and deletion status independently from the loaded client list', () => {
+    expect(
+      mapClient({
+        id: 'client',
+        name: 'Клиент',
+        referred_by: 'referrer',
+        referred_by_name: 'Иван',
+        referred_by_deleted: true,
+      }),
+    ).toMatchObject({ referredBy: 'referrer', referredByName: 'Иван', referredByDeleted: true });
+  });
+});
 
 describe('mapTask', () => {
   it('maps completion comment from API payload', () => {

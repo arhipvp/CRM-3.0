@@ -103,14 +103,17 @@ export const normalizeCreateFormPayments = ({
   defaultCounterparty?: string;
   executorName?: string | null;
 }) =>
-  payments.map((payment) => ({
-    ...payment,
-    incomes: payment.incomes ?? [],
-    expenses:
-      payment.expenses && payment.expenses.length > 0
-        ? payment.expenses
-        : buildDefaultPaymentExpenses(defaultCounterparty, executorName),
-  }));
+  payments.map((payment) => {
+    const expenses = payment.expenses?.length
+      ? [...payment.expenses]
+      : buildDefaultPaymentExpenses(defaultCounterparty, executorName);
+    for (const expense of buildDefaultPaymentExpenses(defaultCounterparty)) {
+      if (!expenses.some((existing) => existing.note?.trim() === expense.note)) {
+        expenses.push(expense);
+      }
+    }
+    return { ...payment, incomes: payment.incomes ?? [], expenses };
+  });
 
 export const buildInitialPolicyFormSnapshot = ({
   initialValues,
@@ -138,7 +141,10 @@ export const buildInitialPolicyFormSnapshot = ({
           : '0',
       officialDealer: initialValues.officialDealer ?? null,
       gap: initialValues.gap ?? null,
-      counterparty: initialValues.counterparty ?? '',
+      counterparty:
+        (isEditing
+          ? initialValues.counterparty
+          : (defaultCounterparty ?? initialValues.counterparty)) ?? '',
       note: initialValues.note ?? '',
       salesChannelId: initialValues.salesChannelId ?? '',
       startDate: initialValues.startDate ?? '',

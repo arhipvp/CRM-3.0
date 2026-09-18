@@ -46,6 +46,52 @@ const renderForm = (
   );
 
 describe('AddPolicyForm', () => {
+  it('uses the deal referrer for recognized payments without losing or duplicating expenses', async () => {
+    const expense = { amount: '250', note: 'Расход контрагенту Иванов' };
+    renderForm(
+      {
+        ...buildInitialValues([
+          {
+            amount: '1000',
+            incomes: [],
+            expenses: [expense, { amount: '10', note: 'Другой расход' }],
+          },
+          { amount: '2000', incomes: [], expenses: [] },
+        ]),
+        counterparty: 'Страхователь из документа',
+      },
+      { isEditing: false, defaultCounterparty: 'Иванов' },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findByDisplayValue('Иванов')).toBeInTheDocument();
+    const cards = await screen.findAllByTestId('policy-finance-payment-card');
+    expect(within(cards[0]).getAllByDisplayValue('Расход контрагенту Иванов')).toHaveLength(1);
+    expect(within(cards[0]).getByDisplayValue('250')).toBeInTheDocument();
+    expect(within(cards[0]).getByDisplayValue('Другой расход')).toBeInTheDocument();
+    fireEvent.click(within(cards[1]).getByRole('button', { name: 'Развернуть' }));
+    expect(within(cards[1]).getAllByDisplayValue('Расход контрагенту Иванов')).toHaveLength(1);
+  });
+
+  it('preserves historical counterparty and expenses when editing despite a new default', async () => {
+    renderForm(
+      {
+        ...buildInitialValues([
+          {
+            amount: '1000',
+            incomes: [],
+            expenses: [{ amount: '300', note: 'Расход контрагенту Старый' }],
+          },
+        ]),
+        counterparty: 'Старый',
+      },
+      { defaultCounterparty: 'Новый' },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findByDisplayValue('Старый')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Расход контрагенту Старый')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Расход контрагенту Новый')).not.toBeInTheDocument();
+  });
+
   it('keeps actual date and current step when edit form rerenders from dirty state', async () => {
     const DirtyRerenderHarness = () => {
       const [isDirty, setIsDirty] = React.useState(false);

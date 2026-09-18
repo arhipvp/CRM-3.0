@@ -65,6 +65,7 @@ interface AppModalsProps {
   handleAddClient: (data: {
     name: string;
     isCounterparty?: boolean;
+    referredBy?: string | null;
     phone?: string;
     birthDate?: string | null;
     notes?: string | null;
@@ -80,6 +81,9 @@ interface AppModalsProps {
   handleUpdateQuote: (values: QuoteFormValues) => Promise<void>;
   policyDealId: string | null;
   policyDefaultCounterparty?: string;
+  isPolicyClientLoading?: boolean;
+  policyClientError?: string | null;
+  retryPolicyClientLoad?: () => void;
   closePolicyModal: () => void;
   policyPrefill: PolicyPrefill | null;
   editingPolicy: Policy | null;
@@ -129,6 +133,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
   handleUpdateQuote,
   policyDealId,
   policyDefaultCounterparty,
+  isPolicyClientLoading,
+  policyClientError,
+  retryPolicyClientLoad,
   closePolicyModal,
   policyPrefill,
   editingPolicy,
@@ -217,7 +224,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
       <>
         {modal === 'client' && (
           <FormModal isOpen title="Новый клиент" onClose={closeClientModal}>
-            <ClientForm onSubmit={handleAddClient} />
+            <ClientForm clients={clients} onSubmit={handleAddClient} />
           </FormModal>
         )}
 
@@ -282,22 +289,37 @@ export const AppModals: React.FC<AppModalsProps> = ({
             bodyClassName="min-h-0 flex-1 overflow-hidden p-0"
             bodyScrollable={false}
           >
-            <AddPolicyForm
-              salesChannels={salesChannels}
-              initialValues={policyPrefill?.values}
-              isEditing={false}
-              initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
-              initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
-              defaultCounterparty={policyDefaultCounterparty}
-              executorName={policyDealExecutorName}
-              clients={clients}
-              onRequestAddClient={() => openClientModal()}
-              onDirtyChange={setIsAddPolicyDirty}
-              onSubmit={(values) => handleAddPolicy(policyDealId, values)}
-              onCancel={() => {
-                void requestClosePolicyModal();
-              }}
-            />
+            {isPolicyClientLoading ? (
+              <div className="p-6 text-sm text-slate-500" role="status">
+                Загрузка клиента сделки...
+              </div>
+            ) : policyClientError ? (
+              <div className="space-y-3 p-6">
+                <p role="alert" className="text-sm text-rose-600">
+                  {policyClientError}
+                </p>
+                <button type="button" className="btn btn-secondary" onClick={retryPolicyClientLoad}>
+                  Повторить загрузку
+                </button>
+              </div>
+            ) : (
+              <AddPolicyForm
+                salesChannels={salesChannels}
+                initialValues={policyPrefill?.values}
+                isEditing={false}
+                initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
+                initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+                defaultCounterparty={policyDefaultCounterparty}
+                executorName={policyDealExecutorName}
+                clients={clients}
+                onRequestAddClient={() => openClientModal()}
+                onDirtyChange={setIsAddPolicyDirty}
+                onSubmit={(values) => handleAddPolicy(policyDealId, values)}
+                onCancel={() => {
+                  void requestClosePolicyModal();
+                }}
+              />
+            )}
           </FormModal>
         )}
 
@@ -365,7 +387,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
             onClose={closeClientModal}
             zIndex={APP_OVERLAY_MODAL_Z_INDEX}
           >
-            <ClientForm onSubmit={handleAddClient} />
+            <ClientForm clients={clients} onSubmit={handleAddClient} />
           </FormModal>
         )}
       </>

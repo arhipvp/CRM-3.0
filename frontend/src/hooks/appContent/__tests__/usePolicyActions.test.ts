@@ -1,4 +1,4 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { usePolicyActions } from '../usePolicyActions';
@@ -36,6 +36,7 @@ vi.mock('../../../api', () => {
     deletePayment: vi.fn(),
     deletePolicy: vi.fn(),
     fetchDeal: vi.fn(),
+    fetchClientById: vi.fn(),
     fetchPayments: vi.fn(),
     movePolicy: vi.fn(),
     updateFinancialRecord: vi.fn(),
@@ -54,6 +55,7 @@ import {
   deletePolicy,
   deleteFinancialRecord,
   fetchPayments,
+  fetchClientById,
   movePolicy,
   updatePayment as updatePaymentApi,
   updatePolicyDraft,
@@ -427,7 +429,20 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
 });
 
 describe('usePolicyActions counterparty defaults', () => {
-  it('uses deal client as default counterparty only when client is marked as counterparty', () => {
+  beforeEach(() => vi.resetAllMocks());
+
+  const dealClient: Client = {
+    id: 'client-1',
+    name: 'ООО Ромашка',
+    createdAt: '',
+    updatedAt: '',
+    referredBy: 'referrer-1',
+    referredByName: 'Иванов',
+    referredByDeleted: false,
+  };
+
+  it('uses deal client as default counterparty with priority over referrer', async () => {
+    vi.mocked(fetchClientById).mockResolvedValue({ ...dealClient, isCounterparty: true });
     const deal = createDeal({
       id: 'deal-1',
       clientId: 'client-1',
@@ -454,7 +469,98 @@ describe('usePolicyActions counterparty defaults', () => {
       result.current.handleRequestAddPolicy(deal.id);
     });
 
-    expect(result.current.policyDefaultCounterparty).toBe('ООО Ромашка');
+    await waitFor(() => expect(result.current.policyDefaultCounterparty).toBe('ООО Ромашка'));
     expect(result.current.policyDealExecutorName).toBe('Alisa');
+  });
+
+  it('loads the current deal client even when neither client nor referrer is cached', async () => {
+    vi.mocked(fetchClientById).mockResolvedValue(dealClient);
+    const { result } = renderHook(() => usePolicyActions(createParams().params));
+    act(() => result.current.handleRequestAddPolicy('deal-1'));
+    expect(result.current.isPolicyClientLoading).toBe(true);
+    await waitFor(() => expect(result.current.policyDefaultCounterparty).toBe('Иванов'));
+    expect(fetchClientById).toHaveBeenCalledWith(
+      'client-1',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
+  it.each([
+    { ...dealClient, referredByDeleted: true },
+    { ...dealClient, referredBy: null, referredByName: null },
+  ])('does not reward a missing or deleted referrer', async (client) => {
+    vi.mocked(fetchClientById).mockResolvedValue(client);
+    const { result } = renderHook(() => usePolicyActions(createParams().params));
+    act(() => result.current.handleRequestAddPolicy('deal-1'));
+    await waitFor(() => expect(result.current.isPolicyClientLoading).toBe(false));
+    expect(result.current.policyDefaultCounterparty).toBeUndefined();
+  });
+
+  it('keeps recognition data on a failed load and retries using the deal client, not the insured', async () => {
+    vi.mocked(fetchClientById)
+      .mockRejectedValueOnce(new Error('Ошибка сети'))
+      .mockResolvedValueOnce(dealClient);
+    const { result } = renderHook(() =>
+      usePolicyActions({
+        ...createParams().params,
+        clients: [{ ...dealClient, id: 'insured-1', name: 'Страхователь', isCounterparty: true }],
+      }),
+    );
+    act(() =>
+      result.current.handlePolicyDraftReady(
+        'deal-1',
+        {
+          policy: { number: 'RECOGNIZED', client_name: 'Страхователь' },
+          payments: [{ amount: '1000' }, { amount: '2000' }],
+        },
+        null,
+        'file-1',
+      ),
+    );
+    await waitFor(() => expect(result.current.policyClientError).toBe('Ошибка сети'));
+    expect(result.current.policyPrefill?.values.clientId).toBe('insured-1');
+    act(() => result.current.retryPolicyClientLoad());
+    await waitFor(() => expect(result.current.policyDefaultCounterparty).toBe('Иванов'));
+    expect(result.current.policyClientError).toBeNull();
+    expect(result.current.policyPrefill?.values.number).toBe('RECOGNIZED');
+    expect(result.current.policyPrefill?.values.payments).toHaveLength(2);
+    expect(fetchClientById).toHaveBeenLastCalledWith('client-1', expect.any(Object));
+  });
+
+  it('ignores a late client response after closing the form', async () => {
+    let resolveClient!: (client: Client) => void;
+    vi.mocked(fetchClientById).mockReturnValue(
+      new Promise((resolve) => {
+        resolveClient = resolve;
+      }),
+    );
+    const { result } = renderHook(() => usePolicyActions(createParams().params));
+    act(() => result.current.handleRequestAddPolicy('deal-1'));
+    act(() => result.current.closePolicyModal());
+    await act(async () => resolveClient(dealClient));
+    expect(result.current.policyDealId).toBeNull();
+    expect(result.current.policyDefaultCounterparty).toBeUndefined();
+  });
+
+  it('keeps the open form stable across background deal refreshes and reloads on next opening', async () => {
+    vi.mocked(fetchClientById).mockResolvedValue(dealClient);
+    const params = createParams().params;
+    const { result, rerender } = renderHook((props) => usePolicyActions(props), {
+      initialProps: params,
+    });
+    act(() => result.current.handleRequestAddPolicy('deal-1'));
+    await waitFor(() => expect(result.current.policyDefaultCounterparty).toBe('Иванов'));
+    rerender({
+      ...params,
+      dealsById: new Map([['deal-1', createDeal({ clientId: 'new-client' })]]),
+    });
+    expect(fetchClientById).toHaveBeenCalledTimes(1);
+    expect(result.current.policyDefaultCounterparty).toBe('Иванов');
+    act(() => result.current.closePolicyModal());
+    act(() => result.current.handleRequestAddPolicy('deal-1'));
+    await waitFor(() =>
+      expect(fetchClientById).toHaveBeenLastCalledWith('new-client', expect.any(Object)),
+    );
+    await waitFor(() => expect(result.current.isPolicyClientLoading).toBe(false));
   });
 });

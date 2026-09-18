@@ -158,6 +158,7 @@ export async function fetchUsers(filters?: FilterParams): Promise<User[]> {
 export async function createClient(data: {
   name: string;
   isCounterparty?: boolean;
+  referredBy?: string | null;
   phone?: string;
   birthDate?: string | null;
   notes?: string | null;
@@ -168,6 +169,7 @@ export async function createClient(data: {
     body: JSON.stringify({
       name: data.name,
       is_counterparty: Boolean(data.isCounterparty),
+      referred_by: data.referredBy,
       phone: data.phone,
       birth_date: data.birthDate || null,
       email: data.email?.trim() || null,
@@ -182,6 +184,7 @@ export async function updateClient(
   data: {
     name: string;
     isCounterparty?: boolean;
+    referredBy?: string | null;
     phone?: string;
     birthDate?: string | null;
     notes?: string | null;
@@ -193,6 +196,7 @@ export async function updateClient(
     body: JSON.stringify({
       name: data.name,
       is_counterparty: Boolean(data.isCounterparty),
+      referred_by: data.referredBy,
       phone: data.phone,
       birth_date: data.birthDate || null,
       email: data.email?.trim() || null,

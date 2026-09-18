@@ -1,10 +1,11 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 
 import {
   APIError,
   createPolicyDraft,
   deletePolicy,
+  fetchClientById,
   fetchPayments,
   movePolicy,
   updatePolicyDraft,
@@ -81,30 +82,54 @@ export const usePolicyActions = ({
   );
   const [policySourceFileIds, setPolicySourceFileIds] = useState<string[]>([]);
   const [editingPolicy, setEditingPolicy] = useState<Policy | null>(null);
+  const [isPolicyClientLoading, setIsPolicyClientLoading] = useState(false);
+  const [policyClientError, setPolicyClientError] = useState<string | null>(null);
+  const [policyClientLoadAttempt, setPolicyClientLoadAttempt] = useState(0);
+  const [policyClientId, setPolicyClientId] = useState<string | undefined>();
 
-  const resolveDealCounterpartyName = useCallback(
-    (dealId: string | null | undefined) => {
-      if (!dealId) {
-        return undefined;
-      }
-      const deal = dealsById.get(dealId);
-      if (!deal?.clientId) {
-        return undefined;
-      }
-      const dealClient = clients.find((client) => client.id === deal.clientId);
-      if (!dealClient?.isCounterparty) {
-        return undefined;
-      }
-      return dealClient.name.trim() || undefined;
-    },
-    [clients, dealsById],
-  );
+  const retryPolicyClientLoad = useCallback(() => {
+    setIsPolicyClientLoading(true);
+    setPolicyClientError(null);
+    setPolicyDefaultCounterparty(undefined);
+    setPolicyClientLoadAttempt((attempt) => attempt + 1);
+  }, []);
+
+  useEffect(() => {
+    if (!policyDealId) return;
+    if (!policyClientId) {
+      setPolicyClientError('Не удалось определить клиента сделки. Откройте сделку заново.');
+      setIsPolicyClientLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    void fetchClientById(policyClientId, { signal: controller.signal })
+      .then((client) => {
+        if (controller.signal.aborted) return;
+        const name = client.isCounterparty
+          ? client.name
+          : client.referredBy && !client.referredByDeleted
+            ? client.referredByName
+            : undefined;
+        setPolicyDefaultCounterparty(name?.trim() || undefined);
+        setPolicyClientError(null);
+        setIsPolicyClientLoading(false);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setPolicyClientError(formatErrorMessage(error, 'Не удалось загрузить клиента сделки.'));
+        setIsPolicyClientLoading(false);
+      });
+    return () => controller.abort();
+  }, [policyDealId, policyClientId, policyClientLoadAttempt]);
 
   const closePolicyModal = useCallback(() => {
     setPolicyDealId(null);
+    setPolicyClientId(undefined);
     setPolicyPrefill(null);
     setPolicyDefaultCounterparty(undefined);
     setPolicySourceFileIds([]);
+    setIsPolicyClientLoading(false);
+    setPolicyClientError(null);
   }, []);
 
   const mergePolicyDraftResult = useCallback(
@@ -161,7 +186,8 @@ export const usePolicyActions = ({
         return;
       }
       setPolicyDealId(dealId);
-      setPolicyDefaultCounterparty(undefined);
+      setPolicyClientId(dealsById.get(dealId)?.clientId);
+      retryPolicyClientLoad();
       setPolicySourceFileIds(draft.sourceFileIds);
       setPolicyPrefill({
         values: draft.values,
@@ -169,17 +195,18 @@ export const usePolicyActions = ({
         insuranceTypeName: draft.insuranceTypeName,
       });
     },
-    [clients, salesChannels],
+    [clients, dealsById, salesChannels, retryPolicyClientLoad],
   );
 
   const handleRequestAddPolicy = useCallback(
     (dealId: string) => {
-      setPolicyDefaultCounterparty(resolveDealCounterpartyName(dealId));
+      retryPolicyClientLoad();
+      setPolicyClientId(dealsById.get(dealId)?.clientId);
       setPolicyPrefill(null);
       setPolicySourceFileIds([]);
       setPolicyDealId(dealId);
     },
-    [resolveDealCounterpartyName],
+    [dealsById, retryPolicyClientLoad],
   );
 
   const handleRequestEditPolicy = useCallback(
@@ -495,8 +522,10 @@ export const usePolicyActions = ({
   return {
     policyDealId,
     policyPrefill,
-    policyDefaultCounterparty:
-      policyDefaultCounterparty ?? resolveDealCounterpartyName(policyDealId),
+    policyDefaultCounterparty,
+    isPolicyClientLoading,
+    policyClientError,
+    retryPolicyClientLoad,
     editingPolicy,
     setEditingPolicy,
     closePolicyModal,
