@@ -191,6 +191,67 @@ describe('useAllRecordsController', () => {
     );
   });
 
+  it('applies exclude search only after search is submitted', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+
+    const { result } = renderHookAtCurrentLocation(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await act(async () => {
+      result.current.setAllRecordsSearchInput('гриша');
+      result.current.setAllRecordsSearchExcludeInput(true);
+      await Promise.resolve();
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'гриша', search_exclude: true }),
+      expect.any(Object),
+    );
+
+    await act(async () => {
+      result.current.applyAllRecordsSearch();
+      await new Promise((resolve) => setTimeout(resolve, 1));
+    });
+
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 1, search: 'гриша', search_exclude: true }),
+      expect.any(Object),
+    );
+    expect(routerSearch).toContain('fr_search=%D0%B3%D1%80%D0%B8%D1%88%D0%B0');
+    expect(routerSearch).toContain('fr_search_exclude=1');
+  });
+
+  it('restores exclude search from the URL', async () => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
+    window.history.replaceState(null, '', '/?fr_search=invoice&fr_search_exclude=1');
+
+    const { result } = renderHookAtCurrentLocation(() =>
+      useAllRecordsController({
+        viewMode: 'all',
+        statementsById: new Map(),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.allRecordsSearchInput).toBe('invoice');
+    expect(result.current.allRecordsSearchExcludeInput).toBe(true);
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ search: 'invoice', search_exclude: true }),
+      expect.any(Object),
+    );
+  });
+
   it('keeps applied search when records are refreshed', async () => {
     mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload as never);
 

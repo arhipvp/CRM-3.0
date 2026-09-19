@@ -74,6 +74,8 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
     policyEditError,
     allRecordsSearchInput,
     setAllRecordsSearchInput,
+    allRecordsSearchExcludeInput,
+    setAllRecordsSearchExcludeInput,
     applyAllRecordsSearch,
     allRecordsError,
     isAllRecordsLoading,
@@ -537,6 +539,8 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
           <AllRecordsPanel
             allRecordsSearchInput={allRecordsSearchInput}
             onSearchChange={setAllRecordsSearchInput}
+            allRecordsSearchExcludeInput={allRecordsSearchExcludeInput}
+            onSearchExcludeChange={setAllRecordsSearchExcludeInput}
             onSearchSubmit={applyAllRecordsSearch}
             allRecordsError={allRecordsError}
             isAllRecordsLoading={isAllRecordsLoading}

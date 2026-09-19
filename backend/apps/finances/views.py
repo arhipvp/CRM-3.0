@@ -61,7 +61,11 @@ from .permissions import (
     parse_bool,
     user_has_deal_access,
 )
-from .record_filters import apply_financial_record_filters, parse_sales_channel_ids
+from .record_filters import (
+    apply_financial_record_filters,
+    apply_financial_record_search,
+    parse_sales_channel_ids,
+)
 from .serializers import (
     FinancialRecordSerializer,
     FinancialRecordTableSerializer,
@@ -266,25 +270,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
         queryset = apply_financial_record_filters(queryset, self.request.query_params)
 
-        search_term = (self.request.query_params.get("search") or "").strip()
-        if len(search_term) >= 1:
-            queryset = queryset.filter(
-                Q(payment__policy__number__icontains=search_term)
-                | Q(payment__policy__client__name__icontains=search_term)
-                | Q(payment__policy__insured_client__name__icontains=search_term)
-                | Q(payment__policy__insurance_type__name__icontains=search_term)
-                | Q(payment__policy__sales_channel__name__icontains=search_term)
-                | Q(payment__policy__deal__title__icontains=search_term)
-                | Q(payment__policy__deal__client__name__icontains=search_term)
-                | Q(payment__deal__title__icontains=search_term)
-                | Q(payment__deal__client__name__icontains=search_term)
-                | Q(payment__description__icontains=search_term)
-                | Q(description__icontains=search_term)
-                | Q(source__icontains=search_term)
-                | Q(note__icontains=search_term)
-            )
-
-        return queryset
+        return apply_financial_record_search(queryset, self.request.query_params)
 
     @action(detail=False, methods=["get"], url_path="summary")
     def summary(self, request, *args, **kwargs):

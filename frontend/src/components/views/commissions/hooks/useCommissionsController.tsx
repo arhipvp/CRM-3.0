@@ -119,6 +119,8 @@ export const useCommissionsController = ({
   const {
     allRecordsSearchInput,
     setAllRecordsSearchInput,
+    allRecordsSearchExcludeInput,
+    setAllRecordsSearchExcludeInput,
     applyAllRecordsSearch,
     showUnpaidPayments,
     setShowUnpaidPayments,
@@ -656,6 +658,8 @@ export const useCommissionsController = ({
     policyEditError,
     allRecordsSearchInput,
     setAllRecordsSearchInput,
+    allRecordsSearchExcludeInput,
+    setAllRecordsSearchExcludeInput,
     applyAllRecordsSearch,
     allRecordsError,
     isAllRecordsLoading,

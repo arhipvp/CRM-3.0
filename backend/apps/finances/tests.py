@@ -1758,6 +1758,70 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertIn(str(self.income_record.id), record_ids)
         self.assertNotIn(str(self.expense_record.id), record_ids)
 
+    def test_search_exclude_removes_matching_records(self):
+        self.authenticate(self.seller)
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"search": "AlphaNote", "search_exclude": True},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record_ids = {item["id"] for item in self._extract_results(response)}
+        self.assertNotIn(str(self.income_record.id), record_ids)
+        self.assertIn(str(self.expense_record.id), record_ids)
+        self.assertIn(str(self.policy_record.id), record_ids)
+
+    def test_search_treats_a_leading_minus_as_plain_text(self):
+        literal_record = FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("20.00"),
+            note="-LiteralToken",
+        )
+        self.authenticate(self.seller)
+
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"search": "-LiteralToken"},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record_ids = {item["id"] for item in self._extract_results(response)}
+        self.assertEqual(record_ids, {str(literal_record.id)})
+
+    def test_search_exclude_supports_related_fields_and_summary(self):
+        self.authenticate(self.seller)
+        params = {"search": "FILTER-POLICY", "search_exclude": True}
+
+        response = self.api_client.get("/api/v1/financial_records/", params)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record_ids = {item["id"] for item in self._extract_results(response)}
+        self.assertIn(str(self.income_record.id), record_ids)
+        self.assertIn(str(self.expense_record.id), record_ids)
+        self.assertNotIn(str(self.policy_record.id), record_ids)
+
+        summary = self.api_client.get("/api/v1/financial_records/summary/", params)
+        self.assertEqual(summary.status_code, status.HTTP_200_OK)
+        self.assertEqual(summary.json()["records_count"], 2)
+
+    def test_empty_exclude_search_does_not_filter_records(self):
+        self.authenticate(self.seller)
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {"search_exclude": True},
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        record_ids = {item["id"] for item in self._extract_results(response)}
+        self.assertEqual(
+            record_ids,
+            {
+                str(self.income_record.id),
+                str(self.expense_record.id),
+                str(self.policy_record.id),
+            },
+        )
+
     def test_search_keeps_all_supported_fields(self):
         insured_client = Client.objects.create(name="InsuredSearchToken")
         insurance_type = InsuranceType.objects.create(name="TypeSearchToken")
@@ -2040,6 +2104,19 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
             job.payload["filters"]["sales_channel_ids"],
             f"{first_channel.id},{second_channel.id}",
         )
+
+    def test_export_xlsx_preserves_exclude_search_filters(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/financial_records/export-xlsx/",
+            {"search": "AlphaNote", "search_exclude": True},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_202_ACCEPTED)
+        job = ExternalJob.objects.get(pk=response.json()["id"])
+        self.assertEqual(job.payload["filters"]["search"], "AlphaNote")
+        self.assertTrue(job.payload["filters"]["search_exclude"])
 
 
 class FinancialRecordPaidBalanceTests(AuthenticatedAPITestCase):

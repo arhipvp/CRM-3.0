@@ -8,6 +8,8 @@ const renderPanel = (overrides: Partial<ComponentProps<typeof AllRecordsPanel>> 
   const props: ComponentProps<typeof AllRecordsPanel> = {
     allRecordsSearchInput: '',
     onSearchChange: vi.fn(),
+    allRecordsSearchExcludeInput: false,
+    onSearchExcludeChange: vi.fn(),
     onSearchSubmit: vi.fn(),
     allRecordsError: null,
     isAllRecordsLoading: false,
@@ -63,6 +65,15 @@ describe('AllRecordsPanel', () => {
 
     expect(onSearchSubmit).toHaveBeenCalledTimes(1);
     expect(onSearchSubmit).toHaveBeenCalledWith();
+  });
+
+  it('changes the exclude search mode', () => {
+    const onSearchExcludeChange = vi.fn();
+    renderPanel({ onSearchExcludeChange });
+
+    fireEvent.click(screen.getByLabelText('Не содержит'));
+
+    expect(onSearchExcludeChange).toHaveBeenCalledWith(true);
   });
 
   it('refreshes records via refresh button', () => {

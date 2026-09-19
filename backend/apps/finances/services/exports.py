@@ -6,13 +6,16 @@ from apps.common.drive import (
     upload_file_to_drive,
 )
 from apps.deals.permissions import build_deal_visibility_q
-from django.db.models import F, Prefetch, Q
+from django.db.models import F, Prefetch
 from django.utils import timezone
 from openpyxl import Workbook
 
 from ..models import FinancialRecord, Statement
 from ..permissions import is_admin_user
-from ..record_filters import apply_financial_record_filters
+from ..record_filters import (
+    apply_financial_record_filters,
+    apply_financial_record_search,
+)
 from .statements import sanitize_drive_filename
 
 MIME_XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -46,23 +49,6 @@ def _visible_records(user):
             | build_deal_visibility_q(user, prefix="payment__deal__")
         ).distinct()
     return queryset.annotate(payment_paid_balance=F("payment__paid_balance"))
-
-
-def _apply_search(queryset, value):
-    search = (value or "").strip()
-    if not search:
-        return queryset
-    return queryset.filter(
-        Q(payment__policy__number__icontains=search)
-        | Q(payment__policy__client__name__icontains=search)
-        | Q(payment__policy__insured_client__name__icontains=search)
-        | Q(payment__policy__deal__title__icontains=search)
-        | Q(payment__deal__title__icontains=search)
-        | Q(payment__description__icontains=search)
-        | Q(description__icontains=search)
-        | Q(source__icontains=search)
-        | Q(note__icontains=search)
-    )
 
 
 def _write_records_workbook(records, title):
@@ -117,7 +103,7 @@ def _write_records_workbook(records, title):
 
 def export_financial_records(*, user, filters):
     records = apply_financial_record_filters(_visible_records(user), filters)
-    records = _apply_search(records, filters.get("search")).order_by(
+    records = apply_financial_record_search(records, filters).order_by(
         "-date", "-created_at"
     )
     folder_id = ensure_finance_exports_folder()

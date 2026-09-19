@@ -43,6 +43,34 @@ def parse_sales_channel_ids(value):
     return values
 
 
+def apply_financial_record_search(queryset, params):
+    """Apply the shared text search used by financial records views and exports."""
+    search = (params.get("search") or "").strip()
+    if not search:
+        return queryset
+
+    search_query = (
+        Q(payment__policy__number__icontains=search)
+        | Q(payment__policy__client__name__icontains=search)
+        | Q(payment__policy__insured_client__name__icontains=search)
+        | Q(payment__policy__insurance_type__name__icontains=search)
+        | Q(payment__policy__sales_channel__name__icontains=search)
+        | Q(payment__policy__deal__title__icontains=search)
+        | Q(payment__policy__deal__client__name__icontains=search)
+        | Q(payment__deal__title__icontains=search)
+        | Q(payment__deal__client__name__icontains=search)
+        | Q(payment__description__icontains=search)
+        | Q(description__icontains=search)
+        | Q(source__icontains=search)
+        | Q(note__icontains=search)
+    )
+    return (
+        queryset.exclude(search_query)
+        if parse_bool(params.get("search_exclude"))
+        else queryset.filter(search_query)
+    )
+
+
 def apply_financial_record_filters(queryset, params):
     payment_id = params.get("payment")
     if payment_id:

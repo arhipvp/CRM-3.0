@@ -19,6 +19,7 @@ interface UseAllRecordsControllerArgs {
 
 const QUERY_KEYS = {
   search: 'fr_search',
+  searchExclude: 'fr_search_exclude',
   showUnpaidPayments: 'fr_show_unpaid_payments',
   showStatementRecords: 'fr_show_statement_records',
   showPaidRecords: 'fr_show_paid_records',
@@ -91,8 +92,14 @@ export const useAllRecordsController = ({
   const [allRecordsSearchInput, setAllRecordsSearchInput] = useState(
     () => initialQueryParams.get(QUERY_KEYS.search) ?? '',
   );
+  const [allRecordsSearchExcludeInput, setAllRecordsSearchExcludeInput] = useState(() =>
+    readBooleanParam(initialQueryParams, QUERY_KEYS.searchExclude, false),
+  );
   const [allRecordsSearchApplied, setAllRecordsSearchApplied] = useState(
     () => initialQueryParams.get(QUERY_KEYS.search) ?? '',
+  );
+  const [allRecordsSearchExcludeApplied, setAllRecordsSearchExcludeApplied] = useState(() =>
+    readBooleanParam(initialQueryParams, QUERY_KEYS.searchExclude, false),
   );
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(() =>
     readBooleanParam(initialQueryParams, QUERY_KEYS.showUnpaidPayments, true),
@@ -144,14 +151,19 @@ export const useAllRecordsController = ({
   const currentFiltersKeyRef = useRef<string>('');
 
   const applyAllRecordsSearch = useCallback(
-    (nextSearch?: string) => {
+    (nextSearch?: string, nextSearchExclude?: boolean) => {
       const rawValue = nextSearch ?? allRecordsSearchInput;
       if (nextSearch !== undefined) {
         setAllRecordsSearchInput(rawValue);
       }
+      const searchExclude = nextSearchExclude ?? allRecordsSearchExcludeInput;
+      if (nextSearchExclude !== undefined) {
+        setAllRecordsSearchExcludeInput(searchExclude);
+      }
       setAllRecordsSearchApplied(rawValue.trim());
+      setAllRecordsSearchExcludeApplied(searchExclude);
     },
-    [allRecordsSearchInput],
+    [allRecordsSearchExcludeInput, allRecordsSearchInput],
   );
 
   const isRecordTypeLocked = useMemo(
@@ -179,6 +191,9 @@ export const useAllRecordsController = ({
     const filters: FilterParams = {};
     if (allRecordsSearchApplied) {
       filters.search = allRecordsSearchApplied;
+      if (allRecordsSearchExcludeApplied) {
+        filters.search_exclude = true;
+      }
     }
     if (!showUnpaidPayments) {
       filters.payment_paid = true;
@@ -224,6 +239,7 @@ export const useAllRecordsController = ({
     return filters;
   }, [
     allRecordsSearchApplied,
+    allRecordsSearchExcludeApplied,
     allRecordsSortDirection,
     allRecordsSortKey,
     paymentScheduledDateFrom,
@@ -243,6 +259,9 @@ export const useAllRecordsController = ({
     const params = new URLSearchParams();
     if (allRecordsSearchApplied) {
       params.set(QUERY_KEYS.search, allRecordsSearchApplied);
+      if (allRecordsSearchExcludeApplied) {
+        params.set(QUERY_KEYS.searchExclude, '1');
+      }
     }
     if (!showUnpaidPayments) {
       params.set(QUERY_KEYS.showUnpaidPayments, '0');
@@ -283,6 +302,7 @@ export const useAllRecordsController = ({
     }
   }, [
     allRecordsSearchApplied,
+    allRecordsSearchExcludeApplied,
     allRecordsSortDirection,
     allRecordsSortKey,
     paymentScheduledDateFrom,
@@ -304,6 +324,9 @@ export const useAllRecordsController = ({
     const search = params.get(QUERY_KEYS.search) ?? '';
     setAllRecordsSearchInput(search);
     setAllRecordsSearchApplied(search);
+    const searchExclude = readBooleanParam(params, QUERY_KEYS.searchExclude, false);
+    setAllRecordsSearchExcludeInput(searchExclude);
+    setAllRecordsSearchExcludeApplied(searchExclude);
     setShowUnpaidPayments(readBooleanParam(params, QUERY_KEYS.showUnpaidPayments, true));
     setShowStatementRecords(readBooleanParam(params, QUERY_KEYS.showStatementRecords, true));
     setShowPaidRecords(readBooleanParam(params, QUERY_KEYS.showPaidRecords, true));
@@ -385,6 +408,8 @@ export const useAllRecordsController = ({
   const resetAllRecordsFilters = useCallback(() => {
     setAllRecordsSearchInput('');
     setAllRecordsSearchApplied('');
+    setAllRecordsSearchExcludeInput(false);
+    setAllRecordsSearchExcludeApplied(false);
     setShowUnpaidPayments(true);
     setShowStatementRecords(true);
     setShowPaidRecords(true);
@@ -561,7 +586,10 @@ export const useAllRecordsController = ({
   return {
     allRecordsSearchInput,
     setAllRecordsSearchInput,
+    allRecordsSearchExcludeInput,
+    setAllRecordsSearchExcludeInput,
     allRecordsSearchApplied,
+    allRecordsSearchExcludeApplied,
     applyAllRecordsSearch,
     showUnpaidPayments,
     setShowUnpaidPayments,

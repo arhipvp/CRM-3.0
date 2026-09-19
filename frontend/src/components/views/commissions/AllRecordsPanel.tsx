@@ -13,7 +13,9 @@ import { Combobox } from '../../common/forms/Combobox';
 interface AllRecordsPanelProps {
   allRecordsSearchInput: string;
   onSearchChange: (value: string) => void;
-  onSearchSubmit: (value?: string) => void;
+  allRecordsSearchExcludeInput: boolean;
+  onSearchExcludeChange: (value: boolean) => void;
+  onSearchSubmit: (value?: string, searchExclude?: boolean) => void;
   allRecordsError: string | null;
   isAllRecordsLoading: boolean;
   onRetryLoad: () => void;
@@ -290,6 +292,8 @@ function StatementLookup({
 export function AllRecordsPanel({
   allRecordsSearchInput,
   onSearchChange,
+  allRecordsSearchExcludeInput,
+  onSearchExcludeChange,
   onSearchSubmit,
   allRecordsError,
   isAllRecordsLoading,
@@ -371,13 +375,19 @@ export function AllRecordsPanel({
                   size="sm"
                   onClick={() => {
                     onSearchChange('');
-                    onSearchSubmit('');
+                    onSearchExcludeChange(false);
+                    onSearchSubmit('', false);
                   }}
                   className="search-clear-btn"
                   disabled={isAllRecordsLoading}
                 />
               )}
             </div>
+            <RecordsFilterToggle
+              checked={allRecordsSearchExcludeInput}
+              onChange={onSearchExcludeChange}
+              label="Не содержит"
+            />
             <Button
               type="submit"
               variant="quiet"
