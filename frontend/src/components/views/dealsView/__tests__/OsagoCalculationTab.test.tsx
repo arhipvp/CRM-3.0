@@ -182,8 +182,10 @@ describe('OsagoCalculationTab', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Далее: распознать' }));
 
     await waitFor(() => expect(recognizeDealCalculation).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByDisplayValue('ИВАНОВ ИВАН ИВАНОВИЧ')).toBeInTheDocument(),
+    );
     expect(screen.getByText('Проверка результата')).toBeInTheDocument();
-    expect(screen.getByDisplayValue('ИВАНОВ ИВАН ИВАНОВИЧ')).toBeInTheDocument();
     expect(screen.getByText('Проверьте VIN')).toBeInTheDocument();
     expect(
       screen.getByText(
