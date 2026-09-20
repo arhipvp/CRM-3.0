@@ -4,6 +4,22 @@ export interface AiConversation {
   id: string;
   title: string;
   created_at: string;
+  provider?: string | null;
+  model?: string | null;
+}
+
+export interface AiProvider {
+  id: string;
+  label: string;
+  available: boolean;
+  models: string[];
+  default_model?: string | null;
+  billing: string;
+  error?: string;
+}
+
+export interface AiProvidersResponse {
+  providers: AiProvider[];
 }
 
 export interface AiCitation {
@@ -89,12 +105,18 @@ export const createAiConversation = (title = 'Новый чат') =>
     method: 'POST',
     body: JSON.stringify({ title }),
   });
+export const updateAiConversationModel = (id: string, provider: string, model: string) =>
+  request<AiConversation>(`/ai/conversations/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ provider, model }),
+  });
 export const deleteAiConversation = (id: string) =>
   request<void>(`/ai/conversations/${id}/`, { method: 'DELETE' });
 export const fetchAiMessages = (id: string) =>
   request<AiMessage[]>(`/ai/conversations/${id}/messages/`);
 export const fetchAiDocuments = () => request<AiDocument[]>('/ai/documents/');
 export const fetchAiCatalog = () => request<AiCatalog>('/ai/catalog/');
+export const fetchAiProviders = () => request<AiProvidersResponse>('/ai/providers/');
 export const deleteAiDocument = (id: string) =>
   request<void>(`/ai/documents/${id}/`, { method: 'DELETE' });
 export const updateAiDocumentClassification = (
@@ -139,7 +161,7 @@ export async function streamAiAnswer(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getAccessToken() ?? ''}`,
     },
-    body: JSON.stringify({ content, provider: 'polza', scope }),
+    body: JSON.stringify({ content, scope }),
   });
   if (!response.ok || !response.body)
     throw new Error('Не удалось получить ответ страхового помощника.');

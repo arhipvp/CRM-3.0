@@ -9,15 +9,18 @@ import {
   fetchAiDocumentContent,
   fetchAiDocuments,
   fetchAiMessages,
+  fetchAiProviders,
   formatAiCitationLocation,
   streamAiAnswer,
   updateAiDocumentClassification,
+  updateAiConversationModel,
   uploadAiDocuments,
   type AiCatalog,
   type AiClassification,
   type AiConversation,
   type AiDocument,
   type AiMessage,
+  type AiProvider,
   type AiScopeBranch,
 } from '../../api/aiAssistant';
 import type { User } from '../../types';
@@ -54,6 +57,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [documents, setDocuments] = useState<AiDocument[]>([]);
   const [catalog, setCatalog] = useState<AiCatalog>(emptyCatalog);
+  const [providers, setProviders] = useState<AiProvider[]>([]);
   const [scope, setScope] = useState<AiScopeBranch[]>([]);
   const [question, setQuestion] = useState('');
   const [search, setSearch] = useState('');
@@ -61,6 +65,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [savingModel, setSavingModel] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [opening, setOpening] = useState<Set<string>>(new Set());
@@ -78,6 +83,9 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       })
       .catch((err) => setError(String(err)));
     void loadLibrary().catch((err) => setError(String(err)));
+    void fetchAiProviders()
+      .then((response) => setProviders(response.providers.filter((provider) => provider.available)))
+      .catch(() => setError('Не удалось загрузить список моделей Polza.'));
   }, []);
   useEffect(() => {
     if (selectedId)
@@ -88,6 +96,15 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId),
     [conversations, selectedId],
+  );
+  const selectedProvider = useMemo(
+    () => providers.find((provider) => provider.id === (selected?.provider ?? 'polza')),
+    [providers, selected?.provider],
+  );
+  const selectedModel = selected?.model ?? selectedProvider?.default_model ?? '';
+  const lastUsage = useMemo(
+    () => [...messages].reverse().find((message) => message.role === 'assistant')?.usage,
+    [messages],
   );
   const visibleDocuments = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
@@ -146,6 +163,19 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
     setConversations((items) => [chat, ...items]);
     setSelectedId(chat.id);
     setMessages([]);
+  };
+  const changeModel = async (model: string) => {
+    if (!selected || !selectedProvider || !model || savingModel) return;
+    setSavingModel(true);
+    setError(null);
+    try {
+      const updated = await updateAiConversationModel(selected.id, selectedProvider.id, model);
+      setConversations((items) => items.map((item) => (item.id === updated.id ? updated : item)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить модель для чата.');
+    } finally {
+      setSavingModel(false);
+    }
   };
   const send = async () => {
     const text = question.trim();
@@ -270,7 +300,12 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   className={`w-full rounded px-2 py-2 text-left text-sm ${chat.id === selectedId ? 'bg-[var(--app-brand-50)]' : 'hover:bg-slate-50'}`}
                   onClick={() => setSelectedId(chat.id)}
                 >
-                  {chat.title}
+                  <span className="block truncate">{chat.title}</span>
+                  {chat.model && (
+                    <span className="mt-0.5 block truncate text-xs text-slate-500">
+                      {chat.model}
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
@@ -278,6 +313,38 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
           <section className="flex min-h-[620px] flex-col rounded border border-[var(--app-border)] bg-white p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
               <span>{selected?.title ?? 'Новый чат'} · Polza</span>
+              <label className="flex items-center gap-1 text-xs">
+                <span className="sr-only">Модель Polza для этого чата</span>
+                <select
+                  value={selectedModel}
+                  disabled={!selected || !selectedProvider || loading || savingModel}
+                  onChange={(event) => void changeModel(event.target.value)}
+                  className="rounded border border-[var(--app-border)] bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
+                  aria-label="Модель Polza для этого чата"
+                >
+                  {!selectedModel && <option value="">Модель загружается…</option>}
+                  {selected?.model && !selectedProvider?.models.includes(selected.model) && (
+                    <option value={selected.model}>Модель недоступна: {selected.model}</option>
+                  )}
+                  {selectedProvider?.models.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {savingModel && <span className="text-xs">Сохраняю модель…</span>}
+              {selectedProvider && (
+                <span className="text-xs text-amber-700">Запросы тарифицируются Polza</span>
+              )}
+              {lastUsage && (
+                <span className="text-xs">
+                  Последний:{' '}
+                  {lastUsage.cost_rub != null
+                    ? `${lastUsage.cost_rub} ₽`
+                    : 'стоимость не предоставлена API'}
+                </span>
+              )}
               <button
                 type="button"
                 className="text-[var(--app-brand-700)] hover:underline"

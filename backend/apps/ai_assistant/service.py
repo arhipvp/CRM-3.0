@@ -8,7 +8,9 @@ from django.conf import settings
 
 
 class AssistantServiceError(Exception):
-    pass
+    def __init__(self, message: str, status_code: int = 502) -> None:
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class AssistantServiceNotFound(AssistantServiceError):
@@ -42,7 +44,7 @@ class AssistantService:
             ) from exc
         if response.status_code >= 400:
             detail = response.text.strip() or "Страховой помощник вернул ошибку."
-            raise AssistantServiceError(detail)
+            raise AssistantServiceError(detail, response.status_code)
         if response.status_code == 204:
             return None
         return response.json()
@@ -58,7 +60,7 @@ class AssistantService:
             ) as response:
                 if response.status_code >= 400:
                     raise AssistantServiceError(
-                        response.read().decode("utf-8", "replace")
+                        response.read().decode("utf-8", "replace"), response.status_code
                     )
                 yield from response.iter_bytes()
         except httpx.HTTPError as exc:
@@ -84,7 +86,9 @@ class AssistantService:
             client.close()
             if response.status_code == 404:
                 raise AssistantServiceNotFound(detail or "Документ не найден.")
-            raise AssistantServiceError(detail or "Документ не найден.")
+            raise AssistantServiceError(
+                detail or "Документ не найден.", response.status_code
+            )
 
         headers = {
             "Content-Type": response.headers.get(

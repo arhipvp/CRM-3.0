@@ -42,7 +42,7 @@ class Store:
                 );
                 CREATE TABLE IF NOT EXISTS conversations (
                   id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL,
-                  owner_id TEXT
+                  owner_id TEXT, provider TEXT, model TEXT
                 );
                 CREATE TABLE IF NOT EXISTS messages (
                   id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL,
@@ -73,6 +73,9 @@ class Store:
             }
             if "owner_id" not in conversation_columns:
                 con.execute("ALTER TABLE conversations ADD COLUMN owner_id TEXT")
+            for name in ("provider", "model"):
+                if name not in conversation_columns:
+                    con.execute(f"ALTER TABLE conversations ADD COLUMN {name} TEXT")
 
             document_columns = {
                 row[1] for row in con.execute("PRAGMA table_info(documents)").fetchall()
@@ -241,19 +244,62 @@ class Store:
                 con.execute("DELETE FROM documents WHERE id=?", (ident,))
         return doc
 
-    def create_conversation(self, title: str = "Новый чат", owner_id: str | None = None) -> dict:
+    def create_conversation(
+        self,
+        title: str = "Новый чат",
+        owner_id: str | None = None,
+        provider: str | None = None,
+        model: str | None = None,
+    ) -> dict:
         result = {
             "id": str(uuid.uuid4()),
             "title": title,
             "created_at": now(),
             "owner_id": owner_id,
+            "provider": provider,
+            "model": model,
         }
         with self.connection() as con:
             con.execute(
-                "INSERT INTO conversations(id, title, created_at, owner_id) VALUES (:id, :title, :created_at, :owner_id)",
+                """INSERT INTO conversations(id, title, created_at, owner_id, provider, model)
+                VALUES (:id, :title, :created_at, :owner_id, :provider, :model)""",
                 result,
             )
         return result
+
+    def conversation(self, ident: str, owner_id: str | None = None) -> dict | None:
+        with self.connection() as con:
+            if owner_id is None:
+                row = con.execute(
+                    "SELECT * FROM conversations WHERE id=?", (ident,)
+                ).fetchone()
+            else:
+                row = con.execute(
+                    "SELECT * FROM conversations WHERE id=? AND owner_id=?",
+                    (ident, owner_id),
+                ).fetchone()
+        return dict(row) if row else None
+
+    def update_conversation_ai(
+        self, ident: str, owner_id: str | None, provider: str, model: str
+    ) -> dict | None:
+        with self.connection() as con:
+            if owner_id is None:
+                cur = con.execute(
+                    "UPDATE conversations SET provider=?, model=? WHERE id=?",
+                    (provider, model, ident),
+                )
+            else:
+                cur = con.execute(
+                    "UPDATE conversations SET provider=?, model=? WHERE id=? AND owner_id=?",
+                    (provider, model, ident, owner_id),
+                )
+            if cur.rowcount == 0:
+                return None
+            row = con.execute(
+                "SELECT * FROM conversations WHERE id=?", (ident,)
+            ).fetchone()
+        return dict(row) if row else None
 
     def conversations(self, owner_id: str | None = None) -> list[dict]:
         with self.connection() as con:

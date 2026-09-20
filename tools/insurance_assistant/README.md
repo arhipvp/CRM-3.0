@@ -34,6 +34,8 @@
 
 Переменные окружения: `INSURANCE_ASSISTANT_DATA_DIR`, `INSURANCE_ASSISTANT_QDRANT_URL`, `INSURANCE_ASSISTANT_HOST`, `INSURANCE_ASSISTANT_PORT`, `INSURANCE_ASSISTANT_CODEX_COMMAND`, `INSURANCE_ASSISTANT_CODEX_MODEL`, `INSURANCE_ASSISTANT_CODEX_MODELS`, `INSURANCE_ASSISTANT_TOP_K`, `INSURANCE_ASSISTANT_RETRIEVAL_CANDIDATES`, `INSURANCE_ASSISTANT_RETRIEVAL_SEMANTIC_WEIGHT`, `INSURANCE_ASSISTANT_RETRIEVAL_LEXICAL_WEIGHT`, `INSURANCE_ASSISTANT_RETRIEVAL_MAX_PER_DOCUMENT`, `IA_EMBEDDING_PROVIDER`, `IA_EMBEDDING_MODEL`, `POLZA_AI_API_KEY`, `POLZA_CHAT_BASE_URL`, `POLZA_CHAT_MODEL`, `IA_EMBEDDING_BATCH_SIZE`. <!-- pragma: allowlist secret --> По умолчанию используется `polza` с `text-embedding-3-large` (3072 измерения); тексты для создания векторов передаются в Polza.ai. Поиск гибридный: Qdrant ищет похожие по смыслу фрагменты, а локальный SQLite FTS5 — точные термины, номера пунктов и фразы; затем результаты объединяются и ограничиваются по числу фрагментов одного документа. В интерфейсе можно вручную выбрать Codex или Polza и модель. Для Polza показывается стоимость, если API возвращает `usage.cost_rub`; для Codex стоимость через App Server не доступна и помечается как `н/д`. Векторы загружаются пакетами по 32, чтобы не превысить лимит Qdrant. Адрес интерфейса по умолчанию — только `127.0.0.1`.
 
+В CRM production используется только Polza: модель хранится в настройках каждого личного чата и применяется к следующему вопросу. Если сохранённая модель исчезла из каталога Polza, система просит выбрать доступную вручную и не подменяет её автоматически.
+
 Чтобы вернуться к полностью локальным эмбеддингам, задайте `IA_EMBEDDING_PROVIDER=local`, модель `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` и отдельно установите `sentence-transformers`. Это снова потребует PyTorch, который на данной машине блокируется политикой Windows.
 
 ## Границы безопасности
@@ -48,7 +50,7 @@
 - `GET /api/documents/{id}/content` — исходный файл для авторизованного CRM-прокси; путь к хранилищу не раскрывается.
 - `GET /api/catalog` — дерево веток источников и значения для подсказок при загрузке.
 - `PATCH /api/documents/classification` — массовое назначение ветки документам без переиндексации.
-- `POST/GET/DELETE /api/conversations`, `GET /api/conversations/{id}/messages`
+- `POST/GET/DELETE /api/conversations`, `PATCH /api/conversations/{id}` для модели чата, `GET /api/conversations/{id}/messages`
 - `POST /api/conversations/{id}/messages` — SSE: `sources`, `delta`, `error`, `done`
 - `GET /api/providers` — доступные провайдеры и каталог моделей Polza.
 - `GET /api/usage` — локальная статистика запросов и расходов.

@@ -36,6 +36,18 @@ class AssistantProxyPermissionsTests(APITestCase):
         self.assertEqual(response.data["user_id"], self.user.id)
         self.assertEqual(response.data["path"], "/api/conversations")
 
+    @patch("apps.ai_assistant.views.AssistantService", FakeAssistantService)
+    def test_conversation_model_update_is_proxied_with_authenticated_user_id(self):
+        response = self.client.patch(
+            "/api/v1/ai/conversations/chat-id/",
+            {"provider": "polza", "model": "polza-chat"},
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["method"], "PATCH")
+        self.assertEqual(response.data["path"], "/api/conversations/chat-id")
+        self.assertEqual(response.data["user_id"], self.user.id)
+
     def test_regular_user_cannot_upload_or_delete_documents(self):
         upload = self.client.post("/api/v1/ai/documents/", {})
         delete = self.client.delete("/api/v1/ai/documents/document-id/")

@@ -34,7 +34,7 @@ class AssistantProxyView(APIView):
         try:
             return Response(self.service(request).request(method, path, **kwargs))
         except AssistantServiceError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({"detail": str(exc)}, status=exc.status_code)
 
 
 class ProvidersView(AssistantProxyView):
@@ -61,6 +61,14 @@ class ConversationsView(AssistantProxyView):
 
 
 class ConversationDetailView(AssistantProxyView):
+    def patch(self, request, conversation_id: str):
+        return self.call(
+            request,
+            "PATCH",
+            f"/api/conversations/{conversation_id}",
+            json=request.data,
+        )
+
     def delete(self, request, conversation_id: str):
         return self.call(request, "DELETE", f"/api/conversations/{conversation_id}")
 
@@ -80,7 +88,7 @@ class ConversationMessagesView(AssistantProxyView):
                 content_type="text/event-stream",
             )
         except AssistantServiceError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({"detail": str(exc)}, status=exc.status_code)
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
@@ -149,7 +157,7 @@ class DocumentContentView(AssistantProxyView):
         except AssistantServiceNotFound as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
         except AssistantServiceError as exc:
-            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+            return Response({"detail": str(exc)}, status=exc.status_code)
         response = StreamingHttpResponse(content, content_type=headers["Content-Type"])
         response["Content-Disposition"] = headers["Content-Disposition"]
         response["X-Content-Type-Options"] = "nosniff"

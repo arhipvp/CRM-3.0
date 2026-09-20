@@ -50,12 +50,17 @@ if WEB_DIST.exists():
 
 class ConversationCreate(BaseModel):
     title: str = "Новый чат"
+    provider: str | None = None
+    model: str | None = None
+
+
+class ConversationAiUpdate(BaseModel):
+    provider: str
+    model: str
 
 
 class MessageCreate(BaseModel):
     content: str
-    provider: str = "codex"
-    model: str | None = None
     scope: list[dict[str, str | bool | None]] | None = None
 
 
@@ -83,6 +88,71 @@ def _crm_owner(
         if not owner_id:
             raise HTTPException(400, "Не передан идентификатор пользователя CRM")
     return owner_id
+
+
+def _default_provider() -> str:
+    return "polza" if settings.production_mode else "codex"
+
+
+async def _polza_models() -> list[str]:
+    if not settings.polza_api_key:
+        raise HTTPException(503, "Не задан POLZA_AI_API_KEY для ответов Polza.ai")
+    try:
+        models = await polza.models()
+    except Exception as error:
+        raise HTTPException(
+            503, "Не удалось получить каталог моделей Polza.ai"
+        ) from error
+    if not models:
+        raise HTTPException(503, "Polza.ai не вернула доступные модели")
+    return models
+
+
+async def _validated_ai_choice(
+    provider: str | None, model: str | None
+) -> tuple[str | None, str | None]:
+    if provider is None and model is None:
+        return None, None
+    provider = (provider or "").lower().strip()
+    model = (model or "").strip()
+    if not provider or not model:
+        raise HTTPException(422, "Для настройки чата укажите и провайдера, и модель")
+    allowed = {"polza"} if settings.production_mode else {"codex", "polza"}
+    if provider not in allowed:
+        raise HTTPException(422, "Этот провайдер недоступен")
+    if provider == "polza":
+        if model not in await _polza_models():
+            raise HTTPException(422, "Выбранная модель больше недоступна в Polza.ai")
+    elif model not in settings.codex_models:
+        raise HTTPException(422, "Выбранная модель Codex больше недоступна")
+    return provider, model
+
+
+async def _resolve_conversation_ai(conversation: dict) -> tuple[str, str]:
+    provider = conversation.get("provider") or _default_provider()
+    selected_model = conversation.get("model")
+    if provider == "polza":
+        models = await _polza_models()
+        model = selected_model or settings.polza_chat_model or models[0]
+        if model not in models:
+            raise HTTPException(
+                422,
+                "Выбранная для этого чата модель больше недоступна. Выберите другую модель.",
+            )
+        return provider, model
+    if provider == "codex" and not settings.production_mode:
+        model = (
+            selected_model
+            or settings.codex_model
+            or (settings.codex_models[0] if settings.codex_models else "default")
+        )
+        if selected_model and model not in settings.codex_models:
+            raise HTTPException(
+                422,
+                "Выбранная для этого чата модель Codex больше недоступна. Выберите другую модель.",
+            )
+        return provider, model
+    raise HTTPException(422, "Этот провайдер недоступен")
 
 
 def _index_document(document_id: str) -> None:
@@ -188,15 +258,31 @@ def delete_document(document_id: str, _: str | None = Depends(_crm_owner)):
 
 
 @app.post("/api/conversations", status_code=201)
-def create_conversation(
+async def create_conversation(
     payload: ConversationCreate, owner_id: str | None = Depends(_crm_owner)
 ) -> dict:
-    return store.create_conversation(payload.title, owner_id)
+    provider, model = await _validated_ai_choice(payload.provider, payload.model)
+    return store.create_conversation(payload.title, owner_id, provider, model)
 
 
 @app.get("/api/conversations")
 def list_conversations(owner_id: str | None = Depends(_crm_owner)) -> list[dict]:
     return store.conversations(owner_id)
+
+
+@app.patch("/api/conversations/{conversation_id}")
+async def update_conversation_ai(
+    conversation_id: str,
+    payload: ConversationAiUpdate,
+    owner_id: str | None = Depends(_crm_owner),
+) -> dict:
+    provider, model = await _validated_ai_choice(payload.provider, payload.model)
+    conversation = store.update_conversation_ai(
+        conversation_id, owner_id, provider, model
+    )
+    if not conversation:
+        raise HTTPException(404, "Чат не найден")
+    return conversation
 
 
 @app.get("/api/conversations/{conversation_id}/messages")
@@ -262,31 +348,17 @@ def delete_conversation(
 
 @app.post("/api/conversations/{conversation_id}/messages")
 async def create_message(
-    conversation_id: str, payload: MessageCreate, owner_id: str | None = Depends(_crm_owner)
+    conversation_id: str,
+    payload: MessageCreate,
+    owner_id: str | None = Depends(_crm_owner),
 ) -> StreamingResponse:
-    if owner_id is not None and not store.owns_conversation(conversation_id, owner_id):
+    conversation = store.conversation(conversation_id, owner_id)
+    if not conversation:
         raise HTTPException(404, "Чат не найден")
     question = payload.content.strip()
     if not question:
         raise HTTPException(422, "Сообщение не может быть пустым")
-    provider = payload.provider.lower().strip()
-    if provider not in ({"polza"} if settings.production_mode else {"codex", "polza"}):
-        raise HTTPException(422, "Неизвестный провайдер ответа")
-    model = payload.model.strip() if payload.model else None
-    if provider == "codex":
-        model = (
-            model
-            or settings.codex_model
-            or (settings.codex_models[0] if settings.codex_models else "default")
-        )
-    else:
-        if not settings.polza_api_key:
-            raise HTTPException(503, "Не задан POLZA_AI_API_KEY для ответов Polza.ai")
-        if not model:
-            models = await polza.models()
-            model = settings.polza_chat_model or (models[0] if models else None)
-        if not model:
-            raise HTTPException(503, "Polza не вернула доступные модели")
+    provider, model = await _resolve_conversation_ai(conversation)
     document_ids = store.scoped_document_ids(payload.scope or [])
     history, citations = store.messages(conversation_id, owner_id), rag.search(
         question, document_ids=document_ids
