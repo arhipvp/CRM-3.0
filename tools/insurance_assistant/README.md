@@ -43,6 +43,7 @@
 ## API
 
 - `POST /api/documents` (`multipart`, поле `files`), `GET/DELETE /api/documents/{id}`
+- `GET /api/documents/{id}/content` — исходный файл для авторизованного CRM-прокси; путь к хранилищу не раскрывается.
 - `POST/GET/DELETE /api/conversations`, `GET /api/conversations/{id}/messages`
 - `POST /api/conversations/{id}/messages` — SSE: `sources`, `delta`, `error`, `done`
 - `GET /api/providers` — доступные провайдеры и каталог моделей Polza.

@@ -4,6 +4,7 @@ from .views import (
     ConversationDetailView,
     ConversationMessagesView,
     ConversationsView,
+    DocumentContentView,
     DocumentDetailView,
     DocumentsView,
     ProvidersView,
@@ -20,5 +21,6 @@ urlpatterns = [
         ConversationMessagesView.as_view(),
     ),
     path("documents/", DocumentsView.as_view()),
+    path("documents/<str:document_id>/content/", DocumentContentView.as_view()),
     path("documents/<str:document_id>/", DocumentDetailView.as_view()),
 ]

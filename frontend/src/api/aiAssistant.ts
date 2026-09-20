@@ -1,4 +1,4 @@
-import { API_BASE, getAccessToken, request } from './request';
+import { API_BASE, getAccessToken, request, requestBlob } from './request';
 
 export interface AiConversation {
   id: string;
@@ -55,6 +55,19 @@ export const uploadAiDocuments = (files: File[]) => {
   files.forEach((file) => body.append('files', file));
   return request<AiDocument[]>('/ai/documents/', { method: 'POST', body });
 };
+
+export function aiDocumentPageFragment(location?: AiCitation['location']): string {
+  return typeof location?.page === 'number' && location.page > 0 ? `#page=${location.page}` : '';
+}
+
+export async function fetchAiDocumentContent(documentId: string): Promise<string> {
+  try {
+    const blob = await requestBlob(`/ai/documents/${documentId}/content/`);
+    return URL.createObjectURL(blob);
+  } catch {
+    throw new Error('Не удалось открыть источник. Попробуйте ещё раз позже.');
+  }
+}
 
 export async function streamAiAnswer(
   conversationId: string,

@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 
 import {
   createAiConversation,
+  aiDocumentPageFragment,
   deleteAiDocument,
   fetchAiConversations,
   fetchAiDocuments,
+  fetchAiDocumentContent,
   fetchAiMessages,
   formatAiCitationLocation,
   streamAiAnswer,
@@ -28,6 +30,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [question, setQuestion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [openingDocumentIds, setOpeningDocumentIds] = useState<Set<string>>(new Set());
 
   const loadConversations = async () => {
     const items = await fetchAiConversations();
@@ -44,11 +47,10 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         .catch((err) => setError(String(err)));
   }, [selectedId]);
   useEffect(() => {
-    if (canManageLibrary)
-      void fetchAiDocuments()
-        .then(setDocuments)
-        .catch((err) => setError(String(err)));
-  }, [canManageLibrary]);
+    void fetchAiDocuments()
+      .then(setDocuments)
+      .catch((err) => setError(String(err)));
+  }, []);
 
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId),
@@ -59,6 +61,30 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
     setConversations((items) => [chat, ...items]);
     setSelectedId(chat.id);
     setMessages([]);
+  };
+  const openDocument = async (
+    documentId: string,
+    location?: AiMessage['citations'][number]['location'],
+  ) => {
+    if (openingDocumentIds.has(documentId)) return;
+    const target = window.open('', '_blank');
+    setOpeningDocumentIds((ids) => new Set(ids).add(documentId));
+    try {
+      const objectUrl = await fetchAiDocumentContent(documentId);
+      const page = aiDocumentPageFragment(location);
+      if (target) target.location.href = `${objectUrl}${page}`;
+      else window.open(`${objectUrl}${page}`, '_blank');
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    } catch (err) {
+      target?.close();
+      setError(err instanceof Error ? err.message : 'Не удалось открыть источник.');
+    } finally {
+      setOpeningDocumentIds((ids) => {
+        const next = new Set(ids);
+        next.delete(documentId);
+        return next;
+      });
+    }
   };
   const send = async () => {
     const text = question.trim();
@@ -166,13 +192,18 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 {message.citations?.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {message.citations.map((citation, index) => (
-                      <span
+                      <button
                         key={`${citation.document_id}-${index}`}
-                        className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800"
+                        type="button"
+                        className="rounded bg-emerald-50 px-2 py-1 text-left text-xs text-emerald-800 hover:bg-emerald-100 disabled:cursor-wait"
+                        title={`Открыть источник: ${citation.filename}`}
+                        disabled={openingDocumentIds.has(citation.document_id)}
+                        onClick={() => void openDocument(citation.document_id, citation.location)}
                       >
-                        [{index + 1}] {citation.filename},{' '}
-                        {formatAiCitationLocation(citation.location)}
-                      </span>
+                        {openingDocumentIds.has(citation.document_id)
+                          ? 'Открываю источник…'
+                          : `[${index + 1}] ${citation.filename}, ${formatAiCitationLocation(citation.location)}`}
+                      </button>
                     ))}
                   </div>
                 )}
@@ -199,7 +230,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         </section>
         <aside className="rounded border border-[var(--app-border)] bg-white p-3">
           <h2 className="font-semibold">Источники</h2>
-          {canManageLibrary ? (
+          {canManageLibrary && (
             <>
               <label className="mt-3 block cursor-pointer rounded border border-dashed p-3 text-center text-sm">
                 <input
@@ -217,30 +248,41 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 />
                 Загрузить документы
               </label>
-              <div className="mt-3 space-y-2">
-                {documents.map((doc) => (
-                  <div key={doc.id} className="rounded bg-slate-50 p-2 text-xs">
-                    <div>{doc.filename}</div>
-                    <div className="text-slate-500">
-                      {doc.status} · {doc.chunks} фрагм.
-                    </div>
-                    <button
-                      className="mt-1 text-red-600"
-                      onClick={() =>
-                        void deleteAiDocument(doc.id)
-                          .then(() =>
-                            setDocuments((items) => items.filter((item) => item.id !== doc.id)),
-                          )
-                          .catch((err) => setError(String(err)))
-                      }
-                    >
-                      Удалить
-                    </button>
-                  </div>
-                ))}
-              </div>
             </>
-          ) : (
+          )}
+          <div className="mt-3 space-y-2">
+            {documents.map((doc) => (
+              <div key={doc.id} className="rounded bg-slate-50 p-2 text-xs">
+                <button
+                  type="button"
+                  className="text-left text-[var(--app-brand-700)] hover:underline disabled:cursor-wait"
+                  title={`Открыть источник: ${doc.filename}`}
+                  disabled={openingDocumentIds.has(doc.id)}
+                  onClick={() => void openDocument(doc.id)}
+                >
+                  {openingDocumentIds.has(doc.id) ? 'Открываю источник…' : doc.filename}
+                </button>
+                <div className="text-slate-500">
+                  {doc.status} · {doc.chunks} фрагм.
+                </div>
+                {canManageLibrary && (
+                  <button
+                    className="mt-1 text-red-600"
+                    onClick={() =>
+                      void deleteAiDocument(doc.id)
+                        .then(() =>
+                          setDocuments((items) => items.filter((item) => item.id !== doc.id)),
+                        )
+                        .catch((err) => setError(String(err)))
+                    }
+                  >
+                    Удалить
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+          {!canManageLibrary && (
             <p className="mt-2 text-sm text-slate-500">
               Библиотека общая. Загрузкой и удалением управляют Vova и администраторы.
             </p>

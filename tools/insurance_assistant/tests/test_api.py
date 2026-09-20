@@ -79,3 +79,23 @@ def test_provider_catalog_is_public_without_exposing_key(monkeypatch):
 def test_usage_endpoint_returns_local_aggregate():
     payload = TestClient(app).get("/api/usage").json()
     assert set(payload) == {"providers", "requests", "cost_rub"}
+
+
+def test_document_content_requires_internal_access_and_hides_storage_path(monkeypatch, tmp_path):
+    import app.main as main
+    from app.database import Store
+
+    source = tmp_path / "rules.pdf"
+    source.write_bytes(b"%PDF-test")
+    store = Store(tmp_path / "assistant.sqlite3")
+    document_id = store.create_document("rules.pdf", source)
+    monkeypatch.setattr(main, "store", store)
+
+    response = TestClient(app).get(f"/api/documents/{document_id}/content")
+    assert response.status_code == 200
+    assert response.content == b"%PDF-test"
+    assert "inline" in response.headers["content-disposition"]
+    assert str(tmp_path) not in str(response.headers)
+
+    missing = TestClient(app).get("/api/documents/missing/content")
+    assert missing.status_code == 404

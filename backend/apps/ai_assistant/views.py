@@ -8,7 +8,11 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .service import AssistantService, AssistantServiceError
+from .service import (
+    AssistantService,
+    AssistantServiceError,
+    AssistantServiceNotFound,
+)
 
 
 def _can_manage_library(user) -> bool:
@@ -104,3 +108,19 @@ class DocumentDetailView(AssistantProxyView):
                 {"detail": "Недостаточно прав для удаления источников."}, status=403
             )
         return self.call(request, "DELETE", f"/api/documents/{document_id}")
+
+
+class DocumentContentView(AssistantProxyView):
+    def get(self, request, document_id: str):
+        try:
+            headers, content = self.service(request).download(
+                f"/api/documents/{document_id}/content"
+            )
+        except AssistantServiceNotFound as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_404_NOT_FOUND)
+        except AssistantServiceError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_502_BAD_GATEWAY)
+        response = StreamingHttpResponse(content, content_type=headers["Content-Type"])
+        response["Content-Disposition"] = headers["Content-Disposition"]
+        response["X-Content-Type-Options"] = "nosniff"
+        return response

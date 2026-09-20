@@ -11,6 +11,10 @@ class AssistantServiceError(Exception):
     pass
 
 
+class AssistantServiceNotFound(AssistantServiceError):
+    pass
+
+
 class AssistantService:
     def __init__(self, user_id: int) -> None:
         self.headers = {
@@ -61,3 +65,41 @@ class AssistantService:
             raise AssistantServiceError(
                 "Страховой помощник временно недоступен."
             ) from exc
+
+    def download(self, path: str) -> tuple[dict[str, str], Iterator[bytes]]:
+        client = httpx.Client(timeout=self.timeout)
+        try:
+            response = client.send(
+                client.build_request("GET", self._url(path), headers=self.headers),
+                stream=True,
+            )
+        except httpx.HTTPError as exc:
+            client.close()
+            raise AssistantServiceError(
+                "Страховой помощник временно недоступен."
+            ) from exc
+        if response.status_code >= 400:
+            detail = response.read().decode("utf-8", "replace").strip()
+            response.close()
+            client.close()
+            if response.status_code == 404:
+                raise AssistantServiceNotFound(detail or "Документ не найден.")
+            raise AssistantServiceError(detail or "Документ не найден.")
+
+        headers = {
+            "Content-Type": response.headers.get(
+                "Content-Type", "application/octet-stream"
+            ),
+            "Content-Disposition": response.headers.get(
+                "Content-Disposition", "inline"
+            ),
+        }
+
+        def content() -> Iterator[bytes]:
+            try:
+                yield from response.iter_bytes()
+            finally:
+                response.close()
+                client.close()
+
+        return headers, content()

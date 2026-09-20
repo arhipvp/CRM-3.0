@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import mimetypes
 import shutil
 import uuid
 from dataclasses import replace
@@ -102,6 +103,25 @@ async def upload_documents(
 @app.get("/api/documents")
 def list_documents(_: str | None = Depends(_crm_owner)) -> list[dict]:
     return store.documents()
+
+
+@app.get("/api/documents/{document_id}/content")
+def document_content(
+    document_id: str, _: str | None = Depends(_crm_owner)
+) -> FileResponse:
+    document = store.document(document_id)
+    if not document:
+        raise HTTPException(404, "Документ не найден")
+    path = Path(document["path"])
+    if not path.is_file():
+        raise HTTPException(404, "Исходный файл документа не найден")
+    media_type = mimetypes.guess_type(document["filename"])[0] or "application/octet-stream"
+    return FileResponse(
+        path,
+        media_type=media_type,
+        filename=document["filename"],
+        content_disposition_type="inline",
+    )
 
 
 @app.delete("/api/documents/{document_id}", status_code=204)
