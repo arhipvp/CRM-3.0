@@ -39,8 +39,10 @@ class AssistantProxyPermissionsTests(APITestCase):
     def test_regular_user_cannot_upload_or_delete_documents(self):
         upload = self.client.post("/api/v1/ai/documents/", {})
         delete = self.client.delete("/api/v1/ai/documents/document-id/")
+        classify = self.client.patch("/api/v1/ai/documents/classification/", {})
         self.assertEqual(upload.status_code, 403)
         self.assertEqual(delete.status_code, 403)
+        self.assertEqual(classify.status_code, 403)
 
     @patch("apps.ai_assistant.views.AssistantService", FakeAssistantService)
     def test_vova_can_manage_library(self):
@@ -48,6 +50,20 @@ class AssistantProxyPermissionsTests(APITestCase):
         response = self.client.delete("/api/v1/ai/documents/document-id/")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data["user_id"], self.vova.id)
+
+    @patch("apps.ai_assistant.views.AssistantService", FakeAssistantService)
+    def test_vova_can_read_catalog_and_classify_documents(self):
+        self.client.force_authenticate(self.vova)
+        catalog = self.client.get("/api/v1/ai/catalog/")
+        response = self.client.patch(
+            "/api/v1/ai/documents/classification/",
+            {"document_ids": ["document-id"], "insurer": "РЕСО"},
+            format="json",
+        )
+        self.assertEqual(catalog.status_code, 200)
+        self.assertEqual(catalog.data["path"], "/api/catalog")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["path"], "/api/documents/classification")
 
     @patch("apps.ai_assistant.views.AssistantService", FakeAssistantService)
     def test_authenticated_user_can_open_document_content(self):

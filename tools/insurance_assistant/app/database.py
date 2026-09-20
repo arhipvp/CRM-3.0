@@ -36,7 +36,9 @@ class Store:
                 CREATE TABLE IF NOT EXISTS documents (
                   id TEXT PRIMARY KEY, filename TEXT NOT NULL, path TEXT NOT NULL,
                   status TEXT NOT NULL, error TEXT, created_at TEXT NOT NULL,
-                  indexed_at TEXT, chunks INTEGER NOT NULL DEFAULT 0
+                  indexed_at TEXT, chunks INTEGER NOT NULL DEFAULT 0,
+                  insurer TEXT, insurance_kind TEXT, product TEXT,
+                  document_type TEXT, effective_from TEXT, effective_to TEXT
                 );
                 CREATE TABLE IF NOT EXISTS conversations (
                   id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL,
@@ -72,12 +74,44 @@ class Store:
             if "owner_id" not in conversation_columns:
                 con.execute("ALTER TABLE conversations ADD COLUMN owner_id TEXT")
 
-    def create_document(self, filename: str, path: Path) -> str:
+            document_columns = {
+                row[1] for row in con.execute("PRAGMA table_info(documents)").fetchall()
+            }
+            document_additions = {
+                "insurer": "TEXT",
+                "insurance_kind": "TEXT",
+                "product": "TEXT",
+                "document_type": "TEXT",
+                "effective_from": "TEXT",
+                "effective_to": "TEXT",
+            }
+            for name, kind in document_additions.items():
+                if name not in document_columns:
+                    con.execute(f"ALTER TABLE documents ADD COLUMN {name} {kind}")
+
+    def create_document(
+        self, filename: str, path: Path, classification: dict[str, str | None] | None = None
+    ) -> str:
         ident = str(uuid.uuid4())
+        classification = classification or {}
         with self.connection() as con:
             con.execute(
-                "INSERT INTO documents(id, filename, path, status, created_at) VALUES (?, ?, ?, 'queued', ?)",
-                (ident, filename, str(path), now()),
+                """INSERT INTO documents
+                (id, filename, path, status, created_at, insurer, insurance_kind, product,
+                 document_type, effective_from, effective_to)
+                VALUES (?, ?, ?, 'queued', ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    ident,
+                    filename,
+                    str(path),
+                    now(),
+                    classification.get("insurer"),
+                    classification.get("insurance_kind"),
+                    classification.get("product"),
+                    classification.get("document_type"),
+                    classification.get("effective_from"),
+                    classification.get("effective_to"),
+                ),
             )
         return ident
 
@@ -92,6 +126,104 @@ class Store:
                 "SELECT * FROM documents ORDER BY created_at DESC"
             ).fetchall()
         return [dict(row) for row in rows]
+
+    def update_document_classification(
+        self, document_ids: list[str], classification: dict[str, str | None]
+    ) -> list[dict]:
+        if not document_ids:
+            return []
+        assignments = (
+            classification.get("insurer"),
+            classification.get("insurance_kind"),
+            classification.get("product"),
+            classification.get("document_type"),
+            classification.get("effective_from"),
+            classification.get("effective_to"),
+        )
+        placeholders = ", ".join("?" for _ in document_ids)
+        with self.connection() as con:
+            con.execute(
+                f"""UPDATE documents SET insurer=?, insurance_kind=?, product=?,
+                document_type=?, effective_from=?, effective_to=?
+                WHERE id IN ({placeholders})""",
+                (*assignments, *document_ids),
+            )
+            rows = con.execute(
+                f"SELECT * FROM documents WHERE id IN ({placeholders})", document_ids
+            ).fetchall()
+        return [dict(row) for row in rows]
+
+    def scoped_document_ids(self, scopes: list[dict]) -> list[str] | None:
+        """Return an OR-union of scope branches; None means the whole library."""
+        if not scopes:
+            return None
+        clauses: list[str] = []
+        parameters: list[str] = []
+        for scope in scopes:
+            if scope.get("unclassified"):
+                clauses.append(
+                    "(insurer IS NULL AND insurance_kind IS NULL AND product IS NULL)"
+                )
+                continue
+            conditions: list[str] = []
+            for field in ("insurer", "insurance_kind", "product"):
+                if value := scope.get(field):
+                    conditions.append(f"{field} = ?")
+                    parameters.append(value)
+            if conditions:
+                clauses.append(f"({' AND '.join(conditions)})")
+        if not clauses:
+            return None
+        with self.connection() as con:
+            rows = con.execute(
+                f"SELECT id FROM documents WHERE {' OR '.join(clauses)}", parameters
+            ).fetchall()
+        return [row[0] for row in rows]
+
+    def catalog(self) -> dict:
+        documents = self.documents()
+        unclassified = [
+            item
+            for item in documents
+            if not item["insurer"] and not item["insurance_kind"] and not item["product"]
+        ]
+        tree: dict[str, dict] = {}
+        for item in documents:
+            if not item["insurer"]:
+                continue
+            insurer = tree.setdefault(
+                item["insurer"], {"name": item["insurer"], "count": 0, "kinds": {}}
+            )
+            insurer["count"] += 1
+            kind_name = item["insurance_kind"] or "Без вида страхования"
+            kind = insurer["kinds"].setdefault(
+                kind_name, {"name": kind_name, "count": 0, "products": {}}
+            )
+            kind["count"] += 1
+            product_name = item["product"] or "Без продукта"
+            product = kind["products"].setdefault(
+                product_name, {"name": product_name, "count": 0}
+            )
+            product["count"] += 1
+        insurers = []
+        for insurer in tree.values():
+            insurer["kinds"] = [
+                {**kind, "products": list(kind["products"].values())}
+                for kind in insurer["kinds"].values()
+            ]
+            insurers.append(insurer)
+        return {
+            "total": len(documents),
+            "unclassified": len(unclassified),
+            "insurers": insurers,
+            "suggestions": {
+                "insurers": sorted({item["insurer"] for item in documents if item["insurer"]}),
+                "insurance_kinds": sorted(
+                    {item["insurance_kind"] for item in documents if item["insurance_kind"]}
+                ),
+                "products": sorted({item["product"] for item in documents if item["product"]}),
+            },
+        }
 
     def update_document(
         self, ident: str, status: str, *, chunks: int = 0, error: str | None = None

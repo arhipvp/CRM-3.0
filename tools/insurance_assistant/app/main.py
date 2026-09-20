@@ -8,7 +8,16 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    Header,
+    HTTPException,
+    UploadFile,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -47,6 +56,20 @@ class MessageCreate(BaseModel):
     content: str
     provider: str = "codex"
     model: str | None = None
+    scope: list[dict[str, str | bool | None]] | None = None
+
+
+class DocumentClassification(BaseModel):
+    insurer: str | None = None
+    insurance_kind: str | None = None
+    product: str | None = None
+    document_type: str | None = None
+    effective_from: str | None = None
+    effective_to: str | None = None
+
+
+class ClassificationUpdate(DocumentClassification):
+    document_ids: list[str]
 
 
 def _crm_owner(
@@ -72,7 +95,7 @@ def _index_document(document_id: str) -> None:
             replace(part, filename=document["filename"])
             for part in extract(Path(document["path"]))
         ]
-        count = rag.index(document_id, parts)
+        count = rag.index(document_id, parts, _document_classification(document))
         if not count:
             raise ValueError("В документе не найден текст")
         store.update_document(document_id, "ready", chunks=count)
@@ -84,9 +107,25 @@ def _index_document(document_id: str) -> None:
 async def upload_documents(
     background_tasks: BackgroundTasks,
     files: Annotated[list[UploadFile], File(...)],
+    insurer: Annotated[str | None, Form()] = None,
+    insurance_kind: Annotated[str | None, Form()] = None,
+    product: Annotated[str | None, Form()] = None,
+    document_type: Annotated[str | None, Form()] = None,
+    effective_from: Annotated[str | None, Form()] = None,
+    effective_to: Annotated[str | None, Form()] = None,
     _: str | None = Depends(_crm_owner),
 ) -> list[dict]:
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
+    classification = _validated_classification(
+        {
+            "insurer": insurer,
+            "insurance_kind": insurance_kind,
+            "product": product,
+            "document_type": document_type,
+            "effective_from": effective_from,
+            "effective_to": effective_to,
+        }
+    )
     created = []
     for upload in files:
         filename = Path(upload.filename or "document").name
@@ -94,7 +133,7 @@ async def upload_documents(
             raise HTTPException(415, f"Неподдерживаемый формат: {filename}")
         target = settings.uploads_dir / f"{uuid.uuid4()}_{filename}"
         target.write_bytes(await upload.read())
-        ident = store.create_document(filename, target)
+        ident = store.create_document(filename, target, classification)
         background_tasks.add_task(_index_document, ident)
         created.append(store.document(ident))
     return created
@@ -103,6 +142,21 @@ async def upload_documents(
 @app.get("/api/documents")
 def list_documents(_: str | None = Depends(_crm_owner)) -> list[dict]:
     return store.documents()
+
+
+@app.get("/api/catalog")
+def catalog(_: str | None = Depends(_crm_owner)) -> dict:
+    return store.catalog()
+
+
+@app.patch("/api/documents/classification")
+def update_document_classification(
+    payload: ClassificationUpdate, _: str | None = Depends(_crm_owner)
+) -> list[dict]:
+    classification = _validated_classification(payload.model_dump(exclude={"document_ids"}))
+    documents = store.update_document_classification(payload.document_ids, classification)
+    rag.update_document_classification(payload.document_ids, classification)
+    return documents
 
 
 @app.get("/api/documents/{document_id}/content")
@@ -233,7 +287,18 @@ async def create_message(
             model = settings.polza_chat_model or (models[0] if models else None)
         if not model:
             raise HTTPException(503, "Polza не вернула доступные модели")
-    history, citations = store.messages(conversation_id, owner_id), rag.search(question)
+    document_ids = store.scoped_document_ids(payload.scope or [])
+    history, citations = store.messages(conversation_id, owner_id), rag.search(
+        question, document_ids=document_ids
+    )
+    citations = [
+        replace(
+            citation,
+            classification=citation.classification
+            or _document_classification(store.document(citation.document_id) or {}),
+        )
+        for citation in citations
+    ]
     store.add_message(conversation_id, "user", question)
 
     async def events():
@@ -324,3 +389,31 @@ def web(path: str):
 
 def _sse(event: str, value: object) -> str:
     return f"event: {event}\ndata: {json.dumps(value, ensure_ascii=False)}\n\n"
+
+
+def _document_classification(document: dict) -> dict[str, str | None]:
+    return {
+        key: document.get(key)
+        for key in (
+            "insurer",
+            "insurance_kind",
+            "product",
+            "document_type",
+            "effective_from",
+            "effective_to",
+        )
+    }
+
+
+def _validated_classification(values: dict[str, str | None]) -> dict[str, str | None]:
+    normalized = {
+        key: value.strip() if isinstance(value, str) and value.strip() else None
+        for key, value in values.items()
+    }
+    hierarchy = [normalized.get(key) for key in ("insurer", "insurance_kind", "product")]
+    if any(hierarchy) and not all(hierarchy):
+        raise HTTPException(
+            422,
+            "Для классифицированного документа заполните страховщика, вид страхования и продукт.",
+        )
+    return normalized

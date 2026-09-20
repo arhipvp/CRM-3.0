@@ -11,6 +11,51 @@ export interface AiCitation {
   filename: string;
   location: Record<string, string | number>;
   score?: number;
+  classification?: AiClassification | null;
+}
+
+export interface AiClassification {
+  insurer?: string | null;
+  insurance_kind?: string | null;
+  product?: string | null;
+  document_type?: string | null;
+  effective_from?: string | null;
+  effective_to?: string | null;
+}
+
+export interface AiScopeBranch {
+  insurer?: string;
+  insurance_kind?: string;
+  product?: string;
+  unclassified?: boolean;
+}
+
+export interface AiCatalogProduct {
+  name: string;
+  count: number;
+}
+
+export interface AiCatalogKind {
+  name: string;
+  count: number;
+  products: AiCatalogProduct[];
+}
+
+export interface AiCatalogInsurer {
+  name: string;
+  count: number;
+  kinds: AiCatalogKind[];
+}
+
+export interface AiCatalog {
+  total: number;
+  unclassified: number;
+  insurers: AiCatalogInsurer[];
+  suggestions: {
+    insurers: string[];
+    insurance_kinds: string[];
+    products: string[];
+  };
 }
 
 export function formatAiCitationLocation(location: AiCitation['location']): string {
@@ -35,6 +80,7 @@ export interface AiDocument {
   status: string;
   chunks: number;
   error?: string | null;
+  classification?: AiClassification;
 }
 
 export const fetchAiConversations = () => request<AiConversation[]>('/ai/conversations/');
@@ -48,11 +94,23 @@ export const deleteAiConversation = (id: string) =>
 export const fetchAiMessages = (id: string) =>
   request<AiMessage[]>(`/ai/conversations/${id}/messages/`);
 export const fetchAiDocuments = () => request<AiDocument[]>('/ai/documents/');
+export const fetchAiCatalog = () => request<AiCatalog>('/ai/catalog/');
 export const deleteAiDocument = (id: string) =>
   request<void>(`/ai/documents/${id}/`, { method: 'DELETE' });
-export const uploadAiDocuments = (files: File[]) => {
+export const updateAiDocumentClassification = (
+  documentIds: string[],
+  classification: AiClassification,
+) =>
+  request<AiDocument[]>('/ai/documents/classification/', {
+    method: 'PATCH',
+    body: JSON.stringify({ document_ids: documentIds, ...classification }),
+  });
+export const uploadAiDocuments = (files: File[], classification: AiClassification = {}) => {
   const body = new FormData();
   files.forEach((file) => body.append('files', file));
+  Object.entries(classification).forEach(([key, value]) => {
+    if (value) body.append(key, value);
+  });
   return request<AiDocument[]>('/ai/documents/', { method: 'POST', body });
 };
 
@@ -72,6 +130,7 @@ export async function fetchAiDocumentContent(documentId: string): Promise<string
 export async function streamAiAnswer(
   conversationId: string,
   content: string,
+  scope: AiScopeBranch[],
   onEvent: (event: string, payload: unknown) => void,
 ): Promise<void> {
   const response = await fetch(`${API_BASE}/ai/conversations/${conversationId}/messages/`, {
@@ -80,7 +139,7 @@ export async function streamAiAnswer(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getAccessToken() ?? ''}`,
     },
-    body: JSON.stringify({ content, provider: 'polza' }),
+    body: JSON.stringify({ content, provider: 'polza', scope }),
   });
   if (!response.ok || !response.body)
     throw new Error('Не удалось получить ответ страхового помощника.');

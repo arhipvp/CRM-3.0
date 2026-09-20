@@ -20,6 +20,7 @@ class Citation:
     location: dict[str, str | int]
     excerpt: str
     score: float = 0.0
+    classification: dict[str, str] | None = None
 
     def json(self) -> dict:
         return asdict(self)
@@ -114,20 +115,30 @@ class RagIndex:
                 ],
             )
 
-    def _lexical_search(self, question: str, limit: int) -> list[dict]:
+    def _lexical_search(
+        self, question: str, limit: int, document_ids: list[str] | None = None
+    ) -> list[dict]:
         query = _fts_query(question)
         if not query:
             return []
+        filters = ""
+        parameters: list[object] = [query]
+        if document_ids is not None:
+            if not document_ids:
+                return []
+            filters = f" AND document_id IN ({', '.join('?' for _ in document_ids)})"
+            parameters.extend(document_ids)
+        parameters.append(limit)
         with self._lexical_connection() as connection:
             rows = connection.execute(
-                """
+                f"""
                 SELECT point_id, document_id, filename, location, text
                 FROM rag_chunks_fts
-                WHERE rag_chunks_fts MATCH ?
+                WHERE rag_chunks_fts MATCH ? {filters}
                 ORDER BY bm25(rag_chunks_fts)
                 LIMIT ?
                 """,
-                (query, limit),
+                parameters,
             ).fetchall()
         return [
             {
@@ -223,13 +234,19 @@ class RagIndex:
             vectors_config=VectorParams(size=dimension, distance=Distance.COSINE),
         )
 
-    def index(self, document_id: str, parts: list[ExtractedPart]) -> int:
+    def index(
+        self,
+        document_id: str,
+        parts: list[ExtractedPart],
+        classification: dict[str, str | None] | None = None,
+    ) -> int:
         from qdrant_client.models import PointStruct
 
         self._ensure_collection()
         self.delete_document(document_id)
         texts: list[str] = []
         payloads: list[dict] = []
+        classification = _classification_payload(classification)
         for part in parts:
             for ordinal, content in enumerate(chunks(part.text)):
                 texts.append(content)
@@ -240,6 +257,7 @@ class RagIndex:
                         "location": _location_payload(part.location),
                         "text": content,
                         "ordinal": ordinal,
+                        "classification": classification,
                     }
                 )
         if not texts:
@@ -282,7 +300,33 @@ class RagIndex:
             )
         self._delete_lexical_document(document_id)
 
-    def search(self, question: str, limit: int | None = None) -> list[Citation]:
+    def update_document_classification(
+        self, document_ids: list[str], classification: dict[str, str | None]
+    ) -> None:
+        if not document_ids or not self.client.collection_exists(self.settings.collection):
+            return
+        from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+        for document_id in document_ids:
+            self.client.set_payload(
+                self.settings.collection,
+                payload={"classification": _classification_payload(classification)},
+                points=Filter(
+                    must=[
+                        FieldCondition(
+                            key="document_id", match=MatchAny(any=[document_id])
+                        )
+                    ]
+                ),
+                wait=True,
+            )
+
+    def search(
+        self,
+        question: str,
+        limit: int | None = None,
+        document_ids: list[str] | None = None,
+    ) -> list[Citation]:
         if not self.client.collection_exists(self.settings.collection):
             return []
         # Users often say “без справок”, while the rules use the formal
@@ -295,11 +339,23 @@ class RagIndex:
         candidate_limit = max(
             result_limit * 4, self.settings.retrieval_candidates, result_limit
         )
+        query_filter = None
+        if document_ids is not None:
+            if not document_ids:
+                return []
+            from qdrant_client.models import FieldCondition, Filter, MatchAny
+
+            query_filter = Filter(
+                must=[FieldCondition(key="document_id", match=MatchAny(any=document_ids))]
+            )
         results = self.client.query_points(
-            self.settings.collection, query=vector, limit=candidate_limit
+            self.settings.collection,
+            query=vector,
+            limit=candidate_limit,
+            query_filter=query_filter,
         ).points
         self._seed_lexical_index()
-        lexical = self._lexical_search(expanded_question, candidate_limit)
+        lexical = self._lexical_search(expanded_question, candidate_limit, document_ids)
         candidates: dict[str, dict] = {}
         scores: dict[str, float] = {}
         rrf_constant = 60
@@ -310,6 +366,7 @@ class RagIndex:
                 "filename": item.payload["filename"],
                 "location": _location_payload(item.payload["location"]),
                 "text": item.payload["text"],
+                "classification": item.payload.get("classification"),
             }
             scores[point_id] = scores.get(point_id, 0.0) + (
                 self.settings.retrieval_semantic_weight / (rrf_constant + rank)
@@ -398,6 +455,7 @@ def _citation(item: dict, score: float) -> Citation:
         location=_location_payload(item["location"]),
         excerpt=item["text"],
         score=score,
+        classification=_classification_payload(item.get("classification")) or None,
     )
 
 
@@ -412,6 +470,20 @@ def _normalize(vector: list[float]) -> list[float]:
     if not length:
         raise RuntimeError("Провайдер вернул нулевой вектор эмбеддинга.")
     return [value / length for value in vector]
+
+
+def _classification_payload(
+    classification: dict[str, str | None] | None,
+) -> dict[str, str]:
+    if not classification:
+        return {}
+    return {
+        key: value
+        for key, value in classification.items()
+        if key in {"insurer", "insurance_kind", "product", "document_type", "effective_from", "effective_to"}
+        and isinstance(value, str)
+        and value.strip()
+    }
 
 
 def _batches(items: list, size: int) -> Iterable[list]:

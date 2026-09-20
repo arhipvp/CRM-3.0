@@ -1,44 +1,83 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import {
-  createAiConversation,
   aiDocumentPageFragment,
+  createAiConversation,
   deleteAiDocument,
+  fetchAiCatalog,
   fetchAiConversations,
-  fetchAiDocuments,
   fetchAiDocumentContent,
+  fetchAiDocuments,
   fetchAiMessages,
   formatAiCitationLocation,
   streamAiAnswer,
+  updateAiDocumentClassification,
   uploadAiDocuments,
+  type AiCatalog,
+  type AiClassification,
   type AiConversation,
   type AiDocument,
   type AiMessage,
+  type AiScopeBranch,
 } from '../../api/aiAssistant';
 import type { User } from '../../types';
 import { Button } from '../common/Button';
 import { PageHeader } from '../common/layoutPrimitives';
 
+type Tab = 'chat' | 'library';
+const emptyCatalog: AiCatalog = {
+  total: 0,
+  unclassified: 0,
+  insurers: [],
+  suggestions: { insurers: [], insurance_kinds: [], products: [] },
+};
+const scopeKey = (value: AiScopeBranch) =>
+  value.unclassified
+    ? 'unclassified'
+    : [value.insurer, value.insurance_kind, value.product].filter(Boolean).join('::');
+const scopeLabel = (value: AiScopeBranch) =>
+  value.unclassified
+    ? 'Нераспределено'
+    : [value.insurer, value.insurance_kind, value.product].filter(Boolean).join(' → ');
+const documentLabel = (value?: AiClassification | null) => {
+  const parts = [value?.insurer, value?.insurance_kind, value?.product].filter(Boolean);
+  return parts.length ? parts.join(' → ') : 'Нераспределено';
+};
+
 export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
-  const canManageLibrary = Boolean(
+  const canManage = Boolean(
     currentUser?.isStaff || currentUser?.username.toLocaleLowerCase() === 'vova',
   );
+  const [tab, setTab] = useState<Tab>('chat');
   const [conversations, setConversations] = useState<AiConversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [documents, setDocuments] = useState<AiDocument[]>([]);
+  const [catalog, setCatalog] = useState<AiCatalog>(emptyCatalog);
+  const [scope, setScope] = useState<AiScopeBranch[]>([]);
   const [question, setQuestion] = useState('');
+  const [search, setSearch] = useState('');
+  const [classification, setClassification] = useState<AiClassification>({});
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [openingDocumentIds, setOpeningDocumentIds] = useState<Set<string>>(new Set());
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [opening, setOpening] = useState<Set<string>>(new Set());
 
-  const loadConversations = async () => {
-    const items = await fetchAiConversations();
-    setConversations(items);
-    setSelectedId((current) => current ?? items[0]?.id ?? null);
+  const loadLibrary = async () => {
+    const [items, tree] = await Promise.all([fetchAiDocuments(), fetchAiCatalog()]);
+    setDocuments(items);
+    setCatalog(tree);
   };
   useEffect(() => {
-    void loadConversations().catch((err) => setError(String(err)));
+    void fetchAiConversations()
+      .then((items) => {
+        setConversations(items);
+        setSelectedId((id) => id ?? items[0]?.id ?? null);
+      })
+      .catch((err) => setError(String(err)));
+    void loadLibrary().catch((err) => setError(String(err)));
   }, []);
   useEffect(() => {
     if (selectedId)
@@ -46,55 +85,77 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         .then(setMessages)
         .catch((err) => setError(String(err)));
   }, [selectedId]);
-  useEffect(() => {
-    void fetchAiDocuments()
-      .then(setDocuments)
-      .catch((err) => setError(String(err)));
-  }, []);
-
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId),
     [conversations, selectedId],
   );
+  const visibleDocuments = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase();
+    return needle
+      ? documents.filter((item) => item.filename.toLocaleLowerCase().includes(needle))
+      : documents;
+  }, [documents, search]);
+  const selectedScope = (branch: AiScopeBranch) =>
+    scope.some((item) => scopeKey(item) === scopeKey(branch));
+  const toggleScope = (branch: AiScopeBranch) =>
+    setScope((items) =>
+      selectedScope(branch)
+        ? items.filter((item) => scopeKey(item) !== scopeKey(branch))
+        : [...items, branch],
+    );
+  const toggleDocument = (id: string) =>
+    setSelectedDocuments((items) => {
+      const next = new Set(items);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  const changeClassification = (field: keyof AiClassification, value: string) =>
+    setClassification((item) => ({ ...item, [field]: value || undefined }));
+  const validClassification = () => {
+    const values = [classification.insurer, classification.insurance_kind, classification.product];
+    return !values.some(Boolean) || values.every(Boolean);
+  };
+
+  const openDocument = async (
+    id: string,
+    location?: AiMessage['citations'][number]['location'],
+  ) => {
+    if (opening.has(id)) return;
+    const target = window.open('', '_blank');
+    setOpening((items) => new Set(items).add(id));
+    try {
+      const url = await fetchAiDocumentContent(id);
+      const page = aiDocumentPageFragment(location);
+      if (target) target.location.href = `${url}${page}`;
+      else window.open(`${url}${page}`, '_blank');
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      target?.close();
+      setError(err instanceof Error ? err.message : 'Не удалось открыть источник.');
+    } finally {
+      setOpening((items) => {
+        const next = new Set(items);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
   const createChat = async () => {
     const chat = await createAiConversation();
     setConversations((items) => [chat, ...items]);
     setSelectedId(chat.id);
     setMessages([]);
   };
-  const openDocument = async (
-    documentId: string,
-    location?: AiMessage['citations'][number]['location'],
-  ) => {
-    if (openingDocumentIds.has(documentId)) return;
-    const target = window.open('', '_blank');
-    setOpeningDocumentIds((ids) => new Set(ids).add(documentId));
-    try {
-      const objectUrl = await fetchAiDocumentContent(documentId);
-      const page = aiDocumentPageFragment(location);
-      if (target) target.location.href = `${objectUrl}${page}`;
-      else window.open(`${objectUrl}${page}`, '_blank');
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
-    } catch (err) {
-      target?.close();
-      setError(err instanceof Error ? err.message : 'Не удалось открыть источник.');
-    } finally {
-      setOpeningDocumentIds((ids) => {
-        const next = new Set(ids);
-        next.delete(documentId);
-        return next;
-      });
-    }
-  };
   const send = async () => {
     const text = question.trim();
     if (!text || loading) return;
-    let conversationId = selectedId;
-    if (!conversationId) {
+    let id = selectedId;
+    if (!id) {
       const chat = await createAiConversation(text.slice(0, 60));
       setConversations((items) => [chat, ...items]);
-      conversationId = chat.id;
       setSelectedId(chat.id);
+      id = chat.id;
     }
     setQuestion('');
     setLoading(true);
@@ -105,7 +166,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       { id: 'pending', role: 'assistant', content: '', citations: [] },
     ]);
     try {
-      await streamAiAnswer(conversationId, text, (event, payload) => {
+      await streamAiAnswer(id, text, scope, (event, payload) => {
         if (event === 'delta' && typeof payload === 'string')
           setMessages((items) =>
             items.map((item) =>
@@ -113,7 +174,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
             ),
           );
         if (event === 'done' && payload && typeof payload === 'object') {
-          const value = payload as {
+          const result = payload as {
             content?: string;
             citations?: AiMessage['citations'];
             usage?: AiMessage['usage'];
@@ -124,9 +185,9 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 ? {
                     ...item,
                     id: `answer-${Date.now()}`,
-                    content: value.content ?? item.content,
-                    citations: value.citations ?? [],
-                    usage: value.usage,
+                    content: result.content ?? item.content,
+                    citations: result.citations ?? [],
+                    usage: result.usage,
                   }
                 : item,
             ),
@@ -141,6 +202,32 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       setLoading(false);
     }
   };
+  const upload = async (files: File[]) => {
+    if (!files.length || uploading) return;
+    if (!validClassification()) {
+      setError('Заполните всю ветку или оставьте поля пустыми для «Нераспределено».');
+      return;
+    }
+    setUploading(true);
+    try {
+      await uploadAiDocuments(files, classification);
+      await loadLibrary();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить документы.');
+    } finally {
+      setUploading(false);
+    }
+  };
+  const move = async () => {
+    if (!selectedDocuments.size || !validClassification()) return;
+    try {
+      await updateAiDocumentClassification([...selectedDocuments], classification);
+      setSelectedDocuments(new Set());
+      await loadLibrary();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось изменить классификацию.');
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -148,147 +235,374 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         title="ИИ-помощник"
         description="Ответы строятся только по общей библиотеке страховых документов."
       />
+      <div className="inline-flex rounded-xl border border-[var(--app-border)] bg-slate-100 p-1 shadow-sm">
+        {(
+          [
+            ['chat', 'Чат'],
+            ['library', `Библиотека · ${catalog.total}`],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => setTab(value)}
+            className={`rounded-lg px-5 py-2 text-sm ${tab === value ? 'bg-white text-[var(--app-brand-700)] shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       {error && (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
         </div>
       )}
-      <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)_280px]">
-        <aside className="rounded border border-[var(--app-border)] bg-white p-3">
-          <Button onClick={() => void createChat()} variant="primary" size="block">
-            Новый чат
-          </Button>
-          <div className="mt-3 space-y-1">
-            {conversations.map((chat) => (
-              <button
-                key={chat.id}
-                className={`w-full rounded px-2 py-2 text-left text-sm ${chat.id === selectedId ? 'bg-[var(--app-brand-50)]' : 'hover:bg-slate-50'}`}
-                onClick={() => setSelectedId(chat.id)}
-              >
-                {chat.title}
-              </button>
-            ))}
-          </div>
-        </aside>
-        <section className="flex min-h-[620px] flex-col rounded border border-[var(--app-border)] bg-white p-4">
-          <div className="mb-3 text-sm text-slate-500">
-            {selected?.title ?? 'Новый чат'} · Polza
-          </div>
-          <div className="flex-1 space-y-4 overflow-auto">
-            {messages.map((message) => (
-              <article
-                key={message.id}
-                className={`rounded p-3 text-sm ${message.role === 'user' ? 'ml-12 bg-[var(--app-brand-50)]' : 'mr-12 bg-slate-50'}`}
-              >
-                <p className="whitespace-pre-wrap">
-                  {message.content || (loading ? 'Готовлю ответ…' : '')}
-                </p>
-                {message.usage && (
-                  <p className="mt-2 text-xs text-slate-500">
-                    {message.usage.model}
-                    {message.usage.cost_rub != null ? ` · ${message.usage.cost_rub} ₽` : ''}
-                  </p>
-                )}
-                {message.citations?.length > 0 && (
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {message.citations.map((citation, index) => (
-                      <button
-                        key={`${citation.document_id}-${index}`}
-                        type="button"
-                        className="rounded bg-emerald-50 px-2 py-1 text-left text-xs text-emerald-800 hover:bg-emerald-100 disabled:cursor-wait"
-                        title={`Открыть источник: ${citation.filename}`}
-                        disabled={openingDocumentIds.has(citation.document_id)}
-                        onClick={() => void openDocument(citation.document_id, citation.location)}
-                      >
-                        {openingDocumentIds.has(citation.document_id)
-                          ? 'Открываю источник…'
-                          : `[${index + 1}] ${citation.filename}, ${formatAiCitationLocation(citation.location)}`}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </article>
-            ))}
-          </div>
-          <div className="mt-4 flex gap-2">
-            <textarea
-              value={question}
-              onChange={(event) => setQuestion(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' && !event.shiftKey) {
-                  event.preventDefault();
-                  void send();
-                }
-              }}
-              className="min-h-12 flex-1 rounded border border-[var(--app-border)] p-3 text-sm"
-              placeholder="Спросите по страховым документам…"
-            />
-            <Button onClick={() => void send()} variant="primary" disabled={loading}>
-              Отправить
+      {tab === 'chat' ? (
+        <div className="grid gap-4 xl:grid-cols-[240px_minmax(0,1fr)]">
+          <aside className="rounded border border-[var(--app-border)] bg-white p-3">
+            <Button onClick={() => void createChat()} variant="primary" size="block">
+              Новый чат
             </Button>
-          </div>
-        </section>
-        <aside className="rounded border border-[var(--app-border)] bg-white p-3">
-          <h2 className="font-semibold">Источники</h2>
-          {canManageLibrary && (
-            <>
-              <label className="mt-3 block cursor-pointer rounded border border-dashed p-3 text-center text-sm">
-                <input
-                  className="hidden"
-                  type="file"
-                  multiple
-                  onChange={(event) => {
-                    const files = Array.from(event.target.files ?? []);
-                    if (files.length)
-                      void uploadAiDocuments(files)
-                        .then(fetchAiDocuments)
-                        .then(setDocuments)
-                        .catch((err) => setError(String(err)));
-                  }}
-                />
-                Загрузить документы
-              </label>
-            </>
-          )}
-          <div className="mt-3 space-y-2">
-            {documents.map((doc) => (
-              <div key={doc.id} className="rounded bg-slate-50 p-2 text-xs">
+            <div className="mt-3 space-y-1">
+              {conversations.map((chat) => (
                 <button
-                  type="button"
-                  className="text-left text-[var(--app-brand-700)] hover:underline disabled:cursor-wait"
-                  title={`Открыть источник: ${doc.filename}`}
-                  disabled={openingDocumentIds.has(doc.id)}
-                  onClick={() => void openDocument(doc.id)}
+                  key={chat.id}
+                  className={`w-full rounded px-2 py-2 text-left text-sm ${chat.id === selectedId ? 'bg-[var(--app-brand-50)]' : 'hover:bg-slate-50'}`}
+                  onClick={() => setSelectedId(chat.id)}
                 >
-                  {openingDocumentIds.has(doc.id) ? 'Открываю источник…' : doc.filename}
+                  {chat.title}
                 </button>
-                <div className="text-slate-500">
-                  {doc.status} · {doc.chunks} фрагм.
-                </div>
-                {canManageLibrary && (
+              ))}
+            </div>
+          </aside>
+          <section className="flex min-h-[620px] flex-col rounded border border-[var(--app-border)] bg-white p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+              <span>{selected?.title ?? 'Новый чат'} · Polza</span>
+              <button
+                type="button"
+                className="text-[var(--app-brand-700)] hover:underline"
+                onClick={() => setTab('library')}
+              >
+                {scope.length ? `Область: ${scope.length}` : 'Вся библиотека'}
+              </button>
+              {scope.map((branch) => (
+                <span
+                  key={scopeKey(branch)}
+                  className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800"
+                >
+                  {scopeLabel(branch)}{' '}
                   <button
-                    className="mt-1 text-red-600"
-                    onClick={() =>
-                      void deleteAiDocument(doc.id)
-                        .then(() =>
-                          setDocuments((items) => items.filter((item) => item.id !== doc.id)),
-                        )
-                        .catch((err) => setError(String(err)))
-                    }
+                    type="button"
+                    aria-label={`Убрать ${scopeLabel(branch)}`}
+                    onClick={() => toggleScope(branch)}
                   >
-                    Удалить
+                    ×
                   </button>
-                )}
-              </div>
-            ))}
-          </div>
-          {!canManageLibrary && (
-            <p className="mt-2 text-sm text-slate-500">
-              Библиотека общая. Загрузкой и удалением управляют Vova и администраторы.
+                </span>
+              ))}
+            </div>
+            <div className="flex-1 space-y-4 overflow-auto">
+              {messages.map((message) => (
+                <article
+                  key={message.id}
+                  className={`rounded p-3 text-sm ${message.role === 'user' ? 'ml-12 bg-[var(--app-brand-50)]' : 'mr-12 bg-slate-50'}`}
+                >
+                  <p className="whitespace-pre-wrap">
+                    {message.content || (loading ? 'Готовлю ответ…' : '')}
+                  </p>
+                  {message.usage && (
+                    <p className="mt-2 text-xs text-slate-500">
+                      {message.usage.model}
+                      {message.usage.cost_rub != null ? ` · ${message.usage.cost_rub} ₽` : ''}
+                    </p>
+                  )}
+                  {message.citations.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {message.citations.map((citation, index) => (
+                        <button
+                          key={`${citation.document_id}-${index}`}
+                          type="button"
+                          disabled={opening.has(citation.document_id)}
+                          onClick={() => void openDocument(citation.document_id, citation.location)}
+                          className="rounded bg-emerald-50 px-2 py-1 text-left text-xs text-emerald-800 hover:bg-emerald-100"
+                        >
+                          {opening.has(citation.document_id)
+                            ? 'Открываю источник…'
+                            : `[${index + 1}] ${documentLabel(citation.classification)} · ${citation.filename}, ${formatAiCitationLocation(citation.location)}`}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </article>
+              ))}
+            </div>
+            <div className="mt-4 flex gap-2">
+              <textarea
+                value={question}
+                onChange={(event) => setQuestion(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && !event.shiftKey) {
+                    event.preventDefault();
+                    void send();
+                  }
+                }}
+                className="min-h-12 flex-1 rounded border border-[var(--app-border)] p-3 text-sm"
+                placeholder="Спросите по страховым документам…"
+              />
+              <Button onClick={() => void send()} variant="primary" disabled={loading}>
+                Отправить
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+          <aside className="self-start rounded border border-[var(--app-border)] bg-white p-3 xl:sticky xl:top-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold">Область поиска</h2>
+              <button
+                type="button"
+                className="text-xs text-[var(--app-brand-700)]"
+                onClick={() => setScope([])}
+              >
+                Сбросить
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-slate-500">
+              Выберите одну или несколько веток для чата.
             </p>
-          )}
-        </aside>
-      </div>
+            <div className="mt-3 max-h-[calc(100vh-18rem)] space-y-2 overflow-y-auto pr-1 text-sm">
+              <ScopeOption
+                label={`Вся библиотека (${catalog.total})`}
+                checked={!scope.length}
+                onChange={() => setScope([])}
+              />
+              <ScopeOption
+                label={`Нераспределено (${catalog.unclassified})`}
+                checked={selectedScope({ unclassified: true })}
+                onChange={() => toggleScope({ unclassified: true })}
+              />
+              {catalog.insurers.map((insurer) => (
+                <div key={insurer.name} className="border-l border-slate-200 pl-2">
+                  <ScopeOption
+                    label={`${insurer.name} (${insurer.count})`}
+                    checked={selectedScope({ insurer: insurer.name })}
+                    onChange={() => toggleScope({ insurer: insurer.name })}
+                    bold
+                  />
+                  {insurer.kinds.map((kind) => (
+                    <div key={kind.name} className="pl-3">
+                      <ScopeOption
+                        label={`${kind.name} (${kind.count})`}
+                        checked={selectedScope({
+                          insurer: insurer.name,
+                          insurance_kind: kind.name,
+                        })}
+                        onChange={() =>
+                          toggleScope({ insurer: insurer.name, insurance_kind: kind.name })
+                        }
+                      />
+                      {kind.products.map((product) => (
+                        <div key={product.name} className="pl-3">
+                          <ScopeOption
+                            label={`${product.name} (${product.count})`}
+                            checked={selectedScope({
+                              insurer: insurer.name,
+                              insurance_kind: kind.name,
+                              product: product.name,
+                            })}
+                            onChange={() =>
+                              toggleScope({
+                                insurer: insurer.name,
+                                insurance_kind: kind.name,
+                                product: product.name,
+                              })
+                            }
+                            small
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </aside>
+          <section className="rounded border border-[var(--app-border)] bg-white p-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">Источники</h2>
+                <p className="text-sm text-slate-500">
+                  Показано {visibleDocuments.length} из {catalog.total} документов.
+                </p>
+              </div>
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="rounded border border-[var(--app-border)] px-3 py-2 text-sm"
+                placeholder="Поиск по названию…"
+              />
+            </div>
+            {canManage && (
+              <>
+                <div
+                  className={`mt-4 rounded border-2 border-dashed p-5 text-center text-sm ${dragging ? 'border-[var(--app-brand-500)] bg-[var(--app-brand-50)]' : 'border-[var(--app-border)]'}`}
+                  onDragEnter={(event) => {
+                    event.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    setDragging(false);
+                    void upload(Array.from(event.dataTransfer.files));
+                  }}
+                >
+                  <label className="cursor-pointer text-[var(--app-brand-700)] hover:underline">
+                    <input
+                      className="hidden"
+                      type="file"
+                      multiple
+                      onChange={(event) => void upload(Array.from(event.target.files ?? []))}
+                    />
+                    Перетащите документы сюда или выберите файлы
+                  </label>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Без ветки документ попадёт в «Нераспределено».
+                  </p>
+                </div>
+                <ClassificationFields
+                  value={classification}
+                  catalog={catalog}
+                  onChange={changeClassification}
+                />
+                {selectedDocuments.size > 0 && (
+                  <Button onClick={() => void move()} variant="secondary" className="mt-3">
+                    Перенести выбранные ({selectedDocuments.size})
+                  </Button>
+                )}
+              </>
+            )}
+            <div className="mt-4 max-h-[calc(100vh-19rem)] space-y-2 overflow-y-auto pr-2">
+              {visibleDocuments.map((document) => (
+                <div
+                  key={document.id}
+                  className="flex items-start gap-2 rounded bg-slate-50 p-3 text-sm"
+                >
+                  {canManage && (
+                    <input
+                      className="mt-1"
+                      type="checkbox"
+                      checked={selectedDocuments.has(document.id)}
+                      onChange={() => toggleDocument(document.id)}
+                      aria-label={`Выбрать ${document.filename}`}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <button
+                      type="button"
+                      disabled={opening.has(document.id)}
+                      onClick={() => void openDocument(document.id)}
+                      className="text-left text-[var(--app-brand-700)] hover:underline"
+                    >
+                      {opening.has(document.id) ? 'Открываю источник…' : document.filename}
+                    </button>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {documentLabel(document.classification)} · {document.status} ·{' '}
+                      {document.chunks} фрагм.
+                    </p>
+                  </div>
+                  {canManage && (
+                    <button
+                      type="button"
+                      className="text-xs text-red-600"
+                      onClick={() =>
+                        void deleteAiDocument(document.id)
+                          .then(loadLibrary)
+                          .catch((err) => setError(String(err)))
+                      }
+                    >
+                      Удалить
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+      {uploading && (
+        <p className="text-sm text-slate-500">Документы добавляются в очередь индексации…</p>
+      )}
+    </div>
+  );
+}
+
+function ScopeOption({
+  label,
+  checked,
+  onChange,
+  bold = false,
+  small = false,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: () => void;
+  bold?: boolean;
+  small?: boolean;
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2 ${bold ? 'font-medium' : ''} ${small ? 'text-xs' : ''}`}
+    >
+      <input type="checkbox" checked={checked} onChange={onChange} />
+      {label}
+    </label>
+  );
+}
+
+function ClassificationFields({
+  value,
+  catalog,
+  onChange,
+}: {
+  value: AiClassification;
+  catalog: AiCatalog;
+  onChange: (field: keyof AiClassification, value: string) => void;
+}) {
+  const fields: Array<[keyof AiClassification, string, string[], 'text' | 'date']> = [
+    ['insurer', 'Страховщик', catalog.suggestions.insurers, 'text'],
+    ['insurance_kind', 'Вид страхования', catalog.suggestions.insurance_kinds, 'text'],
+    ['product', 'Продукт', catalog.suggestions.products, 'text'],
+    [
+      'document_type',
+      'Тип документа',
+      ['Правила', 'Тарифы', 'Инструкция', 'Бланк', 'Прочее'],
+      'text',
+    ],
+    ['effective_from', 'Действует с', [], 'date'],
+    ['effective_to', 'Действует до', [], 'date'],
+  ];
+  return (
+    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      {fields.map(([field, label, options, type]) => (
+        <label key={field} className="text-xs text-slate-600">
+          {label}
+          <input
+            type={type}
+            list={`ai-${field}`}
+            value={value[field] ?? ''}
+            onChange={(event) => onChange(field, event.target.value)}
+            className="mt-1 w-full rounded border border-[var(--app-border)] px-2 py-1.5 text-sm text-slate-900"
+          />
+          <datalist id={`ai-${field}`}>
+            {options.map((option) => (
+              <option key={option} value={option} />
+            ))}
+          </datalist>
+        </label>
+      ))}
     </div>
   );
 }

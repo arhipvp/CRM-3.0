@@ -7,7 +7,7 @@ class FakeRag:
     def healthy(self):
         return True
 
-    def search(self, question):
+    def search(self, question, **kwargs):
         return []
 
 
@@ -36,7 +36,7 @@ def test_question_with_sources_streams_stubbed_codex_answer(monkeypatch):
     import app.main as main
 
     class SearchRag(FakeRag):
-        def search(self, question):
+        def search(self, question, **kwargs):
             return [
                 Citation(
                     "doc-1", "rules.pdf", {"page": 2}, "Подтверждённое условие.", 0.9

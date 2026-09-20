@@ -77,6 +77,20 @@ def test_fts_index_finds_and_deletes_exact_clause(tmp_path):
     assert rag._lexical_search("11.2.4.1", 5) == []
 
 
+def test_fts_search_filters_to_selected_document_scope(tmp_path):
+    settings = replace(Settings(), data_dir=tmp_path)
+    rag = RagIndex(settings)
+    rows = [
+        ("one", {"document_id": "reso", "filename": "reso.pdf", "location": {"page": 1}, "text": "КАСКО франшиза"}),
+        ("two", {"document_id": "other", "filename": "other.pdf", "location": {"page": 1}, "text": "КАСКО франшиза"}),
+    ]
+    rag._index_lexical_chunks(rows)
+
+    result = rag._lexical_search("КАСКО франшиза", 5, ["reso"])
+
+    assert [item["document_id"] for item in result] == ["reso"]
+
+
 def test_empty_fts_index_is_backfilled_from_existing_qdrant_points(tmp_path):
     settings = replace(Settings(), data_dir=tmp_path)
     rag = RagIndex(settings)
@@ -134,7 +148,7 @@ def test_hybrid_search_fuses_candidates_and_caps_document_duplicates(tmp_path):
         def collection_exists(self, _collection):
             return True
 
-        def query_points(self, _collection, query, limit):
+        def query_points(self, _collection, query, limit, **kwargs):
             return SimpleNamespace(
                 points=[
                     SimpleNamespace(

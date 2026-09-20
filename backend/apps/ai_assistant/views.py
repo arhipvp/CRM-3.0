@@ -47,6 +47,11 @@ class UsageView(AssistantProxyView):
         return self.call(request, "GET", "/api/usage")
 
 
+class CatalogView(AssistantProxyView):
+    def get(self, request):
+        return self.call(request, "GET", "/api/catalog")
+
+
 class ConversationsView(AssistantProxyView):
     def get(self, request):
         return self.call(request, "GET", "/api/conversations")
@@ -98,7 +103,20 @@ class DocumentsView(AssistantProxyView):
         upload_files = [
             ("files", (item.name, item.read(), item.content_type)) for item in files
         ]
-        return self.call(request, "POST", "/api/documents", files=upload_files)
+        metadata = {
+            key: request.data.get(key, "")
+            for key in (
+                "insurer",
+                "insurance_kind",
+                "product",
+                "document_type",
+                "effective_from",
+                "effective_to",
+            )
+        }
+        return self.call(
+            request, "POST", "/api/documents", files=upload_files, data=metadata
+        )
 
 
 class DocumentDetailView(AssistantProxyView):
@@ -108,6 +126,18 @@ class DocumentDetailView(AssistantProxyView):
                 {"detail": "Недостаточно прав для удаления источников."}, status=403
             )
         return self.call(request, "DELETE", f"/api/documents/{document_id}")
+
+
+class DocumentClassificationView(AssistantProxyView):
+    def patch(self, request):
+        if not _can_manage_library(request.user):
+            return Response(
+                {"detail": "Недостаточно прав для классификации источников."},
+                status=403,
+            )
+        return self.call(
+            request, "PATCH", "/api/documents/classification", json=request.data
+        )
 
 
 class DocumentContentView(AssistantProxyView):

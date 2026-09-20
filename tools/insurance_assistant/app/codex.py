@@ -18,12 +18,15 @@ SYSTEM_PROMPT = """Ты страховой помощник. Используй 
 пункта правил от своего объяснения и не объявляй подтверждение отсутствующим только
 из-за различия терминов. Если подтверждения действительно нет, прямо скажи об этом.
 После каждого фактического утверждения ставь ссылку [N] на источник из контекста.
+Если вопрос просит сравнение, сопоставляй только явно представленные в источниках условия,
+указывай страховщика для каждого вывода и не объединяй условия разных продуктов.
 Отвечай по-русски, кратко и профессионально."""
 
 
 def build_prompt(question: str, history: list[dict], citations: list[Citation]) -> str:
     context = "\n\n".join(
-        f"[{number}] {item.filename}, {_location_label(item.location)}:\n{item.excerpt}"
+        f"[{number}] {_classification_label(item.classification)}{item.filename}, "
+        f"{_location_label(item.location)}:\n{item.excerpt}"
         for number, item in enumerate(citations, 1)
     )
     previous = "\n".join(
@@ -42,6 +45,17 @@ def _location_label(location: dict[str, str | int]) -> str:
     if "attachment_name" in location:
         return f"вложение {location['attachment_name']}"
     return str(location.get("label", "фрагмент"))
+
+
+def _classification_label(classification: dict[str, str] | None) -> str:
+    if not classification:
+        return "Нераспределено; "
+    values = [
+        classification[key]
+        for key in ("insurer", "insurance_kind", "product")
+        if classification.get(key)
+    ]
+    return f"{' → '.join(values)}; " if values else "Нераспределено; "
 
 
 class CodexTransport:
