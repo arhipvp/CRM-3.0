@@ -5,6 +5,7 @@ export const loadPoliciesView = () => import('../views/PoliciesView');
 export const loadCommissionsView = () => import('../views/CommissionsView');
 export const loadTasksView = () => import('../views/TasksView');
 export const loadSettingsView = () => import('../views/SettingsView');
+export const loadAiAssistantView = () => import('../views/AiAssistantView');
 
 export const preloadAppRoute = (pathname: string): Promise<unknown> => {
   if (pathname.startsWith('/clients')) return loadClientsView();
@@ -12,6 +13,7 @@ export const preloadAppRoute = (pathname: string): Promise<unknown> => {
   if (pathname.startsWith('/commissions')) return loadCommissionsView();
   if (pathname.startsWith('/tasks')) return loadTasksView();
   if (pathname.startsWith('/settings')) return loadSettingsView();
+  if (pathname.startsWith('/ai')) return loadAiAssistantView();
   if (pathname.startsWith('/dashboard')) return loadSellerDashboardView();
   return loadDealsView();
 };

@@ -7,7 +7,7 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import BackgroundTasks, FastAPI, File, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -24,6 +24,8 @@ store = Store(settings.sqlite_path)
 rag = RagIndex(settings)
 codex = CodexTransport(settings.codex_command)
 polza = PolzaTransport(settings.polza_chat_base_url, settings.polza_api_key)
+if settings.production_mode and not settings.internal_token:
+    raise RuntimeError("INSURANCE_ASSISTANT_INTERNAL_TOKEN обязателен в production")
 app = FastAPI(title="Insurance Assistant", version="0.1.0")
 app.add_middleware(
     CORSMiddleware,
@@ -46,6 +48,19 @@ class MessageCreate(BaseModel):
     model: str | None = None
 
 
+def _crm_owner(
+    token: str | None = Header(default=None, alias="X-Insurance-Assistant-Token"),
+    owner_id: str | None = Header(default=None, alias="X-CRM-User-Id"),
+) -> str | None:
+    """Trust user identity only from the authenticated Django proxy."""
+    if settings.internal_token:
+        if token != settings.internal_token:
+            raise HTTPException(401, "Недействительный внутренний токен")
+        if not owner_id:
+            raise HTTPException(400, "Не передан идентификатор пользователя CRM")
+    return owner_id
+
+
 def _index_document(document_id: str) -> None:
     document = store.document(document_id)
     if not document:
@@ -66,7 +81,9 @@ def _index_document(document_id: str) -> None:
 
 @app.post("/api/documents", status_code=202)
 async def upload_documents(
-    background_tasks: BackgroundTasks, files: Annotated[list[UploadFile], File(...)]
+    background_tasks: BackgroundTasks,
+    files: Annotated[list[UploadFile], File(...)],
+    _: str | None = Depends(_crm_owner),
 ) -> list[dict]:
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
     created = []
@@ -83,12 +100,12 @@ async def upload_documents(
 
 
 @app.get("/api/documents")
-def list_documents() -> list[dict]:
+def list_documents(_: str | None = Depends(_crm_owner)) -> list[dict]:
     return store.documents()
 
 
 @app.delete("/api/documents/{document_id}", status_code=204)
-def delete_document(document_id: str):
+def delete_document(document_id: str, _: str | None = Depends(_crm_owner)):
     document = store.delete_document(document_id)
     if not document:
         raise HTTPException(404, "Документ не найден")
@@ -97,28 +114,34 @@ def delete_document(document_id: str):
 
 
 @app.post("/api/conversations", status_code=201)
-def create_conversation(payload: ConversationCreate) -> dict:
-    return store.create_conversation(payload.title)
+def create_conversation(
+    payload: ConversationCreate, owner_id: str | None = Depends(_crm_owner)
+) -> dict:
+    return store.create_conversation(payload.title, owner_id)
 
 
 @app.get("/api/conversations")
-def list_conversations() -> list[dict]:
-    return store.conversations()
+def list_conversations(owner_id: str | None = Depends(_crm_owner)) -> list[dict]:
+    return store.conversations(owner_id)
 
 
 @app.get("/api/conversations/{conversation_id}/messages")
-def list_messages(conversation_id: str) -> list[dict]:
-    return store.messages(conversation_id)
+def list_messages(
+    conversation_id: str, owner_id: str | None = Depends(_crm_owner)
+) -> list[dict]:
+    if owner_id is not None and not store.owns_conversation(conversation_id, owner_id):
+        raise HTTPException(404, "Чат не найден")
+    return store.messages(conversation_id, owner_id)
 
 
 @app.get("/api/providers")
-async def list_providers() -> dict:
+async def list_providers(_: str | None = Depends(_crm_owner)) -> dict:
     codex_default = settings.codex_model or (
         settings.codex_models[0] if settings.codex_models else "default"
     )
-    result = {
-        "providers": [
-            {
+    providers = []
+    if not settings.production_mode:
+        providers.append({
                 "id": "codex",
                 "label": "Codex",
                 "available": any(
@@ -128,49 +151,52 @@ async def list_providers() -> dict:
                 "models": list(settings.codex_models),
                 "default_model": codex_default,
                 "billing": "Включено в текущий ChatGPT-доступ; стоимость от App Server не передаётся.",
-            },
-            {
+        })
+    providers.append(
+        {
                 "id": "polza",
                 "label": "Polza",
                 "available": bool(settings.polza_api_key),
                 "models": [],
                 "default_model": settings.polza_chat_model or None,
                 "billing": "Стоимость берётся из ответа Polza.ai, если API её возвращает.",
-            },
-        ]
-    }
+        }
+    )
+    result = {"providers": providers}
     try:
         models = await polza.models()
-        result["providers"][1]["models"] = models
-        if not result["providers"][1]["default_model"] and models:
-            result["providers"][1]["default_model"] = models[0]
+        result["providers"][-1]["models"] = models
+        if not result["providers"][-1]["default_model"] and models:
+            result["providers"][-1]["default_model"] = models[0]
     except Exception as error:
-        result["providers"][1]["error"] = str(error)
+        result["providers"][-1]["error"] = str(error)
     return result
 
 
 @app.get("/api/usage")
-def usage() -> dict:
-    return store.usage()
+def usage(owner_id: str | None = Depends(_crm_owner)) -> dict:
+    return store.usage(owner_id)
 
 
 @app.delete("/api/conversations/{conversation_id}", status_code=204)
-def delete_conversation(conversation_id: str):
-    if not store.delete_conversation(conversation_id):
+def delete_conversation(
+    conversation_id: str, owner_id: str | None = Depends(_crm_owner)
+):
+    if not store.delete_conversation(conversation_id, owner_id):
         raise HTTPException(404, "Чат не найден")
 
 
 @app.post("/api/conversations/{conversation_id}/messages")
 async def create_message(
-    conversation_id: str, payload: MessageCreate
+    conversation_id: str, payload: MessageCreate, owner_id: str | None = Depends(_crm_owner)
 ) -> StreamingResponse:
-    if not any(item["id"] == conversation_id for item in store.conversations()):
+    if owner_id is not None and not store.owns_conversation(conversation_id, owner_id):
         raise HTTPException(404, "Чат не найден")
     question = payload.content.strip()
     if not question:
         raise HTTPException(422, "Сообщение не может быть пустым")
     provider = payload.provider.lower().strip()
-    if provider not in {"codex", "polza"}:
+    if provider not in ({"polza"} if settings.production_mode else {"codex", "polza"}):
         raise HTTPException(422, "Неизвестный провайдер ответа")
     model = payload.model.strip() if payload.model else None
     if provider == "codex":
@@ -187,7 +213,7 @@ async def create_message(
             model = settings.polza_chat_model or (models[0] if models else None)
         if not model:
             raise HTTPException(503, "Polza не вернула доступные модели")
-    history, citations = store.messages(conversation_id), rag.search(question)
+    history, citations = store.messages(conversation_id, owner_id), rag.search(question)
     store.add_message(conversation_id, "user", question)
 
     async def events():
@@ -258,7 +284,7 @@ def health() -> dict:
         "qdrant": rag.healthy(),
         "embedding_provider": settings.embedding_provider,
         "embedding_model": settings.embedding_model,
-        "codex_app_server": any(
+        "codex_app_server": False if settings.production_mode else any(
             shutil.which(command) is not None
             for command in ("codex", "codex.exe", "codex.cmd")
         ),

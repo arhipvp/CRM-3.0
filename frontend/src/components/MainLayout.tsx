@@ -23,6 +23,7 @@ const NAV_ITEMS: Array<{ path: string; label: string; icon: AppIconName }> = [
   { path: '/policies', label: 'Полисы', icon: 'policies' },
   { path: '/commissions', label: 'Доходы и расходы', icon: 'finance' },
   { path: '/tasks', label: 'Задачи', icon: 'tasks' },
+  { path: '/ai', label: 'ИИ', icon: 'ai' },
   { path: '/settings', label: 'Настройки', icon: 'settings' },
   ...(import.meta.env.DEV
     ? ([{ path: '/dev/ui-kit', label: 'UI Kit', icon: 'settings' }] as const)

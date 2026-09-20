@@ -50,6 +50,7 @@ urlpatterns = [
     path("api/v1/auth/refresh/", refresh_token_view, name="refresh-token"),
     path("api/v1/auth/password/", change_password_view, name="change-password"),
     path("api/v1/auth/me/", current_user_view, name="current-user"),
+    path("api/v1/ai/", include("apps.ai_assistant.urls")),
     path(
         "api/v1/notifications/settings/",
         NotificationSettingsView.as_view(),
@@ -80,9 +81,7 @@ urlpatterns = [
         TelegramUnlinkView.as_view(),
         name="telegram-unlink",
     ),
-    path(
-        "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"
-    ),
+    path("api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"),
     path(
         "api/v1/dashboard/seller/",
         SellerDashboardView.as_view(),

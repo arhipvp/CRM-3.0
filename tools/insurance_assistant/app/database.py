@@ -39,7 +39,8 @@ class Store:
                   indexed_at TEXT, chunks INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS conversations (
-                  id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL
+                  id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL,
+                  owner_id TEXT
                 );
                 CREATE TABLE IF NOT EXISTS messages (
                   id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL,
@@ -65,6 +66,11 @@ class Store:
             for name, kind in additions.items():
                 if name not in columns:
                     con.execute(f"ALTER TABLE messages ADD COLUMN {name} {kind}")
+            conversation_columns = {
+                row[1] for row in con.execute("PRAGMA table_info(conversations)").fetchall()
+            }
+            if "owner_id" not in conversation_columns:
+                con.execute("ALTER TABLE conversations ADD COLUMN owner_id TEXT")
 
     def create_document(self, filename: str, path: Path) -> str:
         ident = str(uuid.uuid4())
@@ -103,22 +109,42 @@ class Store:
                 con.execute("DELETE FROM documents WHERE id=?", (ident,))
         return doc
 
-    def create_conversation(self, title: str = "Новый чат") -> dict:
-        result = {"id": str(uuid.uuid4()), "title": title, "created_at": now()}
+    def create_conversation(self, title: str = "Новый чат", owner_id: str | None = None) -> dict:
+        result = {
+            "id": str(uuid.uuid4()),
+            "title": title,
+            "created_at": now(),
+            "owner_id": owner_id,
+        }
         with self.connection() as con:
             con.execute(
-                "INSERT INTO conversations VALUES (:id, :title, :created_at)", result
+                "INSERT INTO conversations(id, title, created_at, owner_id) VALUES (:id, :title, :created_at, :owner_id)",
+                result,
             )
         return result
 
-    def conversations(self) -> list[dict]:
+    def conversations(self, owner_id: str | None = None) -> list[dict]:
         with self.connection() as con:
-            rows = con.execute(
-                "SELECT * FROM conversations ORDER BY created_at DESC"
-            ).fetchall()
+            if owner_id is None:
+                rows = con.execute("SELECT * FROM conversations ORDER BY created_at DESC").fetchall()
+            else:
+                rows = con.execute(
+                    "SELECT * FROM conversations WHERE owner_id=? ORDER BY created_at DESC",
+                    (owner_id,),
+                ).fetchall()
         return [dict(row) for row in rows]
 
-    def messages(self, conversation_id: str) -> list[dict]:
+    def owns_conversation(self, conversation_id: str, owner_id: str | None) -> bool:
+        with self.connection() as con:
+            row = con.execute(
+                "SELECT id FROM conversations WHERE id=? AND owner_id IS ?",
+                (conversation_id, owner_id),
+            ).fetchone()
+        return row is not None
+
+    def messages(self, conversation_id: str, owner_id: str | None = None) -> list[dict]:
+        if owner_id is not None and not self.owns_conversation(conversation_id, owner_id):
+            return []
         with self.connection() as con:
             rows = con.execute(
                 "SELECT * FROM messages WHERE conversation_id=? ORDER BY created_at",
@@ -139,10 +165,9 @@ class Store:
             result.append(item)
         return result
 
-    def usage(self) -> dict:
+    def usage(self, owner_id: str | None = None) -> dict:
         with self.connection() as con:
-            rows = con.execute(
-                """
+            query = """
                 SELECT provider, COUNT(*) AS requests, COALESCE(SUM(cost_rub), 0) AS cost_rub,
                        COALESCE(SUM(input_tokens), 0) AS input_tokens,
                        COALESCE(SUM(output_tokens), 0) AS output_tokens,
@@ -152,7 +177,16 @@ class Store:
                 GROUP BY provider
                 ORDER BY provider
                 """
-            ).fetchall()
+            if owner_id is None:
+                rows = con.execute(query).fetchall()
+            else:
+                rows = con.execute(
+                    query.replace(
+                        "WHERE role='assistant' AND provider IS NOT NULL",
+                        "WHERE role='assistant' AND provider IS NOT NULL AND conversation_id IN (SELECT id FROM conversations WHERE owner_id=?)",
+                    ),
+                    (owner_id,),
+                ).fetchall()
         providers = [dict(row) for row in rows]
         return {
             "providers": providers,
@@ -213,8 +247,14 @@ class Store:
             )
         return result
 
-    def delete_conversation(self, ident: str) -> bool:
+    def delete_conversation(self, ident: str, owner_id: str | None = None) -> bool:
         with self.connection() as con:
-            con.execute("DELETE FROM messages WHERE conversation_id=?", (ident,))
-            cur = con.execute("DELETE FROM conversations WHERE id=?", (ident,))
+            if owner_id is None:
+                cur = con.execute("DELETE FROM conversations WHERE id=?", (ident,))
+            else:
+                cur = con.execute(
+                    "DELETE FROM conversations WHERE id=? AND owner_id=?", (ident, owner_id)
+                )
+            if cur.rowcount > 0:
+                con.execute("DELETE FROM messages WHERE conversation_id=?", (ident,))
         return cur.rowcount > 0

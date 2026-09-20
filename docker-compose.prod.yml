@@ -46,6 +46,10 @@ services:
       AI_API_KEY: ${AI_API_KEY}
       AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
       AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash-lite}
+      INSURANCE_ASSISTANT_URL: ${INSURANCE_ASSISTANT_URL:-http://insurance_assistant:8765}
+      INSURANCE_ASSISTANT_INTERNAL_TOKEN: ${INSURANCE_ASSISTANT_INTERNAL_TOKEN}
+      INSURANCE_ASSISTANT_TIMEOUT_SECONDS: ${INSURANCE_ASSISTANT_TIMEOUT_SECONDS:-300}
+      INSURANCE_ASSISTANT_LIBRARY_MANAGER: ${INSURANCE_ASSISTANT_LIBRARY_MANAGER:-Vova}
       POLICY_RECOGNITION_MODEL: ${POLICY_RECOGNITION_MODEL:-google/gemini-2.5-flash-lite}
       POLICY_RECOGNITION_VISION_FALLBACK_ENABLED: ${POLICY_RECOGNITION_VISION_FALLBACK_ENABLED:-true}
       POLICY_RECOGNITION_PDF_RENDER_DPI: ${POLICY_RECOGNITION_PDF_RENDER_DPI:-180}
@@ -107,6 +111,48 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    container_name: crm3-insurance-qdrant
+    volumes:
+      - insurance_assistant_qdrant:/qdrant/storage
+    networks:
+      - crm_network
+    restart: unless-stopped
+
+  insurance_assistant:
+    build:
+      context: ./tools/insurance_assistant
+      dockerfile: Dockerfile
+    image: crm30-insurance-assistant:${IMAGE_TAG:-latest}
+    container_name: crm3-insurance-assistant
+    environment:
+      INSURANCE_ASSISTANT_DATA_DIR: /data
+      INSURANCE_ASSISTANT_QDRANT_URL: http://qdrant:6333
+      INSURANCE_ASSISTANT_INTERNAL_TOKEN: ${INSURANCE_ASSISTANT_INTERNAL_TOKEN}
+      INSURANCE_ASSISTANT_PRODUCTION_MODE: "true"
+      POLZA_AI_API_KEY: ${AI_API_KEY}
+      POLZA_AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
+      POLZA_CHAT_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
+      POLZA_CHAT_MODEL: ${INSURANCE_ASSISTANT_POLZA_CHAT_MODEL:-${AI_MODEL:-google/gemini-2.5-flash-lite}}
+      IA_EMBEDDING_PROVIDER: polza
+      IA_EMBEDDING_MODEL: ${INSURANCE_ASSISTANT_EMBEDDING_MODEL:-text-embedding-3-large}
+    volumes:
+      - insurance_assistant_data:/data
+    depends_on:
+      - qdrant
+    expose:
+      - "8765"
+    networks:
+      - crm_network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   telegram_bot:
     image: crm30-backend:${IMAGE_TAG:-latest}
@@ -244,6 +290,8 @@ volumes:
   media:
   backend_static:
   backend_media:
+  insurance_assistant_data:
+  insurance_assistant_qdrant:
 
 networks:
   crm_network:

@@ -154,6 +154,17 @@ jobs:
           cd "${VPS_PATH}"
           echo "MARK: cd ok, pwd=$(pwd)"
 
+          # mailcow/.env is a server-managed runtime file. Preserve it outside the
+          # repository before the forced checkout so a CRM deployment cannot erase it.
+          mailcow_env_backup=""
+          if [ -f mailcow/.env ]; then
+            backup_root="${VPS_PATH%/}/../crm3-deploy-backups"
+            mkdir -p "${backup_root}"
+            mailcow_env_backup="${backup_root}/mailcow.env.$(date -u +%Y%m%dT%H%M%SZ).$$"
+            cp -p mailcow/.env "${mailcow_env_backup}"
+            echo "MARK: mailcow-env backup created"
+          fi
+
           echo "Fetching ${BRANCH}..."
           git -c fetch.recurseSubmodules=false fetch --no-recurse-submodules origin "${BRANCH}" --quiet
 
@@ -162,6 +173,11 @@ jobs:
           # Ignored runtime files like .env.production and mailcow.conf remain untouched.
           git reset --hard --quiet
           git checkout --force "${COMMIT_SHA}"
+
+          if [ -n "${mailcow_env_backup}" ]; then
+            install -m 600 "${mailcow_env_backup}" mailcow/.env
+            echo "MARK: mailcow-env restored"
+          fi
 
           if [ ! -f .env.production ]; then
             echo "Missing .env.production on server. Configure secrets via SSH before deploy."
@@ -178,7 +194,7 @@ jobs:
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
           echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate backend telegram_bot external_job_worker frontend nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant insurance_assistant backend telegram_bot external_job_worker frontend nginx
 
           echo "MARK: after app compose up"
           echo "Running containers:"

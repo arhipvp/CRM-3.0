@@ -8,7 +8,7 @@ CRM 3.0 — связка Django 5 + DRF и React 19 + Vite с готовым Doc
 | --- | --- |
 | `backend/` | Django-проект: `config/` с настройками и роутингом, `apps/` с доменами (`clients`, `deals`, `tasks`, `notes`, `finances`, `documents`, `chat`, `policies`, `notifications`, `users`, `common`), вспомогательные скрипты и `tests/`. |
 | `frontend/` | Vite + React + TypeScript: `src/` (api, components, hooks, contexts, utils, types), конфиги ESLint/TS, тесты (Vitest + Testing Library) и статические файлы в `public/`. |
-| `tools/insurance_assistant/` | Локальный RAG-помощник по страховым документам: отдельные FastAPI/React/Qdrant-процессы, не подключается к CRM или VPS. |
+| `tools/insurance_assistant/` | Страховой RAG-помощник: отдельные FastAPI/Qdrant-процессы; в production доступен через авторизованный раздел CRM «ИИ». |
 | `frontend_example/` | Песочница для UI-идей и прототипов без влияния на основную сборку. |
 | `docker-compose.yml`, `nginx.conf`, `.env*` | Сборка Postgres (порт 5435), backend, frontend и nginx; обмен переменными окружения и тома статики/медиа. |
 
@@ -124,7 +124,7 @@ docker compose up --build
 ```
 Локальный prod-like стек поднимает Postgres (порт 5435), Django, отдельный `telegram_bot`, собранный frontend и `nginx`; API и UI идут через локальный reverse proxy. Основная инструкция по этому режиму: [docs/local-prod-like-stack.md](docs/local-prod-like-stack.md).
 
-### Локальный страховой помощник
+### Страховой помощник
 
 Помощник с RAG из загруженных страховых документов запускается отдельно от CRM и не читает её БД или VPS. После установленного Docker Desktop и входа в Codex запустите:
 
@@ -136,6 +136,8 @@ docker compose up --build
 Для распознавания полисов backend поддерживает `.docx` напрямую, а `.doc` обрабатывает через LibreOffice (`soffice`); в docker-образ backend эта зависимость уже включена. Также поддерживаются PDF и изображения JPG/JPEG/PNG. Распознавание выполняется через OpenAI-совместимый API Polza.ai в два AI-прохода: первичное извлечение JSON и самопроверка результата по исходному тексту/визуальным входам с формальными замечаниями CRM. Для всех AI-сценариев по умолчанию используется `google/gemini-2.5-flash-lite` из `AI_MODEL`; для полисов можно задать отдельную модель через `POLICY_RECOGNITION_MODEL`. Подключение задают `AI_API_KEY` и `AI_BASE_URL=https://polza.ai/api/v1`. Vision настраивается через `POLICY_RECOGNITION_VISION_FALLBACK_ENABLED`, `POLICY_RECOGNITION_PDF_RENDER_DPI`, `POLICY_RECOGNITION_MAX_VISION_PAGES` и `POLICY_RECOGNITION_MAX_IMAGE_DIMENSION`. Лимит страниц ограничивает суммарное число PDF-страниц и изображений в одном запросе, а размер изображения по умолчанию — 2048 px по большей стороне. Содержимое полисов и base64-изображения не сохраняются в API-ответах или логах распознавания. Виды страхования и страховые компании передаются в промпт вместе с описаниями справочника; для точного выбора типов важно заполнять `InsuranceType.description`. В Django admin у видов страхования есть фильтр пустых описаний и action `Заполнить стандартные AI-описания` для базовых категорий ОСАГО, КАСКО, ДГО/ДСАГО, GAP и авто-прочее.
 
 При ошибке AI-распознавания API возвращает код, понятную причину и очищенный текст Polza.ai; интерфейс показывает подробное сообщение и признак возможности повторить операцию. `ai_insufficient_funds` означает, что нужно пополнить баланс Polza.ai; `ai_timeout`, `ai_rate_limited` и `ai_provider_unavailable` допускают повтор операции позже; `ai_authentication_failed` требует проверки `AI_API_KEY` администратором. Ключи, prompt, документы и трассировки в интерфейс не передаются. Повреждённые PDF и PDF с сырым текстовым слоем переводятся на Vision, а не передаются в text-mode. VIN из текстовых документов дополнительно сверяется с детерминированно извлечёнными 17-символьными последовательностями, включая строки таблиц с раздельными ячейками: единственное подтверждённое значение имеет приоритет, а некорректный VIN AI очищается без дополнительных ретраев.
+
+В production раздел «ИИ» доступен всем авторизованным пользователям CRM. Библиотека документов общая, а история чатов и стоимость ответов видны только владельцу чата. Загружать и удалять источники могут `Vova` и администраторы. Сервисы `insurance_assistant` и `qdrant` не имеют внешних портов: frontend обращается только к Django API `/api/v1/ai/`, который передаёт сервису внутренний токен и идентификатор пользователя. Для запуска требуются `INSURANCE_ASSISTANT_INTERNAL_TOKEN`, необязательная модель чата `INSURANCE_ASSISTANT_POLZA_CHAT_MODEL`, модель эмбеддингов `INSURANCE_ASSISTANT_EMBEDDING_MODEL`; ключ Polza переиспользуется из существующего `AI_API_KEY`.
 
 Для семидневной полной диагностики AI задайте `AI_DIAGNOSTICS_ENABLED=true`, `AI_DIAGNOSTICS_DIRECTORY=/var/lib/crm3/ai-diagnostics` и `AI_DIAGNOSTICS_RETENTION_DAYS=7`. Журнал содержит персональные данные и base64 изображений, поэтому каталог доступен только root на VPS (`0700`, файлы `0600`), исключён из backup и никогда не содержит API-ключей или токенов.
 

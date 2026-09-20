@@ -11,6 +11,7 @@ import {
   loadSellerDashboardView,
   loadSettingsView,
   loadTasksView,
+  loadAiAssistantView,
 } from './routeLoaders';
 
 const ClientsView = lazy(async () => {
@@ -46,6 +47,11 @@ const TasksView = lazy(async () => {
 const SettingsView = lazy(async () => {
   const module = await loadSettingsView();
   return { default: module.SettingsView };
+});
+
+const AiAssistantView = lazy(async () => {
+  const module = await loadAiAssistantView();
+  return { default: module.AiAssistantView };
 });
 
 const UiCatalogPage = import.meta.env.DEV
@@ -268,6 +274,14 @@ export const AppRoutes: React.FC<AppRoutesProps> = ({
               totalCount={loading.tasksTotalCount}
               onDealSelect={dealsActions.onSelectDeal}
             />
+          </Suspense>
+        }
+      />
+      <Route
+        path="/ai"
+        element={
+          <Suspense fallback={<RouteSkeleton />}>
+            <AiAssistantView currentUser={data.currentUser} />
           </Suspense>
         }
       />

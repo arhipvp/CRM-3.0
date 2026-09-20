@@ -25,6 +25,12 @@ class Settings:
         "POLZA_CHAT_BASE_URL", os.getenv("POLZA_AI_BASE_URL", "https://polza.ai/api/v1")
     )
     polza_chat_model: str = os.getenv("POLZA_CHAT_MODEL", "openai/gpt-4o-mini")
+    internal_token: str = os.getenv("INSURANCE_ASSISTANT_INTERNAL_TOKEN", "")
+    production_mode: bool = os.getenv("INSURANCE_ASSISTANT_PRODUCTION_MODE", "false").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
     embedding_batch_size: int = int(os.getenv("IA_EMBEDDING_BATCH_SIZE", "32"))
     codex_command: str = os.getenv(
         "INSURANCE_ASSISTANT_CODEX_COMMAND", "codex app-server"

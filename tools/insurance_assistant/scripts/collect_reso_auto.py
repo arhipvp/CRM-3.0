@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import time
 from dataclasses import asdict, dataclass
@@ -19,9 +20,9 @@ import httpx
 from bs4 import BeautifulSoup
 
 TOOL_ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = TOOL_ROOT / "data" / "sources" / "reso_auto"
+DATA_DIR = Path(os.getenv("INSURANCE_ASSISTANT_DATA_DIR", TOOL_ROOT / "data")) / "sources" / "reso_auto"
 MANIFEST_PATH = DATA_DIR / "manifest.json"
-RAG_API = "http://127.0.0.1:8765/api/documents"
+RAG_API = os.getenv("INSURANCE_ASSISTANT_SEED_API", "http://127.0.0.1:8765/api/documents")
 ALLOWED_HOSTS = {"reso.ru", "www.reso.ru", "storage.reso.ru"}
 SEED_PAGES = (
     "https://reso.ru/individual/auto/osago/official/",
@@ -191,7 +192,9 @@ def upload(client: httpx.Client, path: Path) -> str:
     content_type = "application/pdf" if path.suffix.lower() == ".pdf" else "text/html"
     with path.open("rb") as file:
         response = client.post(
-            RAG_API, files={"files": (path.name, file, content_type)}
+            RAG_API,
+            files={"files": (path.name, file, content_type)},
+            headers=_rag_headers(),
         )
     response.raise_for_status()
     return response.json()[0]["id"]
@@ -199,7 +202,7 @@ def upload(client: httpx.Client, path: Path) -> str:
 
 def wait_for_index(client: httpx.Client, document_id: str) -> str:
     for _ in range(180):
-        documents = client.get(RAG_API).json()
+        documents = client.get(RAG_API, headers=_rag_headers()).json()
         document = next(item for item in documents if item["id"] == document_id)
         if document["status"] in {"ready", "failed"}:
             if document["status"] == "failed":
@@ -209,6 +212,16 @@ def wait_for_index(client: httpx.Client, document_id: str) -> str:
             return document["status"]
         time.sleep(1)
     raise TimeoutError("Индексация РЕСО не завершилась за 3 минуты")
+
+
+def _rag_headers() -> dict[str, str]:
+    token = os.getenv("INSURANCE_ASSISTANT_INTERNAL_TOKEN", "")
+    if not token:
+        return {}
+    return {
+        "X-Insurance-Assistant-Token": token,
+        "X-CRM-User-Id": os.getenv("INSURANCE_ASSISTANT_SEED_OWNER_ID", "seed"),
+    }
 
 
 def collect(*, upload_to_rag: bool) -> tuple[int, int]:
