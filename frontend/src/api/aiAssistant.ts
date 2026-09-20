@@ -9,8 +9,16 @@ export interface AiConversation {
 export interface AiCitation {
   document_id: string;
   filename: string;
-  location: string;
+  location: Record<string, string | number>;
   score?: number;
+}
+
+export function formatAiCitationLocation(location: AiCitation['location']): string {
+  if ('page' in location) return `страница ${location.page}`;
+  if ('sheet' in location) return `лист ${location.sheet}`;
+  if ('slide' in location) return `слайд ${location.slide}`;
+  if ('attachment_name' in location) return `вложение ${location.attachment_name}`;
+  return String(location.label ?? 'фрагмент');
 }
 
 export interface AiMessage {

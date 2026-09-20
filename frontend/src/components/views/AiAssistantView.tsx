@@ -6,6 +6,7 @@ import {
   fetchAiConversations,
   fetchAiDocuments,
   fetchAiMessages,
+  formatAiCitationLocation,
   streamAiAnswer,
   uploadAiDocuments,
   type AiConversation,
@@ -169,7 +170,8 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                         key={`${citation.document_id}-${index}`}
                         className="rounded bg-emerald-50 px-2 py-1 text-xs text-emerald-800"
                       >
-                        [{index + 1}] {citation.filename}, {citation.location}
+                        [{index + 1}] {citation.filename},{' '}
+                        {formatAiCitationLocation(citation.location)}
                       </span>
                     ))}
                   </div>
