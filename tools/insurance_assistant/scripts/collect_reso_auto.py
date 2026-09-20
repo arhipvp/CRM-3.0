@@ -215,7 +215,7 @@ def wait_for_index(client: httpx.Client, document_id: str) -> str:
 
 
 def _rag_headers() -> dict[str, str]:
-    token = os.getenv("INSURANCE_ASSISTANT_INTERNAL_TOKEN", "")
+    token = os.getenv("INSURANCE_ASSISTANT_INTERNAL_TOKEN", "")  # pragma: allowlist secret
     if not token:
         return {}
     return {
