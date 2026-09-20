@@ -32,11 +32,15 @@ SECRET_KEY = config("DJANGO_SECRET_KEY", default=None)  # pragma: allowlist secr
 if not SECRET_KEY:
     raise ImproperlyConfigured("DJANGO_SECRET_KEY must be set to a non-empty value.")
 if SECRET_KEY == "unsafe-dev-key":  # pragma: allowlist secret
-    raise ImproperlyConfigured("The unsafe-dev-key placeholder must be replaced in production.")
+    raise ImproperlyConfigured(
+        "The unsafe-dev-key placeholder must be replaced in production."
+    )
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default="False").lower() in ("true", "1", "yes")
-PERFORMANCE_TIMING_ENABLED = config("PERFORMANCE_TIMING_ENABLED", default="False").lower() in (
+PERFORMANCE_TIMING_ENABLED = config(
+    "PERFORMANCE_TIMING_ENABLED", default="False"
+).lower() in (
     "true",
     "1",
     "yes",
@@ -45,10 +49,14 @@ PERFORMANCE_TIMING_ENABLED = config("PERFORMANCE_TIMING_ENABLED", default="False
 raw_allowed_hosts = config("ALLOWED_HOSTS", default="")
 ALLOWED_HOSTS = [host.strip() for host in raw_allowed_hosts.split(",") if host.strip()]
 if any(host == "*" for host in ALLOWED_HOSTS):
-    raise ImproperlyConfigured("Use specific ALLOWED_HOSTS entries instead of '*' for hardening.")
+    raise ImproperlyConfigured(
+        "Use specific ALLOWED_HOSTS entries instead of '*' for hardening."
+    )
 if not DEBUG:
     if not ALLOWED_HOSTS:
-        raise ImproperlyConfigured("ALLOWED_HOSTS must be populated when DEBUG is False.")
+        raise ImproperlyConfigured(
+            "ALLOWED_HOSTS must be populated when DEBUG is False."
+        )
 else:
     if not ALLOWED_HOSTS:
         ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
@@ -187,9 +195,15 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 GOOGLE_DRIVE_OAUTH_CLIENT_ID = config("GOOGLE_DRIVE_OAUTH_CLIENT_ID", default="")
-GOOGLE_DRIVE_OAUTH_CLIENT_SECRET = config("GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", default="")
-GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN = config("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", default="")
-GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE = config("GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", default="")
+GOOGLE_DRIVE_OAUTH_CLIENT_SECRET = config(
+    "GOOGLE_DRIVE_OAUTH_CLIENT_SECRET", default=""
+)
+GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN = config(
+    "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN", default=""
+)
+GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE = config(
+    "GOOGLE_DRIVE_OAUTH_REFRESH_TOKEN_FILE", default=""
+)
 GOOGLE_DRIVE_OAUTH_TOKEN_URI = config(
     "GOOGLE_DRIVE_OAUTH_TOKEN_URI", default="https://oauth2.googleapis.com/token"
 )
@@ -204,7 +218,9 @@ GOOGLE_DRIVE_RECONNECT_ALLOWED_USER_ID = int(
 GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME = config(
     "GOOGLE_DRIVE_RECONNECT_ALLOWED_USERNAME", default="Vova"
 )
-GOOGLE_DRIVE_RECONNECT_SUCCESS_URL = config("GOOGLE_DRIVE_RECONNECT_SUCCESS_URL", default="")
+GOOGLE_DRIVE_RECONNECT_SUCCESS_URL = config(
+    "GOOGLE_DRIVE_RECONNECT_SUCCESS_URL", default=""
+)
 GOOGLE_DRIVE_OAUTH_POST_UPDATE_COMMAND = config(
     "GOOGLE_DRIVE_OAUTH_POST_UPDATE_COMMAND", default=""
 )
@@ -215,24 +231,32 @@ AI_MODEL = config("AI_MODEL", default="google/gemini-2.5-flash-lite")
 INSURANCE_ASSISTANT_URL = config(
     "INSURANCE_ASSISTANT_URL", default="http://insurance_assistant:8765"
 )
-INSURANCE_ASSISTANT_INTERNAL_TOKEN = config("INSURANCE_ASSISTANT_INTERNAL_TOKEN", default="")
+INSURANCE_ASSISTANT_INTERNAL_TOKEN = config(
+    "INSURANCE_ASSISTANT_INTERNAL_TOKEN", default=""
+)
 INSURANCE_ASSISTANT_TIMEOUT_SECONDS = float(
     config("INSURANCE_ASSISTANT_TIMEOUT_SECONDS", default="300")
 )
-INSURANCE_ASSISTANT_LIBRARY_MANAGER = config("INSURANCE_ASSISTANT_LIBRARY_MANAGER", default="Vova")
+INSURANCE_ASSISTANT_LIBRARY_MANAGER = config(
+    "INSURANCE_ASSISTANT_LIBRARY_MANAGER", default="Vova"
+)
 POLICY_RECOGNITION_MODEL = config("POLICY_RECOGNITION_MODEL", default="")
 AI_POLICY_PROMPT = config("AI_POLICY_PROMPT", default="")
 AI_DOCUMENT_PROMPT = config("AI_DOCUMENT_PROMPT", default="")
 AI_DIAGNOSTICS_ENABLED = _bool_env("AI_DIAGNOSTICS_ENABLED", "false")
 AI_DIAGNOSTICS_DIRECTORY = config("AI_DIAGNOSTICS_DIRECTORY", default="")
-AI_DIAGNOSTICS_RETENTION_DAYS = int(config("AI_DIAGNOSTICS_RETENTION_DAYS", default="7"))
+AI_DIAGNOSTICS_RETENTION_DAYS = int(
+    config("AI_DIAGNOSTICS_RETENTION_DAYS", default="7")
+)
 CALCULATION_RECOGNITION_BUDGET_SECONDS = float(
     config("CALCULATION_RECOGNITION_BUDGET_SECONDS", default="240")
 )
 POLICY_RECOGNITION_VISION_FALLBACK_ENABLED = _bool_env(
     "POLICY_RECOGNITION_VISION_FALLBACK_ENABLED", "true"
 )
-POLICY_RECOGNITION_PDF_RENDER_DPI = int(config("POLICY_RECOGNITION_PDF_RENDER_DPI", default="180"))
+POLICY_RECOGNITION_PDF_RENDER_DPI = int(
+    config("POLICY_RECOGNITION_PDF_RENDER_DPI", default="180")
+)
 POLICY_RECOGNITION_MAX_VISION_PAGES = int(
     config("POLICY_RECOGNITION_MAX_VISION_PAGES", default="6")
 )
@@ -242,10 +266,14 @@ POLICY_RECOGNITION_MAX_IMAGE_DIMENSION = int(
 
 OPEN_NOTEBOOK_API_URL = config("OPEN_NOTEBOOK_API_URL", default="")
 OPEN_NOTEBOOK_PASSWORD = config("OPEN_NOTEBOOK_PASSWORD", default="")
-OPEN_NOTEBOOK_TIMEOUT_SECONDS = float(config("OPEN_NOTEBOOK_TIMEOUT_SECONDS", default="300"))
+OPEN_NOTEBOOK_TIMEOUT_SECONDS = float(
+    config("OPEN_NOTEBOOK_TIMEOUT_SECONDS", default="300")
+)
 OPEN_NOTEBOOK_EMBED_ON_UPLOAD = _bool_env("OPEN_NOTEBOOK_EMBED_ON_UPLOAD", "true")
 OPEN_NOTEBOOK_MEDIA_ROOT = config("OPEN_NOTEBOOK_MEDIA_ROOT", default=str(MEDIA_ROOT))
-OPEN_NOTEBOOK_CONTEXT_LEVEL = config("OPEN_NOTEBOOK_CONTEXT_LEVEL", default="full content")
+OPEN_NOTEBOOK_CONTEXT_LEVEL = config(
+    "OPEN_NOTEBOOK_CONTEXT_LEVEL", default="full content"
+)
 EXTERNAL_JOB_MAX_ATTEMPTS = config("EXTERNAL_JOB_MAX_ATTEMPTS", default=2, cast=int)
 EXTERNAL_JOB_STALE_SECONDS = config("EXTERNAL_JOB_STALE_SECONDS", default=900, cast=int)
 EXTERNAL_JOB_POLL_SECONDS = config("EXTERNAL_JOB_POLL_SECONDS", default=1.0, cast=float)
@@ -254,7 +282,9 @@ TELEGRAM_BOT_TOKEN = config("TELEGRAM_BOT_TOKEN", default="")
 TELEGRAM_BOT_USERNAME = config("TELEGRAM_BOT_USERNAME", default="")
 TELEGRAM_POLL_TIMEOUT = int(config("TELEGRAM_POLL_TIMEOUT", default="30"))
 TELEGRAM_REMINDER_INTERVAL = int(config("TELEGRAM_REMINDER_INTERVAL", default="300"))
-TELEGRAM_LINK_CODE_TTL_MINUTES = int(config("TELEGRAM_LINK_CODE_TTL_MINUTES", default="10"))
+TELEGRAM_LINK_CODE_TTL_MINUTES = int(
+    config("TELEGRAM_LINK_CODE_TTL_MINUTES", default="10")
+)
 CRM_PUBLIC_URL = config("CRM_PUBLIC_URL", default="")
 
 MAILCOW_API_URL = config("MAILCOW_API_URL", default="")
@@ -278,7 +308,9 @@ SBER_ISSUANCE_MANUAL_TIMEOUT_SECONDS = int(
     config("SBER_ISSUANCE_MANUAL_TIMEOUT_SECONDS", default="900")
 )
 SBER_ISSUANCE_VNC_HINT = config("SBER_ISSUANCE_VNC_HINT", default="")
-SBER_ISSUANCE_WORKDIR = config("SBER_ISSUANCE_WORKDIR", default=str(MEDIA_ROOT / "sber_issuance"))
+SBER_ISSUANCE_WORKDIR = config(
+    "SBER_ISSUANCE_WORKDIR", default=str(MEDIA_ROOT / "sber_issuance")
+)
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -296,8 +328,12 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=int(os.getenv("JWT_ACCESS_TTL_MIN", "15"))),
-    "REFRESH_TOKEN_LIFETIME": timedelta(days=int(os.getenv("JWT_REFRESH_TTL_DAYS", "7"))),
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=int(os.getenv("JWT_ACCESS_TTL_MIN", "15"))
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        days=int(os.getenv("JWT_REFRESH_TTL_DAYS", "7"))
+    ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
     "SIGNING_KEY": SECRET_KEY,
@@ -317,7 +353,9 @@ if not CORS_ALLOWED_ORIGINS:
     if DEBUG:
         CORS_ALLOWED_ORIGINS = ["http://localhost:3000"]
     else:
-        raise ImproperlyConfigured("CORS_ALLOWED_ORIGINS must be set when DEBUG is False.")
+        raise ImproperlyConfigured(
+            "CORS_ALLOWED_ORIGINS must be set when DEBUG is False."
+        )
 
 CORS_EXPOSE_HEADERS = ["Content-Disposition"]
 

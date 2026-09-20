@@ -81,7 +81,9 @@ urlpatterns = [
         TelegramUnlinkView.as_view(),
         name="telegram-unlink",
     ),
-    path("api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"),
+    path(
+        "api/v1/finances/summary/", FinanceSummaryView.as_view(), name="finance-summary"
+    ),
     path(
         "api/v1/dashboard/seller/",
         SellerDashboardView.as_view(),

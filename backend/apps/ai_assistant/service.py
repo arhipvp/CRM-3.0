@@ -26,10 +26,16 @@ class AssistantService:
     def request(self, method: str, path: str, **kwargs: Any) -> Any:
         try:
             response = httpx.request(
-                method, self._url(path), headers=self.headers, timeout=self.timeout, **kwargs
+                method,
+                self._url(path),
+                headers=self.headers,
+                timeout=self.timeout,
+                **kwargs,
             )
         except httpx.HTTPError as exc:
-            raise AssistantServiceError("Страховой помощник временно недоступен.") from exc
+            raise AssistantServiceError(
+                "Страховой помощник временно недоступен."
+            ) from exc
         if response.status_code >= 400:
             detail = response.text.strip() or "Страховой помощник вернул ошибку."
             raise AssistantServiceError(detail)
@@ -47,7 +53,11 @@ class AssistantService:
                 timeout=self.timeout,
             ) as response:
                 if response.status_code >= 400:
-                    raise AssistantServiceError(response.read().decode("utf-8", "replace"))
+                    raise AssistantServiceError(
+                        response.read().decode("utf-8", "replace")
+                    )
                 yield from response.iter_bytes()
         except httpx.HTTPError as exc:
-            raise AssistantServiceError("Страховой помощник временно недоступен.") from exc
+            raise AssistantServiceError(
+                "Страховой помощник временно недоступен."
+            ) from exc

@@ -15,7 +15,8 @@ def _can_manage_library(user) -> bool:
     return bool(
         user.is_superuser
         or user.is_staff
-        or user.username.casefold() == settings.INSURANCE_ASSISTANT_LIBRARY_MANAGER.casefold()
+        or user.username.casefold()
+        == settings.INSURANCE_ASSISTANT_LIBRARY_MANAGER.casefold()
     )
 
 
@@ -57,7 +58,9 @@ class ConversationDetailView(AssistantProxyView):
 
 class ConversationMessagesView(AssistantProxyView):
     def get(self, request, conversation_id: str):
-        return self.call(request, "GET", f"/api/conversations/{conversation_id}/messages")
+        return self.call(
+            request, "GET", f"/api/conversations/{conversation_id}/messages"
+        )
 
     def post(self, request, conversation_id: str):
         try:
@@ -82,16 +85,22 @@ class DocumentsView(AssistantProxyView):
 
     def post(self, request):
         if not _can_manage_library(request.user):
-            return Response({"detail": "Недостаточно прав для загрузки источников."}, status=403)
+            return Response(
+                {"detail": "Недостаточно прав для загрузки источников."}, status=403
+            )
         files = request.FILES.getlist("files")
         if not files:
             return Response({"detail": "Не переданы файлы."}, status=400)
-        upload_files = [("files", (item.name, item.read(), item.content_type)) for item in files]
+        upload_files = [
+            ("files", (item.name, item.read(), item.content_type)) for item in files
+        ]
         return self.call(request, "POST", "/api/documents", files=upload_files)
 
 
 class DocumentDetailView(AssistantProxyView):
     def delete(self, request, document_id: str):
         if not _can_manage_library(request.user):
-            return Response({"detail": "Недостаточно прав для удаления источников."}, status=403)
+            return Response(
+                {"detail": "Недостаточно прав для удаления источников."}, status=403
+            )
         return self.call(request, "DELETE", f"/api/documents/{document_id}")
