@@ -310,8 +310,11 @@ class DealViewSet(
             )
         queryset = queryset.order_by(
             F("next_contact_date").asc(nulls_last=True),
+            "client__name",
+            "client_id",
             F("next_review_date").desc(nulls_last=True),
             "-created_at",
+            "id",
         )
         return self._annotate_queryset(queryset, user=user, metrics=metrics)
 

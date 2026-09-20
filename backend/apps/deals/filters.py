@@ -5,6 +5,28 @@ import django_filters
 from .models import Deal
 
 
+class DealOrderingFilter(django_filters.OrderingFilter):
+    """Keep a client's deals together when the list is ordered by a date."""
+
+    client_grouped_fields = {"next_contact_date", "expected_close"}
+
+    def filter(self, qs, value):
+        if not value:
+            return qs
+
+        ordering = list(value)
+        if len(ordering) == 1 and ordering[0].lstrip("-") in self.client_grouped_fields:
+            return qs.order_by(
+                *ordering,
+                "client__name",
+                "client_id",
+                "-created_at",
+                "id",
+            )
+
+        return super().filter(qs, value)
+
+
 class DealFilterSet(django_filters.FilterSet):
     """
     FilterSet for Deal model.
@@ -43,7 +65,7 @@ class DealFilterSet(django_filters.FilterSet):
 
     client = django_filters.UUIDFilter(field_name="client__id", label="Client ID")
 
-    ordering = django_filters.OrderingFilter(
+    ordering = DealOrderingFilter(
         fields=(
             ("created_at", "created_at"),
             ("updated_at", "updated_at"),
