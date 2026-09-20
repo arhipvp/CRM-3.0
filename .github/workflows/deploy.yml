@@ -194,6 +194,9 @@ jobs:
           # Tag images by commit so frontend changes always produce a new image.
           export IMAGE_TAG="${COMMIT_SHA}"
           echo "Deploy vars: BRANCH=${BRANCH} COMMIT_SHA=${COMMIT_SHA} IMAGE_TAG=${IMAGE_TAG}"
+          # Qdrant is a pinned public runtime image, unlike the local CRM images
+          # built below. It must be present before compose runs with --pull=never.
+          docker pull qdrant/qdrant:v1.12.4
           docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant insurance_assistant backend telegram_bot external_job_worker frontend nginx
 
           echo "MARK: after app compose up"
