@@ -37,6 +37,7 @@ vi.mock('../../../api', () => {
     deletePolicy: vi.fn(),
     fetchDeal: vi.fn(),
     fetchClientById: vi.fn(),
+    fetchPolicy: vi.fn(),
     fetchPayments: vi.fn(),
     movePolicy: vi.fn(),
     updateFinancialRecord: vi.fn(),
@@ -56,6 +57,7 @@ import {
   deleteFinancialRecord,
   fetchPayments,
   fetchClientById,
+  fetchPolicy,
   movePolicy,
   updatePayment as updatePaymentApi,
   updatePolicyDraft,
@@ -71,6 +73,7 @@ const createPolicyDraftMock = vi.mocked(createPolicyDraft);
 const deletePolicyMock = vi.mocked(deletePolicy);
 const deleteFinancialRecordMock = vi.mocked(deleteFinancialRecord);
 const fetchPaymentsMock = vi.mocked(fetchPayments);
+const fetchPolicyMock = vi.mocked(fetchPolicy);
 const movePolicyMock = vi.mocked(movePolicy);
 const updatePaymentMock = vi.mocked(updatePaymentApi);
 const updateFinancialRecordMock = vi.mocked(updateFinancialRecord);
@@ -338,6 +341,33 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     expect(params.setError).not.toHaveBeenCalled();
   });
 
+  it('saves a policy opened outside the global cache through the draft endpoint', async () => {
+    const policy = createPolicy();
+    const updatedPolicy = createPolicy({ salesChannelId: 'channel-2' });
+    const { params, appState } = createParams({ policy });
+    params.policies = [];
+    appState.policies = [];
+    fetchPolicyMock.mockResolvedValue(policy);
+    updatePolicyDraftMock.mockResolvedValue({ policy: updatedPolicy, payments: [] });
+
+    const { result } = renderHook(() => usePolicyActions(params));
+
+    await act(async () => {
+      await result.current.handleRequestEditPolicy(policy);
+      await result.current.handleUpdatePolicy(
+        policy.id,
+        createPolicyValues({ salesChannelId: 'channel-2' }),
+      );
+    });
+
+    expect(fetchPolicyMock).toHaveBeenCalledWith(policy.id);
+    expect(updatePolicyDraftMock).toHaveBeenCalledWith(
+      policy.id,
+      expect.objectContaining({ salesChannelId: 'channel-2' }),
+    );
+    expect(appState.policies).toEqual([updatedPolicy]);
+  });
+
   it('shows backend draft validation message without duplicating local finance rules', async () => {
     const policy = createPolicy();
     const { params } = createParams({ policy });
@@ -355,17 +385,25 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
 
     expect(updatePolicyDraftMock).toHaveBeenCalled();
     expect(updateFinancialRecordMock).not.toHaveBeenCalled();
-    expect(params.setError).toHaveBeenCalledWith('Нельзя изменять записи в выплаченной ведомости.');
+    await waitFor(() =>
+      expect(params.setError).toHaveBeenCalledWith(
+        'Нельзя изменять записи в выплаченной ведомости.',
+      ),
+    );
   });
 
   it('updates policy renewed flag through a lightweight patch', async () => {
     const policy = createPolicy();
-    const { params } = createParams({ policy });
+    const { params, appState } = createParams({ policy });
+    params.policies = [];
+    appState.policies = [];
+    fetchPolicyMock.mockResolvedValue(policy);
 
-    updatePolicyRenewedMock.mockResolvedValue({
+    const renewedPolicy = {
       ...policy,
       isRenewed: true,
-    });
+    };
+    updatePolicyRenewedMock.mockResolvedValue(renewedPolicy);
 
     const { result } = renderHook(() => usePolicyActions(params));
 
@@ -374,15 +412,20 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     });
 
     expect(updatePolicyRenewedMock).toHaveBeenCalledWith(policy.id, true);
+    expect(fetchPolicyMock).toHaveBeenCalledWith(policy.id);
     expect(updatePolicyMock).not.toHaveBeenCalled();
     expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId]);
     expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
+    expect(appState.policies).toEqual([renewedPolicy]);
   });
 
   it('notifies deal events after deleting a policy', async () => {
     const policy = createPolicy();
     const payment = createPayment({ policyId: policy.id, dealId: policy.dealId });
     const { params, appState } = createParams({ policy, payments: [payment] });
+    params.policies = [];
+    appState.policies = [];
+    fetchPolicyMock.mockResolvedValue(policy);
     deletePolicyMock.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => usePolicyActions(params));
@@ -392,6 +435,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     });
 
     expect(deletePolicyMock).toHaveBeenCalledWith(policy.id);
+    expect(fetchPolicyMock).toHaveBeenCalledWith(policy.id);
     expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId]);
     expect(params.loadDealPolicies).toHaveBeenCalledWith(policy.dealId, { force: true });
     expect(params.notifyDealEventsChanged).toHaveBeenCalledWith([policy.dealId]);
@@ -403,6 +447,9 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     const policy = createPolicy();
     const payment = createPayment({ policyId: policy.id, dealId: policy.dealId });
     const { params, appState } = createParams({ policy, payments: [payment] });
+    params.policies = [];
+    appState.policies = [];
+    fetchPolicyMock.mockResolvedValue(policy);
     const movedPolicy = {
       ...policy,
       dealId: 'deal-2',
@@ -417,6 +464,7 @@ describe('usePolicyActions.handleUpdatePolicy', () => {
     });
 
     expect(movePolicyMock).toHaveBeenCalledWith(policy.id, 'deal-2');
+    expect(fetchPolicyMock).toHaveBeenCalledWith(policy.id);
     expect(params.invalidateDealPoliciesCache).toHaveBeenCalledWith(policy.dealId);
     expect(params.invalidateDealPoliciesCache).toHaveBeenCalledWith('deal-2');
     expect(params.syncDealsByIds).toHaveBeenCalledWith([policy.dealId, 'deal-2']);

@@ -6,6 +6,7 @@ import {
   createPolicyDraft,
   deletePolicy,
   fetchClientById,
+  fetchPolicy,
   fetchPayments,
   movePolicy,
   updatePolicyDraft,
@@ -162,6 +163,12 @@ export const usePolicyActions = ({
       });
     },
     [updateAppData],
+  );
+
+  const resolvePolicy = useCallback(
+    async (policyId: string) =>
+      policies.find((policy) => policy.id === policyId) ?? fetchPolicy(policyId),
+    [policies],
   );
 
   const handlePolicyDraftReady = useCallback(
@@ -324,10 +331,7 @@ export const usePolicyActions = ({
       setIsSyncing(true);
       invalidateDealsCache();
       try {
-        const currentPolicy = policies.find((policy) => policy.id === policyId);
-        if (!currentPolicy) {
-          throw new Error('Не удалось найти полис для обновления.');
-        }
+        const currentPolicy = await resolvePolicy(policyId);
         invalidateDealPoliciesCache(currentPolicy.dealId);
         const result = await updatePolicyDraft(policyId, values);
         mergePolicyDraftResult(result);
@@ -357,7 +361,7 @@ export const usePolicyActions = ({
       loadDealPolicies,
       mergePolicyDraftResult,
       notifyDealEventsChanged,
-      policies,
+      resolvePolicy,
       setError,
       setIsSyncing,
       syncDealsByIds,
@@ -366,11 +370,11 @@ export const usePolicyActions = ({
 
   const handleDeletePolicy = useCallback(
     async (policyId: string) => {
-      const targetPolicy = policies.find((policy) => policy.id === policyId);
-      const targetDealId = targetPolicy?.dealId ?? null;
-      invalidateDealsCache();
-      invalidateDealPoliciesCache(targetDealId);
       try {
+        const targetPolicy = await resolvePolicy(policyId);
+        const targetDealId = targetPolicy.dealId;
+        invalidateDealsCache();
+        invalidateDealPoliciesCache(targetDealId);
         await deletePolicy(policyId);
         updateAppData((prev) => {
           const removedPaymentIds = new Set<string>();
@@ -404,7 +408,7 @@ export const usePolicyActions = ({
       invalidateDealsCache,
       loadDealPolicies,
       notifyDealEventsChanged,
-      policies,
+      resolvePolicy,
       setError,
       syncDealsByIds,
       updateAppData,
@@ -413,24 +417,22 @@ export const usePolicyActions = ({
 
   const handleMovePolicy = useCallback(
     async (policyId: string, targetDealId: string) => {
-      const targetPolicy = policies.find((policy) => policy.id === policyId);
-      if (!targetPolicy) {
-        throw new Error('Не удалось найти полис для переноса.');
-      }
-      const sourceDealId = targetPolicy.dealId;
-      if (sourceDealId === targetDealId) {
-        throw new Error('Полис уже находится в выбранной сделке.');
-      }
-
       setIsSyncing(true);
       invalidateDealsCache();
-      invalidateDealPoliciesCache(sourceDealId);
-      invalidateDealPoliciesCache(targetDealId);
       try {
+        const targetPolicy = await resolvePolicy(policyId);
+        const sourceDealId = targetPolicy.dealId;
+        if (sourceDealId === targetDealId) {
+          throw new Error('Полис уже находится в выбранной сделке.');
+        }
+        invalidateDealPoliciesCache(sourceDealId);
+        invalidateDealPoliciesCache(targetDealId);
         const updated = await movePolicy(policyId, targetDealId);
         const targetDeal = dealsById.get(targetDealId);
         updateAppData((prev) => ({
-          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+          policies: prev.policies.some((policy) => policy.id === updated.id)
+            ? prev.policies.map((policy) => (policy.id === updated.id ? updated : policy))
+            : [updated, ...prev.policies],
           payments: prev.payments.map((payment) =>
             payment.policyId === policyId
               ? {
@@ -474,7 +476,7 @@ export const usePolicyActions = ({
       invalidateDealsCache,
       loadDealPolicies,
       notifyDealEventsChanged,
-      policies,
+      resolvePolicy,
       setError,
       setIsSyncing,
       syncDealsByIds,
@@ -484,15 +486,17 @@ export const usePolicyActions = ({
 
   const handleUpdatePolicyRenewed = useCallback(
     async (policyId: string, isRenewed: boolean) => {
-      const targetPolicy = policies.find((policy) => policy.id === policyId);
-      const targetDealId = targetPolicy?.dealId ?? null;
       setIsSyncing(true);
       invalidateDealsCache();
-      invalidateDealPoliciesCache(targetDealId);
       try {
+        const targetPolicy = await resolvePolicy(policyId);
+        const targetDealId = targetPolicy.dealId;
+        invalidateDealPoliciesCache(targetDealId);
         const updated = await updatePolicyRenewed(policyId, isRenewed);
         updateAppData((prev) => ({
-          policies: prev.policies.map((policy) => (policy.id === updated.id ? updated : policy)),
+          policies: prev.policies.some((policy) => policy.id === updated.id)
+            ? prev.policies.map((policy) => (policy.id === updated.id ? updated : policy))
+            : [updated, ...prev.policies],
         }));
         if (targetDealId) {
           await syncDealsByIds([targetDealId]);
@@ -511,7 +515,7 @@ export const usePolicyActions = ({
       invalidateDealsCache,
       loadDealPolicies,
       notifyDealEventsChanged,
-      policies,
+      resolvePolicy,
       setError,
       setIsSyncing,
       syncDealsByIds,
