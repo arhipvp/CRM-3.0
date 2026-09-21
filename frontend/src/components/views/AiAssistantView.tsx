@@ -10,7 +10,6 @@ import {
   fetchAiDocuments,
   fetchAiMessages,
   fetchAiProviders,
-  formatAiCitationLocation,
   streamAiAnswer,
   updateAiDocumentClassification,
   updateAiConversationModel,
@@ -24,6 +23,7 @@ import {
   type AiProvider,
   type AiScopeBranch,
 } from '../../api/aiAssistant';
+import { AiChatMessage } from './aiAssistant/AiChatMessage';
 import type { User } from '../../types';
 import { Button } from '../common/Button';
 import { PageHeader } from '../common/layoutPrimitives';
@@ -386,40 +386,15 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 </span>
               ))}
             </div>
-            <div className="flex-1 space-y-4 overflow-auto">
+            <div className="flex-1 space-y-5 overflow-auto px-1 py-2">
               {messages.map((message) => (
-                <article
+                <AiChatMessage
                   key={message.id}
-                  className={`rounded p-3 text-sm ${message.role === 'user' ? 'ml-12 bg-[var(--app-brand-50)]' : 'mr-12 bg-slate-50'}`}
-                >
-                  <p className="whitespace-pre-wrap">
-                    {message.content || (loading ? 'Готовлю ответ…' : '')}
-                  </p>
-                  {message.usage && (
-                    <p className="mt-2 text-xs text-slate-500">
-                      {message.usage.model}
-                      {message.usage.cost_rub != null ? ` · ${message.usage.cost_rub} ₽` : ''}
-                    </p>
-                  )}
-                  {message.citations.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {message.citations.map((citation, index) => (
-                        <button
-                          key={`${citation.document_id}-${index}`}
-                          type="button"
-                          disabled={opening.has(citation.document_id)}
-                          onClick={() => void openDocument(citation.document_id, citation.location)}
-                          title="Открыть источник"
-                          className="cursor-pointer rounded bg-emerald-50 px-2 py-1 text-left text-xs text-emerald-800 underline decoration-emerald-400 underline-offset-2 transition-all hover:bg-emerald-200 hover:text-emerald-950 hover:shadow-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 disabled:cursor-wait disabled:no-underline"
-                        >
-                          {opening.has(citation.document_id)
-                            ? 'Открываю источник…'
-                            : `[${index + 1}] ${documentLabel(citation.classification)} · ${citation.filename}, ${formatAiCitationLocation(citation.location)}`}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </article>
+                  message={message}
+                  loading={loading}
+                  opening={opening}
+                  onOpenDocument={openDocument}
+                />
               ))}
             </div>
             <div className="mt-4 flex gap-2">

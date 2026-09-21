@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiAssistantView } from '../../components/views/AiAssistantView';
 
 const api = vi.hoisted(() => ({
+  fetchAiMessages: vi.fn(),
   updateAiConversationModel: vi.fn(),
   updateAiConversationScope: vi.fn(),
 }));
@@ -38,7 +39,7 @@ vi.mock('../../api/aiAssistant', () => ({
   ]),
   fetchAiDocumentContent: vi.fn(),
   fetchAiDocuments: vi.fn(async () => []),
-  fetchAiMessages: vi.fn(async () => []),
+  fetchAiMessages: api.fetchAiMessages,
   fetchAiProviders: vi.fn(async () => ({
     providers: [
       {
@@ -61,6 +62,7 @@ vi.mock('../../api/aiAssistant', () => ({
 
 describe('AiAssistantView', () => {
   beforeEach(() => {
+    api.fetchAiMessages.mockReset();
     api.updateAiConversationModel.mockReset();
     api.updateAiConversationScope.mockReset();
     api.updateAiConversationModel.mockResolvedValue({
@@ -79,6 +81,7 @@ describe('AiAssistantView', () => {
       model: null,
       scope: [{ insurer: 'РЕСО' }],
     });
+    api.fetchAiMessages.mockResolvedValue([]);
   });
 
   it('uses the chat default and saves a newly selected model for that chat', async () => {
@@ -108,5 +111,30 @@ describe('AiAssistantView', () => {
     await waitFor(() =>
       expect(api.updateAiConversationScope).toHaveBeenCalledWith('chat-2', [{ insurer: 'РЕСО' }]),
     );
+  });
+
+  it('renders user questions on the right and assistant answers with a source section', async () => {
+    api.fetchAiMessages.mockResolvedValue([
+      { id: 'question', role: 'user', content: 'Когда нужен осмотр?', citations: [] },
+      {
+        id: 'answer',
+        role: 'assistant',
+        content: 'Осмотр нужен до оформления полиса.',
+        citations: [
+          {
+            document_id: 'document-1',
+            filename: 'rules.pdf',
+            location: { page: 2 },
+          },
+        ],
+      },
+    ]);
+    render(<AiAssistantView currentUser={null} />);
+
+    const question = await screen.findByText('Когда нужен осмотр?');
+    expect(question.closest('article')).toHaveClass('bg-[var(--app-brand-600)]');
+    expect(screen.getByText('Страховой помощник')).toBeInTheDocument();
+    expect(screen.getByText('Источники')).toBeInTheDocument();
+    expect(screen.getByTitle('Открыть источник')).toHaveClass('cursor-pointer');
   });
 });
