@@ -4,6 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AiAssistantView } from '../../components/views/AiAssistantView';
 
 const api = vi.hoisted(() => ({
+  fetchAiCatalog: vi.fn(),
+  fetchAiDocuments: vi.fn(),
   fetchAiMessages: vi.fn(),
   updateAiConversationModel: vi.fn(),
   updateAiConversationScope: vi.fn(),
@@ -13,12 +15,7 @@ vi.mock('../../api/aiAssistant', () => ({
   aiDocumentPageFragment: vi.fn(() => ''),
   createAiConversation: vi.fn(),
   deleteAiDocument: vi.fn(),
-  fetchAiCatalog: vi.fn(async () => ({
-    total: 1,
-    unclassified: 0,
-    insurers: [{ name: 'РЕСО', count: 1, kinds: [] }],
-    suggestions: { insurers: ['РЕСО'], insurance_kinds: [], products: [] },
-  })),
+  fetchAiCatalog: api.fetchAiCatalog,
   fetchAiConversations: vi.fn(async () => [
     {
       id: 'chat-1',
@@ -38,7 +35,7 @@ vi.mock('../../api/aiAssistant', () => ({
     },
   ]),
   fetchAiDocumentContent: vi.fn(),
-  fetchAiDocuments: vi.fn(async () => []),
+  fetchAiDocuments: api.fetchAiDocuments,
   fetchAiMessages: api.fetchAiMessages,
   fetchAiProviders: vi.fn(async () => ({
     providers: [
@@ -62,6 +59,8 @@ vi.mock('../../api/aiAssistant', () => ({
 
 describe('AiAssistantView', () => {
   beforeEach(() => {
+    api.fetchAiCatalog.mockReset();
+    api.fetchAiDocuments.mockReset();
     api.fetchAiMessages.mockReset();
     api.updateAiConversationModel.mockReset();
     api.updateAiConversationScope.mockReset();
@@ -82,6 +81,13 @@ describe('AiAssistantView', () => {
       scope: [{ insurer: 'РЕСО' }],
     });
     api.fetchAiMessages.mockResolvedValue([]);
+    api.fetchAiCatalog.mockResolvedValue({
+      total: 1,
+      unclassified: 0,
+      insurers: [{ name: 'РЕСО', count: 1, kinds: [] }],
+      suggestions: { insurers: ['РЕСО'], insurance_kinds: [], products: [] },
+    });
+    api.fetchAiDocuments.mockResolvedValue([]);
   });
 
   it('uses the chat default and saves a newly selected model for that chat', async () => {
@@ -122,6 +128,59 @@ describe('AiAssistantView', () => {
     expect(
       screen.queryByText('Настройка применяется только к этому чату.'),
     ).not.toBeInTheDocument();
+  });
+
+  it('uses the library tree to filter shared documents without changing chat scope', async () => {
+    api.fetchAiCatalog.mockResolvedValue({
+      total: 2,
+      unclassified: 0,
+      insurers: [
+        {
+          name: 'РЕСО',
+          count: 1,
+          kinds: [{ name: 'КАСКО', count: 1, products: [{ name: 'РЕСОавто', count: 1 }] }],
+        },
+        {
+          name: 'Ингосстрах',
+          count: 1,
+          kinds: [{ name: 'КАСКО', count: 1, products: [{ name: 'КАСКО Премиум', count: 1 }] }],
+        },
+      ],
+      suggestions: { insurers: ['РЕСО', 'Ингосстрах'], insurance_kinds: ['КАСКО'], products: [] },
+    });
+    api.fetchAiDocuments.mockResolvedValue([
+      {
+        id: 'reso-rule',
+        filename: 'reso-kasko.pdf',
+        status: 'ready',
+        chunks: 3,
+        classification: { insurer: 'РЕСО', insurance_kind: 'КАСКО', product: 'РЕСОавто' },
+      },
+      {
+        id: 'ingo-rule',
+        filename: 'ingo-kasko.pdf',
+        status: 'ready',
+        chunks: 3,
+        classification: {
+          insurer: 'Ингосстрах',
+          insurance_kind: 'КАСКО',
+          product: 'КАСКО Премиум',
+        },
+      },
+    ]);
+    render(<AiAssistantView currentUser={null} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Библиотека · 2' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Развернуть РЕСО (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Развернуть КАСКО (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: 'РЕСОавто (1)' }));
+
+    expect(await screen.findByText('reso-kasko.pdf')).toBeInTheDocument();
+    expect(screen.queryByText('ingo-kasko.pdf')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/РЕСО → КАСКО → РЕСОавто · показано 1 из 2 документов/),
+    ).toBeInTheDocument();
+    expect(api.updateAiConversationScope).not.toHaveBeenCalled();
   });
 
   it('renders user questions on the right and assistant answers with a source section', async () => {

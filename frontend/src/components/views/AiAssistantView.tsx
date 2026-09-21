@@ -24,6 +24,7 @@ import {
   type AiScopeBranch,
 } from '../../api/aiAssistant';
 import { AiChatMessage } from './aiAssistant/AiChatMessage';
+import { AiLibraryTree } from './aiAssistant/AiLibraryTree';
 import { AiScopeMenu } from './aiAssistant/AiScopeMenu';
 import type { User } from '../../types';
 import { Button } from '../common/Button';
@@ -48,6 +49,17 @@ const documentLabel = (value?: AiClassification | null) => {
   const parts = [value?.insurer, value?.insurance_kind, value?.product].filter(Boolean);
   return parts.length ? parts.join(' → ') : 'Нераспределено';
 };
+const documentInLibraryBranch = (document: AiDocument, branch: AiScopeBranch | null) => {
+  if (!branch) return true;
+  const classification = document.classification;
+  if (branch.unclassified)
+    return !classification?.insurer && !classification?.insurance_kind && !classification?.product;
+  return (
+    (!branch.insurer || classification?.insurer === branch.insurer) &&
+    (!branch.insurance_kind || classification?.insurance_kind === branch.insurance_kind) &&
+    (!branch.product || classification?.product === branch.product)
+  );
+};
 
 export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const canManage = Boolean(
@@ -59,6 +71,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [documents, setDocuments] = useState<AiDocument[]>([]);
   const [catalog, setCatalog] = useState<AiCatalog>(emptyCatalog);
+  const [libraryBranch, setLibraryBranch] = useState<AiScopeBranch | null>(null);
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [question, setQuestion] = useState('');
   const [search, setSearch] = useState('');
@@ -114,10 +127,12 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   );
   const visibleDocuments = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
-    return needle
-      ? documents.filter((item) => item.filename.toLocaleLowerCase().includes(needle))
-      : documents;
-  }, [documents, search]);
+    return documents.filter(
+      (item) =>
+        documentInLibraryBranch(item, libraryBranch) &&
+        (!needle || item.filename.toLocaleLowerCase().includes(needle)),
+    );
+  }, [documents, libraryBranch, search]);
   const selectedScope = (branch: AiScopeBranch) =>
     scope.some((item) => scopeKey(item) === scopeKey(branch));
   const toggleDocument = (id: string) =>
@@ -457,13 +472,15 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
           </section>
         </div>
       ) : (
-        <div>
+        <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <AiLibraryTree catalog={catalog} selected={libraryBranch} onSelect={setLibraryBranch} />
           <section className="rounded border border-[var(--app-border)] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h2 className="font-semibold">Источники</h2>
                 <p className="text-sm text-slate-500">
-                  Показано {visibleDocuments.length} из {catalog.total} документов.
+                  {libraryBranch ? scopeLabel(libraryBranch) : 'Вся библиотека'} · показано{' '}
+                  {visibleDocuments.length} из {catalog.total} документов.
                 </p>
               </div>
               <input
@@ -515,6 +532,11 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
               </>
             )}
             <div className="mt-4 max-h-[calc(100vh-19rem)] space-y-2 overflow-y-auto pr-2">
+              {!visibleDocuments.length && (
+                <p className="rounded bg-slate-50 p-4 text-sm text-slate-500">
+                  В этой папке пока нет документов.
+                </p>
+              )}
               {visibleDocuments.map((document) => (
                 <div
                   key={document.id}
@@ -583,7 +605,7 @@ function ClassificationFields({
     [
       'document_type',
       'Тип документа',
-      ['Правила', 'Тарифы', 'Инструкция', 'Бланк', 'Прочее'],
+      ['Правила', 'Тарифы', 'Инструкция', 'Бланк', 'Образец полиса', 'Прочее'],
       'text',
     ],
     ['effective_from', 'Действует с', [], 'date'],
