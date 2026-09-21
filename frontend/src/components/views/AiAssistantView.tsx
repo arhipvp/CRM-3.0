@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   aiDocumentPageFragment,
@@ -24,6 +24,7 @@ import {
   type AiScopeBranch,
 } from '../../api/aiAssistant';
 import { AiChatMessage } from './aiAssistant/AiChatMessage';
+import { ClassificationFields } from './aiAssistant/ClassificationFields';
 import { AiLibraryTree } from './aiAssistant/AiLibraryTree';
 import { AiScopeMenu } from './aiAssistant/AiScopeMenu';
 import type { User } from '../../types';
@@ -60,6 +61,24 @@ const documentInLibraryBranch = (document: AiDocument, branch: AiScopeBranch | n
     (!branch.product || classification?.product === branch.product)
   );
 };
+const documentStatus = (status: string) => {
+  const labels: Record<string, string> = {
+    queued: 'В очереди',
+    indexing: 'Обрабатывается',
+    ready: 'Готово',
+    failed: 'Ошибка',
+  };
+  return labels[status] ?? status;
+};
+const statusClass = (status: string) => {
+  const classes: Record<string, string> = {
+    queued: 'bg-amber-50 text-amber-800',
+    indexing: 'bg-blue-50 text-blue-800',
+    ready: 'bg-emerald-50 text-emerald-800',
+    failed: 'bg-red-50 text-red-800',
+  };
+  return classes[status] ?? 'bg-slate-100 text-slate-700';
+};
 
 export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const canManage = Boolean(
@@ -78,20 +97,23 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [classification, setClassification] = useState<AiClassification>({});
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [classificationError, setClassificationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [savingModel, setSavingModel] = useState(false);
   const [savingScope, setSavingScope] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [moving, setMoving] = useState(false);
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
-  const [dragging, setDragging] = useState(false);
   const [opening, setOpening] = useState<Set<string>>(new Set());
+  const uploadInput = useRef<HTMLInputElement>(null);
 
-  const loadLibrary = async () => {
+  const loadLibrary = useCallback(async () => {
     const [items, tree] = await Promise.all([fetchAiDocuments(), fetchAiCatalog()]);
     setDocuments(items);
     setCatalog(tree);
-  };
+  }, []);
   useEffect(() => {
     void fetchAiConversations()
       .then((items) => {
@@ -103,13 +125,20 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
     void fetchAiProviders()
       .then((response) => setProviders(response.providers.filter((provider) => provider.available)))
       .catch(() => setError('Не удалось загрузить список моделей Polza.'));
-  }, []);
+  }, [loadLibrary]);
   useEffect(() => {
     if (selectedId)
       void fetchAiMessages(selectedId)
         .then(setMessages)
         .catch((err) => setError(String(err)));
   }, [selectedId]);
+  useEffect(() => {
+    if (!documents.some((document) => ['queued', 'indexing'].includes(document.status))) return;
+    const timer = window.setInterval(() => {
+      void loadLibrary().catch(() => setError('Не удалось обновить статус обработки документов.'));
+    }, 2500);
+    return () => window.clearInterval(timer);
+  }, [documents, loadLibrary]);
   const selected = useMemo(
     () => conversations.find((item) => item.id === selectedId),
     [conversations, selectedId],
@@ -133,6 +162,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         (!needle || item.filename.toLocaleLowerCase().includes(needle)),
     );
   }, [documents, libraryBranch, search]);
+  const isUnclassifiedFolder = Boolean(libraryBranch?.unclassified);
   const selectedScope = (branch: AiScopeBranch) =>
     scope.some((item) => scopeKey(item) === scopeKey(branch));
   const toggleDocument = (id: string) =>
@@ -142,11 +172,18 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       else next.add(id);
       return next;
     });
-  const changeClassification = (field: keyof AiClassification, value: string) =>
+  const changeClassification = (field: keyof AiClassification, value: string) => {
+    setClassificationError(null);
     setClassification((item) => ({ ...item, [field]: value || undefined }));
-  const validClassification = () => {
+  };
+  const hasCompleteClassification = () => {
     const values = [classification.insurer, classification.insurance_kind, classification.product];
-    return !values.some(Boolean) || values.every(Boolean);
+    return values.every(Boolean);
+  };
+  const selectLibraryBranch = (branch: AiScopeBranch | null) => {
+    setLibraryBranch(branch);
+    setSelectedDocuments(new Set());
+    setClassificationError(null);
   };
 
   const openDocument = async (
@@ -271,14 +308,17 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   };
   const upload = async (files: File[]) => {
     if (!files.length || uploading) return;
-    if (!validClassification()) {
-      setError('Заполните всю ветку или оставьте поля пустыми для «Нераспределено».');
-      return;
-    }
     setUploading(true);
+    setError(null);
+    setNotice(null);
     try {
-      await uploadAiDocuments(files, classification);
+      await uploadAiDocuments(files);
+      setLibraryBranch({ unclassified: true });
+      setSelectedDocuments(new Set());
       await loadLibrary();
+      setNotice(
+        `Добавлено в «Нераспределено»: ${files.length} ${files.length === 1 ? 'документ' : 'документов'}.`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить документы.');
     } finally {
@@ -286,19 +326,41 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
     }
   };
   const move = async () => {
-    if (!selectedDocuments.size || !validClassification()) return;
+    if (!selectedDocuments.size) {
+      setClassificationError('Сначала отметьте документы для распределения.');
+      return;
+    }
+    if (!hasCompleteClassification()) {
+      setClassificationError('Заполните страховщика, вид страхования и продукт.');
+      return;
+    }
+    if (moving) return;
+    setMoving(true);
+    setClassificationError(null);
+    setError(null);
+    setNotice(null);
     try {
       await updateAiDocumentClassification([...selectedDocuments], classification);
+      const movedCount = selectedDocuments.size;
       setSelectedDocuments(new Set());
+      setClassification({});
       await loadLibrary();
+      setNotice(`Распределено: ${movedCount} ${movedCount === 1 ? 'документ' : 'документов'}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Не удалось изменить классификацию.');
+      setClassificationError(
+        err instanceof Error ? err.message : 'Не удалось распределить выбранные документы.',
+      );
+    } finally {
+      setMoving(false);
     }
   };
   const removeDocument = async (id: string) => {
     if (deleting.has(id)) return;
+    if (!window.confirm('Удалить документ из общей библиотеки? Это также удалит его из поиска.'))
+      return;
     setDeleting((items) => new Set(items).add(id));
     setError(null);
+    setNotice(null);
     try {
       await deleteAiDocument(id);
       setSelectedDocuments((items) => {
@@ -307,6 +369,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         return next;
       });
       await loadLibrary();
+      setNotice('Документ удалён из библиотеки.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось удалить источник.');
     } finally {
@@ -344,6 +407,11 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       {error && (
         <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+      {notice && (
+        <div className="rounded border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
+          {notice}
         </div>
       )}
       {tab === 'chat' ? (
@@ -472,10 +540,14 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
           </section>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <AiLibraryTree catalog={catalog} selected={libraryBranch} onSelect={setLibraryBranch} />
-          <section className="rounded border border-[var(--app-border)] bg-white p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="grid gap-3 xl:grid-cols-[260px_minmax(0,1fr)]">
+          <AiLibraryTree
+            catalog={catalog}
+            selected={libraryBranch}
+            onSelect={selectLibraryBranch}
+          />
+          <section className="rounded border border-[var(--app-border)] bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h2 className="font-semibold">Источники</h2>
                 <p className="text-sm text-slate-500">
@@ -483,55 +555,65 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   {visibleDocuments.length} из {catalog.total} документов.
                 </p>
               </div>
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="rounded border border-[var(--app-border)] px-3 py-2 text-sm"
-                placeholder="Поиск по названию…"
-              />
-            </div>
-            {canManage && (
-              <>
-                <div
-                  className={`mt-4 rounded border-2 border-dashed p-5 text-center text-sm ${dragging ? 'border-[var(--app-brand-500)] bg-[var(--app-brand-50)]' : 'border-[var(--app-border)]'}`}
-                  onDragEnter={(event) => {
-                    event.preventDefault();
-                    setDragging(true);
-                  }}
-                  onDragOver={(event) => event.preventDefault()}
-                  onDragLeave={() => setDragging(false)}
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    setDragging(false);
-                    void upload(Array.from(event.dataTransfer.files));
-                  }}
-                >
-                  <label className="cursor-pointer text-[var(--app-brand-700)] hover:underline">
+              <div className="flex flex-wrap items-center gap-2">
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="rounded border border-[var(--app-border)] px-3 py-2 text-sm"
+                  placeholder="Поиск по названию…"
+                />
+                {canManage && (
+                  <>
                     <input
+                      ref={uploadInput}
                       className="hidden"
                       type="file"
                       multiple
-                      onChange={(event) => void upload(Array.from(event.target.files ?? []))}
+                      aria-label="Загрузить документы"
+                      onChange={(event) => {
+                        void upload(Array.from(event.target.files ?? []));
+                        event.target.value = '';
+                      }}
                     />
-                    Перетащите документы сюда или выберите файлы
-                  </label>
-                  <p className="mt-1 text-xs text-slate-500">
-                    Без ветки документ попадёт в «Нераспределено».
-                  </p>
-                </div>
-                <ClassificationFields
-                  value={classification}
-                  catalog={catalog}
-                  onChange={changeClassification}
-                />
-                {selectedDocuments.size > 0 && (
-                  <Button onClick={() => void move()} variant="secondary" className="mt-3">
-                    Перенести выбранные ({selectedDocuments.size})
-                  </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={uploading}
+                      onClick={() => uploadInput.current?.click()}
+                    >
+                      {uploading ? 'Добавляю…' : 'Загрузить документы'}
+                    </Button>
+                  </>
                 )}
-              </>
+              </div>
+            </div>
+            {canManage && isUnclassifiedFolder && (
+              <div className="mt-3 rounded border border-[var(--app-border)] bg-slate-50 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <h3 className="text-sm font-medium">Распределить документы</h3>
+                    <p className="text-xs text-slate-500">
+                      {selectedDocuments.size
+                        ? `Выбрано: ${selectedDocuments.size}. Укажите целевую ветку.`
+                        : 'Отметьте документы из «Нераспределено» в списке ниже.'}
+                    </p>
+                  </div>
+                  {selectedDocuments.size > 0 && (
+                    <Button onClick={() => void move()} variant="primary" disabled={moving}>
+                      {moving ? 'Распределяю…' : `Распределить (${selectedDocuments.size})`}
+                    </Button>
+                  )}
+                </div>
+                {selectedDocuments.size > 0 && (
+                  <ClassificationFields
+                    value={classification}
+                    catalog={catalog}
+                    onChange={changeClassification}
+                    error={classificationError}
+                  />
+                )}
+              </div>
             )}
-            <div className="mt-4 max-h-[calc(100vh-19rem)] space-y-2 overflow-y-auto pr-2">
+            <div className="mt-3 max-h-[calc(100vh-17rem)] space-y-2 overflow-y-auto pr-1">
               {!visibleDocuments.length && (
                 <p className="rounded bg-slate-50 p-4 text-sm text-slate-500">
                   В этой папке пока нет документов.
@@ -540,9 +622,9 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
               {visibleDocuments.map((document) => (
                 <div
                   key={document.id}
-                  className="flex items-start gap-2 rounded bg-slate-50 p-3 text-sm"
+                  className="flex items-start gap-2 rounded bg-slate-50 p-2.5 text-sm"
                 >
-                  {canManage && (
+                  {canManage && isUnclassifiedFolder && (
                     <input
                       className="mt-1"
                       type="checkbox"
@@ -561,10 +643,21 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                     >
                       {opening.has(document.id) ? 'Открываю источник…' : document.filename}
                     </button>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {documentLabel(document.classification)} · {document.status} ·{' '}
-                      {document.chunks} фрагм.
+                    <p className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+                      <span>{documentLabel(document.classification)}</span>
+                      <span>·</span>
+                      <span
+                        className={`rounded-full px-1.5 py-0.5 ${statusClass(document.status)}`}
+                      >
+                        {documentStatus(document.status)}
+                      </span>
+                      <span>{document.chunks} фрагм.</span>
                     </p>
+                    {document.status === 'failed' && (
+                      <p className="mt-1 text-xs text-red-700">
+                        {document.error ?? 'Не удалось обработать файл. Загрузите его повторно.'}
+                      </p>
+                    )}
                   </div>
                   {canManage && (
                     <button
@@ -585,51 +678,6 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       {uploading && (
         <p className="text-sm text-slate-500">Документы добавляются в очередь индексации…</p>
       )}
-    </div>
-  );
-}
-
-function ClassificationFields({
-  value,
-  catalog,
-  onChange,
-}: {
-  value: AiClassification;
-  catalog: AiCatalog;
-  onChange: (field: keyof AiClassification, value: string) => void;
-}) {
-  const fields: Array<[keyof AiClassification, string, string[], 'text' | 'date']> = [
-    ['insurer', 'Страховщик', catalog.suggestions.insurers, 'text'],
-    ['insurance_kind', 'Вид страхования', catalog.suggestions.insurance_kinds, 'text'],
-    ['product', 'Продукт', catalog.suggestions.products, 'text'],
-    [
-      'document_type',
-      'Тип документа',
-      ['Правила', 'Тарифы', 'Инструкция', 'Бланк', 'Образец полиса', 'Прочее'],
-      'text',
-    ],
-    ['effective_from', 'Действует с', [], 'date'],
-    ['effective_to', 'Действует до', [], 'date'],
-  ];
-  return (
-    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
-      {fields.map(([field, label, options, type]) => (
-        <label key={field} className="text-xs text-slate-600">
-          {label}
-          <input
-            type={type}
-            list={`ai-${field}`}
-            value={value[field] ?? ''}
-            onChange={(event) => onChange(field, event.target.value)}
-            className="mt-1 w-full rounded border border-[var(--app-border)] px-2 py-1.5 text-sm text-slate-900"
-          />
-          <datalist id={`ai-${field}`}>
-            {options.map((option) => (
-              <option key={option} value={option} />
-            ))}
-          </datalist>
-        </label>
-      ))}
     </div>
   );
 }

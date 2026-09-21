@@ -133,12 +133,9 @@ export const updateAiDocumentClassification = (
     method: 'PATCH',
     body: JSON.stringify({ document_ids: documentIds, ...classification }),
   });
-export const uploadAiDocuments = (files: File[], classification: AiClassification = {}) => {
+export const uploadAiDocuments = (files: File[]) => {
   const body = new FormData();
   files.forEach((file) => body.append('files', file));
-  Object.entries(classification).forEach(([key, value]) => {
-    if (value) body.append(key, value);
-  });
   return request<AiDocument[]>('/ai/documents/', { method: 'POST', body });
 };
 

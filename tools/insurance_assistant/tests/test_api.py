@@ -203,3 +203,102 @@ def test_message_uses_scope_saved_on_conversation(monkeypatch, tmp_path):
 
     assert response.status_code == 200
     assert rag.document_ids == [reso_document]
+
+
+def test_document_list_uses_safe_public_contract(monkeypatch, tmp_path):
+    import app.main as main
+    from app.database import Store
+
+    store = Store(tmp_path / "assistant.sqlite3")
+    document_id = store.create_document(
+        "rules.pdf",
+        tmp_path / "private" / "rules.pdf",
+        {"insurer": "РЕСО", "insurance_kind": "КАСКО", "product": "Классика"},
+    )
+    store.update_document(document_id, "failed", error=str(tmp_path / "private"))
+    monkeypatch.setattr(main, "store", store)
+
+    response = TestClient(app).get("/api/documents")
+
+    assert response.status_code == 200
+    document = response.json()[0]
+    assert document == {
+        "id": document_id,
+        "filename": "rules.pdf",
+        "status": "failed",
+        "chunks": 0,
+        "error": "Не удалось обработать документ. Загрузите файл повторно.",
+        "classification": {
+            "insurer": "РЕСО",
+            "insurance_kind": "КАСКО",
+            "product": "Классика",
+            "document_type": None,
+            "effective_from": None,
+            "effective_to": None,
+        },
+    }
+    assert "path" not in document
+    assert str(tmp_path) not in str(response.json())
+
+
+def test_upload_returns_safe_public_document(monkeypatch, tmp_path):
+    import app.main as main
+    from app.database import Store
+
+    monkeypatch.setattr(main, "store", Store(tmp_path / "assistant.sqlite3"))
+    monkeypatch.setattr(main, "settings", replace(main.settings, data_dir=tmp_path))
+    monkeypatch.setattr(main, "_index_document", lambda _document_id: None)
+
+    response = TestClient(app).post(
+        "/api/documents",
+        data={
+            "insurer": "РЕСО",
+            "insurance_kind": "КАСКО",
+            "product": "Классика",
+        },
+        files=[("files", ("rules.pdf", b"%PDF-test", "application/pdf"))],
+    )
+
+    assert response.status_code == 202
+    document = response.json()[0]
+    assert document["filename"] == "rules.pdf"
+    assert document["status"] == "queued"
+    # Uploads always start in the shared "Unclassified" folder.  Extra multipart
+    # fields must not silently assign a branch.
+    assert document["classification"]["product"] is None
+    assert document["error"] is None
+    assert "path" not in document
+
+
+def test_classification_update_returns_safe_public_documents(monkeypatch, tmp_path):
+    import app.main as main
+    from app.database import Store
+
+    class ClassificationRag(FakeRag):
+        def update_document_classification(self, document_ids, classification):
+            self.document_ids = document_ids
+            self.classification = classification
+
+    store = Store(tmp_path / "assistant.sqlite3")
+    document_id = store.create_document("draft.pdf", tmp_path / "private" / "draft.pdf")
+    rag = ClassificationRag()
+    monkeypatch.setattr(main, "store", store)
+    monkeypatch.setattr(main, "rag", rag)
+
+    response = TestClient(app).patch(
+        "/api/documents/classification",
+        json={
+            "document_ids": [document_id],
+            "insurer": "РЕСО",
+            "insurance_kind": "КАСКО",
+            "product": "Классика",
+            "document_type": "Правила",
+        },
+    )
+
+    assert response.status_code == 200
+    document = response.json()[0]
+    assert document["classification"]["document_type"] == "Правила"
+    assert "path" not in document
+    assert str(tmp_path) not in str(response.json())
+    assert rag.document_ids == [document_id]

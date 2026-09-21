@@ -13,7 +13,6 @@ from fastapi import (
     Depends,
     FastAPI,
     File,
-    Form,
     Header,
     HTTPException,
     UploadFile,
@@ -184,25 +183,12 @@ def _index_document(document_id: str) -> None:
 async def upload_documents(
     background_tasks: BackgroundTasks,
     files: Annotated[list[UploadFile], File(...)],
-    insurer: Annotated[str | None, Form()] = None,
-    insurance_kind: Annotated[str | None, Form()] = None,
-    product: Annotated[str | None, Form()] = None,
-    document_type: Annotated[str | None, Form()] = None,
-    effective_from: Annotated[str | None, Form()] = None,
-    effective_to: Annotated[str | None, Form()] = None,
     _: str | None = Depends(_crm_owner),
 ) -> list[dict]:
     settings.uploads_dir.mkdir(parents=True, exist_ok=True)
-    classification = _validated_classification(
-        {
-            "insurer": insurer,
-            "insurance_kind": insurance_kind,
-            "product": product,
-            "document_type": document_type,
-            "effective_from": effective_from,
-            "effective_to": effective_to,
-        }
-    )
+    # New sources deliberately start unclassified.  Classification is an explicit,
+    # auditable library operation and is never inferred from a multipart upload.
+    classification: dict[str, str | None] = {}
     created = []
     for upload in files:
         filename = Path(upload.filename or "document").name
@@ -212,13 +198,15 @@ async def upload_documents(
         target.write_bytes(await upload.read())
         ident = store.create_document(filename, target, classification)
         background_tasks.add_task(_index_document, ident)
-        created.append(store.document(ident))
+        document = store.document(ident)
+        if document:
+            created.append(_public_document(document))
     return created
 
 
 @app.get("/api/documents")
 def list_documents(_: str | None = Depends(_crm_owner)) -> list[dict]:
-    return store.documents()
+    return [_public_document(document) for document in store.documents()]
 
 
 @app.get("/api/catalog")
@@ -237,7 +225,7 @@ def update_document_classification(
         payload.document_ids, classification
     )
     rag.update_document_classification(payload.document_ids, classification)
-    return documents
+    return [_public_document(document) for document in documents]
 
 
 @app.get("/api/documents/{document_id}/content")
@@ -507,6 +495,23 @@ def _document_classification(document: dict) -> dict[str, str | None]:
             "effective_from",
             "effective_to",
         )
+    }
+
+
+def _public_document(document: dict) -> dict:
+    """Return the document representation safe to expose beyond the RAG service."""
+    status = document["status"]
+    return {
+        "id": document["id"],
+        "filename": document["filename"],
+        "status": status,
+        "chunks": document["chunks"],
+        "error": (
+            "Не удалось обработать документ. Загрузите файл повторно."
+            if status == "failed"
+            else None
+        ),
+        "classification": _document_classification(document),
     }
 
 

@@ -7,6 +7,9 @@ const api = vi.hoisted(() => ({
   fetchAiCatalog: vi.fn(),
   fetchAiDocuments: vi.fn(),
   fetchAiMessages: vi.fn(),
+  deleteAiDocument: vi.fn(),
+  updateAiDocumentClassification: vi.fn(),
+  uploadAiDocuments: vi.fn(),
   updateAiConversationModel: vi.fn(),
   updateAiConversationScope: vi.fn(),
 }));
@@ -14,7 +17,7 @@ const api = vi.hoisted(() => ({
 vi.mock('../../api/aiAssistant', () => ({
   aiDocumentPageFragment: vi.fn(() => ''),
   createAiConversation: vi.fn(),
-  deleteAiDocument: vi.fn(),
+  deleteAiDocument: api.deleteAiDocument,
   fetchAiCatalog: api.fetchAiCatalog,
   fetchAiConversations: vi.fn(async () => [
     {
@@ -51,10 +54,10 @@ vi.mock('../../api/aiAssistant', () => ({
   })),
   formatAiCitationLocation: vi.fn(),
   streamAiAnswer: vi.fn(),
-  updateAiDocumentClassification: vi.fn(),
+  updateAiDocumentClassification: api.updateAiDocumentClassification,
   updateAiConversationModel: api.updateAiConversationModel,
   updateAiConversationScope: api.updateAiConversationScope,
-  uploadAiDocuments: vi.fn(),
+  uploadAiDocuments: api.uploadAiDocuments,
 }));
 
 describe('AiAssistantView', () => {
@@ -62,6 +65,9 @@ describe('AiAssistantView', () => {
     api.fetchAiCatalog.mockReset();
     api.fetchAiDocuments.mockReset();
     api.fetchAiMessages.mockReset();
+    api.deleteAiDocument.mockReset();
+    api.updateAiDocumentClassification.mockReset();
+    api.uploadAiDocuments.mockReset();
     api.updateAiConversationModel.mockReset();
     api.updateAiConversationScope.mockReset();
     api.updateAiConversationModel.mockResolvedValue({
@@ -88,6 +94,9 @@ describe('AiAssistantView', () => {
       suggestions: { insurers: ['РЕСО'], insurance_kinds: [], products: [] },
     });
     api.fetchAiDocuments.mockResolvedValue([]);
+    api.deleteAiDocument.mockResolvedValue(undefined);
+    api.updateAiDocumentClassification.mockResolvedValue([]);
+    api.uploadAiDocuments.mockResolvedValue([]);
   });
 
   it('uses the chat default and saves a newly selected model for that chat', async () => {
@@ -181,6 +190,64 @@ describe('AiAssistantView', () => {
       screen.getByText(/РЕСО → КАСКО → РЕСОавто · показано 1 из 2 документов/),
     ).toBeInTheDocument();
     expect(api.updateAiConversationScope).not.toHaveBeenCalled();
+  });
+
+  it('uploads new documents without classification and switches to unclassified sources', async () => {
+    api.fetchAiCatalog.mockResolvedValue({
+      total: 1,
+      unclassified: 1,
+      insurers: [],
+      suggestions: { insurers: [], insurance_kinds: [], products: [] },
+    });
+    render(<AiAssistantView currentUser={{ username: 'Vova', isStaff: false } as never} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Библиотека · 1' }));
+    const file = new File(['rules'], 'rules.pdf', { type: 'application/pdf' });
+    fireEvent.change(screen.getByLabelText('Загрузить документы'), { target: { files: [file] } });
+
+    await waitFor(() => expect(api.uploadAiDocuments).toHaveBeenCalledWith([file]));
+    expect(await screen.findByText(/Нераспределено\s+· показано/)).toBeInTheDocument();
+  });
+
+  it('validates an incomplete target branch and reports successful distribution', async () => {
+    api.fetchAiCatalog.mockResolvedValue({
+      total: 1,
+      unclassified: 1,
+      insurers: [],
+      suggestions: { insurers: ['РЕСО'], insurance_kinds: ['КАСКО'], products: ['РЕСОавто'] },
+    });
+    api.fetchAiDocuments.mockResolvedValue([
+      {
+        id: 'draft',
+        filename: 'draft.pdf',
+        status: 'ready',
+        chunks: 1,
+        classification: {},
+      },
+    ]);
+    api.updateAiDocumentClassification.mockResolvedValue([]);
+    render(<AiAssistantView currentUser={{ username: 'Vova', isStaff: false } as never} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Библиотека · 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Нераспределено (1)' }));
+    fireEvent.click(screen.getByLabelText('Выбрать draft.pdf'));
+    fireEvent.click(screen.getByRole('button', { name: 'Распределить (1)' }));
+    expect(
+      await screen.findByText('Заполните страховщика, вид страхования и продукт.'),
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText(/Страховщик/), { target: { value: 'РЕСО' } });
+    fireEvent.change(screen.getByLabelText(/Вид страхования/), { target: { value: 'КАСКО' } });
+    fireEvent.change(screen.getByLabelText(/Продукт/), { target: { value: 'РЕСОавто' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Распределить (1)' }));
+
+    await waitFor(() =>
+      expect(api.updateAiDocumentClassification).toHaveBeenCalledWith(
+        ['draft'],
+        expect.objectContaining({ insurer: 'РЕСО', insurance_kind: 'КАСКО', product: 'РЕСОавто' }),
+      ),
+    );
+    expect(await screen.findByText('Распределено: 1 документ.')).toBeInTheDocument();
   });
 
   it('renders user questions on the right and assistant answers with a source section', async () => {
