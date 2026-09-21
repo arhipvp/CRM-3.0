@@ -83,7 +83,9 @@ def test_usage_endpoint_returns_local_aggregate():
     assert set(payload) == {"providers", "requests", "cost_rub"}
 
 
-def test_document_content_requires_internal_access_and_hides_storage_path(monkeypatch, tmp_path):
+def test_document_content_requires_internal_access_and_hides_storage_path(
+    monkeypatch, tmp_path
+):
     import app.main as main
     from app.database import Store
 
@@ -153,7 +155,9 @@ def test_unavailable_conversation_model_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(
         main,
         "settings",
-        replace(main.settings, production_mode=True, polza_api_key="test"),  # pragma: allowlist secret
+        replace(
+            main.settings, production_mode=True, polza_api_key="test"
+        ),  # pragma: allowlist secret
     )
     monkeypatch.setattr(main.polza, "models", models)
     client = TestClient(app)
@@ -164,3 +168,38 @@ def test_unavailable_conversation_model_is_rejected(monkeypatch, tmp_path):
     )
     assert response.status_code == 422
     assert "недоступна" in response.json()["detail"]
+
+
+def test_message_uses_scope_saved_on_conversation(monkeypatch, tmp_path):
+    import app.main as main
+    from app.database import Store
+
+    class CapturingRag(FakeRag):
+        def search(self, question, **kwargs):
+            self.document_ids = kwargs["document_ids"]
+            return []
+
+    store = Store(tmp_path / "assistant.sqlite3")
+    reso_document = store.create_document(
+        "rules.pdf",
+        tmp_path / "rules.pdf",
+        {"insurer": "РЕСО", "insurance_kind": "КАСКО", "product": "Авто"},
+    )
+    rag = CapturingRag()
+    monkeypatch.setattr(main, "store", store)
+    monkeypatch.setattr(main, "rag", rag)
+    client = TestClient(app)
+    conversation = client.post("/api/conversations", json={"title": "Проверка"}).json()
+    updated = client.patch(
+        f"/api/conversations/{conversation['id']}",
+        json={"scope": [{"insurer": "РЕСО"}]},
+    )
+    assert updated.status_code == 200
+
+    response = client.post(
+        f"/api/conversations/{conversation['id']}/messages",
+        json={"content": "Что покрывает полис?", "scope": [{"unclassified": True}]},
+    )
+
+    assert response.status_code == 200
+    assert rag.document_ids == [reso_document]

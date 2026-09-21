@@ -5,6 +5,7 @@ import { AiAssistantView } from '../../components/views/AiAssistantView';
 
 const api = vi.hoisted(() => ({
   updateAiConversationModel: vi.fn(),
+  updateAiConversationScope: vi.fn(),
 }));
 
 vi.mock('../../api/aiAssistant', () => ({
@@ -12,13 +13,28 @@ vi.mock('../../api/aiAssistant', () => ({
   createAiConversation: vi.fn(),
   deleteAiDocument: vi.fn(),
   fetchAiCatalog: vi.fn(async () => ({
-    total: 0,
+    total: 1,
     unclassified: 0,
-    insurers: [],
-    suggestions: { insurers: [], insurance_kinds: [], products: [] },
+    insurers: [{ name: 'РЕСО', count: 1, kinds: [] }],
+    suggestions: { insurers: ['РЕСО'], insurance_kinds: [], products: [] },
   })),
   fetchAiConversations: vi.fn(async () => [
-    { id: 'chat-1', title: 'КАСКО', created_at: '2026-09-20', provider: null, model: null },
+    {
+      id: 'chat-1',
+      title: 'КАСКО',
+      created_at: '2026-09-20',
+      provider: null,
+      model: null,
+      scope: [{ insurer: 'РЕСО' }],
+    },
+    {
+      id: 'chat-2',
+      title: 'ОСАГО',
+      created_at: '2026-09-20',
+      provider: null,
+      model: null,
+      scope: [],
+    },
   ]),
   fetchAiDocumentContent: vi.fn(),
   fetchAiDocuments: vi.fn(async () => []),
@@ -39,18 +55,29 @@ vi.mock('../../api/aiAssistant', () => ({
   streamAiAnswer: vi.fn(),
   updateAiDocumentClassification: vi.fn(),
   updateAiConversationModel: api.updateAiConversationModel,
+  updateAiConversationScope: api.updateAiConversationScope,
   uploadAiDocuments: vi.fn(),
 }));
 
 describe('AiAssistantView', () => {
   beforeEach(() => {
     api.updateAiConversationModel.mockReset();
+    api.updateAiConversationScope.mockReset();
     api.updateAiConversationModel.mockResolvedValue({
       id: 'chat-1',
       title: 'КАСКО',
       created_at: '2026-09-20',
       provider: 'polza',
       model: 'polza-pro',
+      scope: [{ insurer: 'РЕСО' }],
+    });
+    api.updateAiConversationScope.mockResolvedValue({
+      id: 'chat-2',
+      title: 'ОСАГО',
+      created_at: '2026-09-20',
+      provider: null,
+      model: null,
+      scope: [{ insurer: 'РЕСО' }],
     });
   });
 
@@ -66,5 +93,20 @@ describe('AiAssistantView', () => {
       expect(api.updateAiConversationModel).toHaveBeenCalledWith('chat-1', 'polza', 'polza-pro'),
     );
     expect(select).toHaveValue('polza-pro');
+  });
+
+  it('switches the saved scope with the selected chat and persists branch changes', async () => {
+    render(<AiAssistantView currentUser={null} />);
+
+    expect(await screen.findByText('РЕСО')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'ОСАГО' }));
+    expect(await screen.findByText('Вся библиотека')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Библиотека · 1' }));
+    fireEvent.click(await screen.findByLabelText('РЕСО (1)'));
+
+    await waitFor(() =>
+      expect(api.updateAiConversationScope).toHaveBeenCalledWith('chat-2', [{ insurer: 'РЕСО' }]),
+    );
   });
 });

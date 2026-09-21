@@ -6,6 +6,7 @@ export interface AiConversation {
   created_at: string;
   provider?: string | null;
   model?: string | null;
+  scope?: AiScopeBranch[];
 }
 
 export interface AiProvider {
@@ -110,6 +111,11 @@ export const updateAiConversationModel = (id: string, provider: string, model: s
     method: 'PATCH',
     body: JSON.stringify({ provider, model }),
   });
+export const updateAiConversationScope = (id: string, scope: AiScopeBranch[]) =>
+  request<AiConversation>(`/ai/conversations/${id}/`, {
+    method: 'PATCH',
+    body: JSON.stringify({ scope }),
+  });
 export const deleteAiConversation = (id: string) =>
   request<void>(`/ai/conversations/${id}/`, { method: 'DELETE' });
 export const fetchAiMessages = (id: string) =>
@@ -152,7 +158,6 @@ export async function fetchAiDocumentContent(documentId: string): Promise<string
 export async function streamAiAnswer(
   conversationId: string,
   content: string,
-  scope: AiScopeBranch[],
   onEvent: (event: string, payload: unknown) => void,
 ): Promise<void> {
   const response = await fetch(`${API_BASE}/ai/conversations/${conversationId}/messages/`, {
@@ -161,7 +166,7 @@ export async function streamAiAnswer(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${getAccessToken() ?? ''}`,
     },
-    body: JSON.stringify({ content, scope }),
+    body: JSON.stringify({ content }),
   });
   if (!response.ok || !response.body)
     throw new Error('Не удалось получить ответ страхового помощника.');

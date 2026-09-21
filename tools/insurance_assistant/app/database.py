@@ -42,7 +42,7 @@ class Store:
                 );
                 CREATE TABLE IF NOT EXISTS conversations (
                   id TEXT PRIMARY KEY, title TEXT NOT NULL, created_at TEXT NOT NULL,
-                  owner_id TEXT, provider TEXT, model TEXT
+                  owner_id TEXT, provider TEXT, model TEXT, scope TEXT NOT NULL DEFAULT '[]'
                 );
                 CREATE TABLE IF NOT EXISTS messages (
                   id TEXT PRIMARY KEY, conversation_id TEXT NOT NULL, role TEXT NOT NULL,
@@ -69,13 +69,15 @@ class Store:
                 if name not in columns:
                     con.execute(f"ALTER TABLE messages ADD COLUMN {name} {kind}")
             conversation_columns = {
-                row[1] for row in con.execute("PRAGMA table_info(conversations)").fetchall()
+                row[1]
+                for row in con.execute("PRAGMA table_info(conversations)").fetchall()
             }
             if "owner_id" not in conversation_columns:
                 con.execute("ALTER TABLE conversations ADD COLUMN owner_id TEXT")
-            for name in ("provider", "model"):
+            for name in ("provider", "model", "scope"):
                 if name not in conversation_columns:
-                    con.execute(f"ALTER TABLE conversations ADD COLUMN {name} TEXT")
+                    kind = "TEXT NOT NULL DEFAULT '[]'" if name == "scope" else "TEXT"
+                    con.execute(f"ALTER TABLE conversations ADD COLUMN {name} {kind}")
 
             document_columns = {
                 row[1] for row in con.execute("PRAGMA table_info(documents)").fetchall()
@@ -93,7 +95,10 @@ class Store:
                     con.execute(f"ALTER TABLE documents ADD COLUMN {name} {kind}")
 
     def create_document(
-        self, filename: str, path: Path, classification: dict[str, str | None] | None = None
+        self,
+        filename: str,
+        path: Path,
+        classification: dict[str, str | None] | None = None,
     ) -> str:
         ident = str(uuid.uuid4())
         classification = classification or {}
@@ -188,7 +193,9 @@ class Store:
         unclassified = [
             item
             for item in documents
-            if not item["insurer"] and not item["insurance_kind"] and not item["product"]
+            if not item["insurer"]
+            and not item["insurance_kind"]
+            and not item["product"]
         ]
         tree: dict[str, dict] = {}
         for item in documents:
@@ -220,11 +227,19 @@ class Store:
             "unclassified": len(unclassified),
             "insurers": insurers,
             "suggestions": {
-                "insurers": sorted({item["insurer"] for item in documents if item["insurer"]}),
-                "insurance_kinds": sorted(
-                    {item["insurance_kind"] for item in documents if item["insurance_kind"]}
+                "insurers": sorted(
+                    {item["insurer"] for item in documents if item["insurer"]}
                 ),
-                "products": sorted({item["product"] for item in documents if item["product"]}),
+                "insurance_kinds": sorted(
+                    {
+                        item["insurance_kind"]
+                        for item in documents
+                        if item["insurance_kind"]
+                    }
+                ),
+                "products": sorted(
+                    {item["product"] for item in documents if item["product"]}
+                ),
             },
         }
 
@@ -250,6 +265,7 @@ class Store:
         owner_id: str | None = None,
         provider: str | None = None,
         model: str | None = None,
+        scope: list[dict] | None = None,
     ) -> dict:
         result = {
             "id": str(uuid.uuid4()),
@@ -258,13 +274,24 @@ class Store:
             "owner_id": owner_id,
             "provider": provider,
             "model": model,
+            "scope": json.dumps(scope or []),
         }
         with self.connection() as con:
             con.execute(
-                """INSERT INTO conversations(id, title, created_at, owner_id, provider, model)
-                VALUES (:id, :title, :created_at, :owner_id, :provider, :model)""",
+                """INSERT INTO conversations(id, title, created_at, owner_id, provider, model, scope)
+                VALUES (:id, :title, :created_at, :owner_id, :provider, :model, :scope)""",
                 result,
             )
+        return self._conversation(result)
+
+    @staticmethod
+    def _conversation(row: dict) -> dict:
+        result = dict(row)
+        try:
+            scope = json.loads(result.get("scope") or "[]")
+        except (TypeError, json.JSONDecodeError):
+            scope = []
+        result["scope"] = scope if isinstance(scope, list) else []
         return result
 
     def conversation(self, ident: str, owner_id: str | None = None) -> dict | None:
@@ -278,39 +305,60 @@ class Store:
                     "SELECT * FROM conversations WHERE id=? AND owner_id=?",
                     (ident, owner_id),
                 ).fetchone()
-        return dict(row) if row else None
+        return self._conversation(dict(row)) if row else None
 
-    def update_conversation_ai(
-        self, ident: str, owner_id: str | None, provider: str, model: str
+    def update_conversation_settings(
+        self,
+        ident: str,
+        owner_id: str | None,
+        *,
+        provider: str | None = None,
+        model: str | None = None,
+        scope: list[dict] | None = None,
     ) -> dict | None:
+        assignments: list[str] = []
+        values: list[str] = []
+        if provider is not None:
+            assignments.append("provider=?")
+            values.append(provider)
+        if model is not None:
+            assignments.append("model=?")
+            values.append(model)
+        if scope is not None:
+            assignments.append("scope=?")
+            values.append(json.dumps(scope))
+        if not assignments:
+            return self.conversation(ident, owner_id)
         with self.connection() as con:
             if owner_id is None:
                 cur = con.execute(
-                    "UPDATE conversations SET provider=?, model=? WHERE id=?",
-                    (provider, model, ident),
+                    f"UPDATE conversations SET {', '.join(assignments)} WHERE id=?",
+                    (*values, ident),
                 )
             else:
                 cur = con.execute(
-                    "UPDATE conversations SET provider=?, model=? WHERE id=? AND owner_id=?",
-                    (provider, model, ident, owner_id),
+                    f"UPDATE conversations SET {', '.join(assignments)} WHERE id=? AND owner_id=?",
+                    (*values, ident, owner_id),
                 )
             if cur.rowcount == 0:
                 return None
             row = con.execute(
                 "SELECT * FROM conversations WHERE id=?", (ident,)
             ).fetchone()
-        return dict(row) if row else None
+        return self._conversation(dict(row)) if row else None
 
     def conversations(self, owner_id: str | None = None) -> list[dict]:
         with self.connection() as con:
             if owner_id is None:
-                rows = con.execute("SELECT * FROM conversations ORDER BY created_at DESC").fetchall()
+                rows = con.execute(
+                    "SELECT * FROM conversations ORDER BY created_at DESC"
+                ).fetchall()
             else:
                 rows = con.execute(
                     "SELECT * FROM conversations WHERE owner_id=? ORDER BY created_at DESC",
                     (owner_id,),
                 ).fetchall()
-        return [dict(row) for row in rows]
+        return [self._conversation(dict(row)) for row in rows]
 
     def owns_conversation(self, conversation_id: str, owner_id: str | None) -> bool:
         with self.connection() as con:
@@ -321,7 +369,9 @@ class Store:
         return row is not None
 
     def messages(self, conversation_id: str, owner_id: str | None = None) -> list[dict]:
-        if owner_id is not None and not self.owns_conversation(conversation_id, owner_id):
+        if owner_id is not None and not self.owns_conversation(
+            conversation_id, owner_id
+        ):
             return []
         with self.connection() as con:
             rows = con.execute(
@@ -431,7 +481,8 @@ class Store:
                 cur = con.execute("DELETE FROM conversations WHERE id=?", (ident,))
             else:
                 cur = con.execute(
-                    "DELETE FROM conversations WHERE id=? AND owner_id=?", (ident, owner_id)
+                    "DELETE FROM conversations WHERE id=? AND owner_id=?",
+                    (ident, owner_id),
                 )
             if cur.rowcount > 0:
                 con.execute("DELETE FROM messages WHERE conversation_id=?", (ident,))

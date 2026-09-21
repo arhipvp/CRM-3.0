@@ -54,14 +54,21 @@ class ConversationCreate(BaseModel):
     model: str | None = None
 
 
+class ScopeBranch(BaseModel):
+    insurer: str | None = None
+    insurance_kind: str | None = None
+    product: str | None = None
+    unclassified: bool | None = None
+
+
 class ConversationAiUpdate(BaseModel):
-    provider: str
-    model: str
+    provider: str | None = None
+    model: str | None = None
+    scope: list[ScopeBranch] | None = None
 
 
 class MessageCreate(BaseModel):
     content: str
-    scope: list[dict[str, str | bool | None]] | None = None
 
 
 class DocumentClassification(BaseModel):
@@ -223,8 +230,12 @@ def catalog(_: str | None = Depends(_crm_owner)) -> dict:
 def update_document_classification(
     payload: ClassificationUpdate, _: str | None = Depends(_crm_owner)
 ) -> list[dict]:
-    classification = _validated_classification(payload.model_dump(exclude={"document_ids"}))
-    documents = store.update_document_classification(payload.document_ids, classification)
+    classification = _validated_classification(
+        payload.model_dump(exclude={"document_ids"})
+    )
+    documents = store.update_document_classification(
+        payload.document_ids, classification
+    )
     rag.update_document_classification(payload.document_ids, classification)
     return documents
 
@@ -239,7 +250,9 @@ def document_content(
     path = Path(document["path"])
     if not path.is_file():
         raise HTTPException(404, "Исходный файл документа не найден")
-    media_type = mimetypes.guess_type(document["filename"])[0] or "application/octet-stream"
+    media_type = (
+        mimetypes.guess_type(document["filename"])[0] or "application/octet-stream"
+    )
     return FileResponse(
         path,
         media_type=media_type,
@@ -276,9 +289,24 @@ async def update_conversation_ai(
     payload: ConversationAiUpdate,
     owner_id: str | None = Depends(_crm_owner),
 ) -> dict:
-    provider, model = await _validated_ai_choice(payload.provider, payload.model)
-    conversation = store.update_conversation_ai(
-        conversation_id, owner_id, provider, model
+    if not store.conversation(conversation_id, owner_id):
+        raise HTTPException(404, "Чат не найден")
+    has_ai_choice = (
+        "provider" in payload.model_fields_set or "model" in payload.model_fields_set
+    )
+    has_scope = "scope" in payload.model_fields_set
+    if not has_ai_choice and not has_scope:
+        raise HTTPException(422, "Не переданы настройки чата")
+    provider = model = None
+    if has_ai_choice:
+        provider, model = await _validated_ai_choice(payload.provider, payload.model)
+    scope = (
+        [branch.model_dump(exclude_none=True) for branch in payload.scope or []]
+        if has_scope
+        else None
+    )
+    conversation = store.update_conversation_settings(
+        conversation_id, owner_id, provider=provider, model=model, scope=scope
     )
     if not conversation:
         raise HTTPException(404, "Чат не найден")
@@ -301,7 +329,8 @@ async def list_providers(_: str | None = Depends(_crm_owner)) -> dict:
     )
     providers = []
     if not settings.production_mode:
-        providers.append({
+        providers.append(
+            {
                 "id": "codex",
                 "label": "Codex",
                 "available": any(
@@ -311,15 +340,16 @@ async def list_providers(_: str | None = Depends(_crm_owner)) -> dict:
                 "models": list(settings.codex_models),
                 "default_model": codex_default,
                 "billing": "Включено в текущий ChatGPT-доступ; стоимость от App Server не передаётся.",
-        })
+            }
+        )
     providers.append(
         {
-                "id": "polza",
-                "label": "Polza",
-                "available": bool(settings.polza_api_key),
-                "models": [],
-                "default_model": settings.polza_chat_model or None,
-                "billing": "Стоимость берётся из ответа Polza.ai, если API её возвращает.",
+            "id": "polza",
+            "label": "Polza",
+            "available": bool(settings.polza_api_key),
+            "models": [],
+            "default_model": settings.polza_chat_model or None,
+            "billing": "Стоимость берётся из ответа Polza.ai, если API её возвращает.",
         }
     )
     result = {"providers": providers}
@@ -359,9 +389,10 @@ async def create_message(
     if not question:
         raise HTTPException(422, "Сообщение не может быть пустым")
     provider, model = await _resolve_conversation_ai(conversation)
-    document_ids = store.scoped_document_ids(payload.scope or [])
-    history, citations = store.messages(conversation_id, owner_id), rag.search(
-        question, document_ids=document_ids
+    document_ids = store.scoped_document_ids(conversation["scope"])
+    history, citations = (
+        store.messages(conversation_id, owner_id),
+        rag.search(question, document_ids=document_ids),
     )
     citations = [
         replace(
@@ -441,7 +472,9 @@ def health() -> dict:
         "qdrant": rag.healthy(),
         "embedding_provider": settings.embedding_provider,
         "embedding_model": settings.embedding_model,
-        "codex_app_server": False if settings.production_mode else any(
+        "codex_app_server": False
+        if settings.production_mode
+        else any(
             shutil.which(command) is not None
             for command in ("codex", "codex.exe", "codex.cmd")
         ),
@@ -482,7 +515,9 @@ def _validated_classification(values: dict[str, str | None]) -> dict[str, str | 
         key: value.strip() if isinstance(value, str) and value.strip() else None
         for key, value in values.items()
     }
-    hierarchy = [normalized.get(key) for key in ("insurer", "insurance_kind", "product")]
+    hierarchy = [
+        normalized.get(key) for key in ("insurer", "insurance_kind", "product")
+    ]
     if any(hierarchy) and not all(hierarchy):
         raise HTTPException(
             422,
