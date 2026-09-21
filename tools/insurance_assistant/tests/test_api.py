@@ -156,8 +156,8 @@ def test_unavailable_conversation_model_is_rejected(monkeypatch, tmp_path):
         main,
         "settings",
         replace(
-            main.settings, production_mode=True, polza_api_key="test"
-        ),  # pragma: allowlist secret
+            main.settings, production_mode=True, polza_api_key="test"  # pragma: allowlist secret
+        ),
     )
     monkeypatch.setattr(main.polza, "models", models)
     client = TestClient(app)
