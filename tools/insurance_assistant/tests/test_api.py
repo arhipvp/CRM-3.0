@@ -118,7 +118,7 @@ def test_conversation_model_is_saved_and_used_for_next_answer(monkeypatch, tmp_p
         replace(
             main.settings,
             production_mode=True,
-            polza_api_key="test",
+            polza_api_key="test",  # pragma: allowlist secret
             polza_chat_model="polza-default",
         ),
     )
@@ -153,7 +153,7 @@ def test_unavailable_conversation_model_is_rejected(monkeypatch, tmp_path):
     monkeypatch.setattr(
         main,
         "settings",
-        replace(main.settings, production_mode=True, polza_api_key="test"),
+        replace(main.settings, production_mode=True, polza_api_key="test"),  # pragma: allowlist secret
     )
     monkeypatch.setattr(main.polza, "models", models)
     client = TestClient(app)
