@@ -440,11 +440,12 @@ export async function request<T = unknown>(
     throw new APIError(message, response.status, path, errorCode);
   }
 
-  if (response.status === 204) {
+  if (response.status === 204 || response.status === 205) {
     return undefined as T;
   }
 
-  return (await response.json()) as T;
+  const body = await response.text();
+  return body ? (JSON.parse(body) as T) : (undefined as T);
 }
 
 export async function requestBlob(

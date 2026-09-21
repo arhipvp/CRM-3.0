@@ -24,6 +24,7 @@ import {
   type AiScopeBranch,
 } from '../../api/aiAssistant';
 import { AiChatMessage } from './aiAssistant/AiChatMessage';
+import { AiScopeMenu } from './aiAssistant/AiScopeMenu';
 import type { User } from '../../types';
 import { Button } from '../common/Button';
 import { PageHeader } from '../common/layoutPrimitives';
@@ -67,7 +68,9 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [loading, setLoading] = useState(false);
   const [savingModel, setSavingModel] = useState(false);
   const [savingScope, setSavingScope] = useState(false);
+  const [scopeOpen, setScopeOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [dragging, setDragging] = useState(false);
   const [opening, setOpening] = useState<Set<string>>(new Set());
 
@@ -104,6 +107,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   );
   const selectedModel = selected?.model ?? selectedProvider?.default_model ?? '';
   const scope = selected?.scope ?? [];
+  const scopeSummary = scope.length ? `Поиск: ${scope.length} ветки` : 'Поиск: вся библиотека';
   const lastUsage = useMemo(
     () => [...messages].reverse().find((message) => message.role === 'assistant')?.usage,
     [messages],
@@ -276,6 +280,28 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       setError(err instanceof Error ? err.message : 'Не удалось изменить классификацию.');
     }
   };
+  const removeDocument = async (id: string) => {
+    if (deleting.has(id)) return;
+    setDeleting((items) => new Set(items).add(id));
+    setError(null);
+    try {
+      await deleteAiDocument(id);
+      setSelectedDocuments((items) => {
+        const next = new Set(items);
+        next.delete(id);
+        return next;
+      });
+      await loadLibrary();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось удалить источник.');
+    } finally {
+      setDeleting((items) => {
+        const next = new Set(items);
+        next.delete(id);
+        return next;
+      });
+    }
+  };
 
   return (
     <div className="space-y-4">
@@ -363,13 +389,27 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                     : 'стоимость не предоставлена API'}
                 </span>
               )}
-              <button
-                type="button"
-                className="cursor-pointer text-[var(--app-brand-700)] underline decoration-dotted underline-offset-2 transition-colors hover:text-[var(--app-brand-900)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-brand-500)]"
-                onClick={() => setTab('library')}
-              >
-                {scope.length ? `Область: ${scope.length}` : 'Вся библиотека'}
-              </button>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-expanded={scopeOpen}
+                  aria-label="Настроить область поиска этого чата"
+                  disabled={!selected || savingScope}
+                  className="cursor-pointer text-[var(--app-brand-700)] underline decoration-dotted underline-offset-2 transition-colors hover:text-[var(--app-brand-900)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-brand-500)] disabled:cursor-not-allowed disabled:text-slate-400"
+                  onClick={() => setScopeOpen((open) => !open)}
+                >
+                  {scopeSummary}
+                </button>
+                {scopeOpen && (
+                  <AiScopeMenu
+                    catalog={catalog}
+                    scope={scope}
+                    disabled={!selected || savingScope}
+                    onReset={() => void saveScope([])}
+                    onToggle={toggleScope}
+                  />
+                )}
+              </div>
               {scope.map((branch) => (
                 <span
                   key={scopeKey(branch)}
@@ -417,86 +457,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
           </section>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
-          <aside className="self-start rounded border border-[var(--app-border)] bg-white p-3 xl:sticky xl:top-4">
-            <div className="flex items-center justify-between">
-              <h2 className="font-semibold">Область поиска</h2>
-              <button
-                type="button"
-                className="cursor-pointer text-xs text-[var(--app-brand-700)] underline decoration-dotted underline-offset-2 disabled:cursor-not-allowed disabled:text-slate-400"
-                disabled={!selected || savingScope}
-                onClick={() => void saveScope([])}
-              >
-                Сбросить
-              </button>
-            </div>
-            <p className="mt-1 text-xs text-slate-500">
-              {selected
-                ? 'Выберите одну или несколько веток для этого чата.'
-                : 'Сначала создайте или выберите чат.'}
-            </p>
-            <div className="mt-3 max-h-[calc(100vh-18rem)] space-y-2 overflow-y-auto pr-1 text-sm">
-              <ScopeOption
-                label={`Вся библиотека (${catalog.total})`}
-                checked={!scope.length}
-                onChange={() => void saveScope([])}
-                disabled={!selected || savingScope}
-              />
-              <ScopeOption
-                label={`Нераспределено (${catalog.unclassified})`}
-                checked={selectedScope({ unclassified: true })}
-                onChange={() => toggleScope({ unclassified: true })}
-                disabled={!selected || savingScope}
-              />
-              {catalog.insurers.map((insurer) => (
-                <div key={insurer.name} className="border-l border-slate-200 pl-2">
-                  <ScopeOption
-                    label={`${insurer.name} (${insurer.count})`}
-                    checked={selectedScope({ insurer: insurer.name })}
-                    onChange={() => toggleScope({ insurer: insurer.name })}
-                    disabled={!selected || savingScope}
-                    bold
-                  />
-                  {insurer.kinds.map((kind) => (
-                    <div key={kind.name} className="pl-3">
-                      <ScopeOption
-                        label={`${kind.name} (${kind.count})`}
-                        checked={selectedScope({
-                          insurer: insurer.name,
-                          insurance_kind: kind.name,
-                        })}
-                        onChange={() =>
-                          toggleScope({ insurer: insurer.name, insurance_kind: kind.name })
-                        }
-                        disabled={!selected || savingScope}
-                      />
-                      {kind.products.map((product) => (
-                        <div key={product.name} className="pl-3">
-                          <ScopeOption
-                            label={`${product.name} (${product.count})`}
-                            checked={selectedScope({
-                              insurer: insurer.name,
-                              insurance_kind: kind.name,
-                              product: product.name,
-                            })}
-                            onChange={() =>
-                              toggleScope({
-                                insurer: insurer.name,
-                                insurance_kind: kind.name,
-                                product: product.name,
-                              })
-                            }
-                            disabled={!selected || savingScope}
-                            small
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
-          </aside>
+        <div>
           <section className="rounded border border-[var(--app-border)] bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -586,14 +547,11 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   {canManage && (
                     <button
                       type="button"
-                      className="text-xs text-red-600"
-                      onClick={() =>
-                        void deleteAiDocument(document.id)
-                          .then(loadLibrary)
-                          .catch((err) => setError(String(err)))
-                      }
+                      disabled={deleting.has(document.id)}
+                      className="text-xs text-red-600 hover:text-red-800 disabled:cursor-wait disabled:text-slate-400"
+                      onClick={() => void removeDocument(document.id)}
                     >
-                      Удалить
+                      {deleting.has(document.id) ? 'Удаляю…' : 'Удалить'}
                     </button>
                   )}
                 </div>
@@ -606,31 +564,6 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         <p className="text-sm text-slate-500">Документы добавляются в очередь индексации…</p>
       )}
     </div>
-  );
-}
-
-function ScopeOption({
-  label,
-  checked,
-  onChange,
-  disabled = false,
-  bold = false,
-  small = false,
-}: {
-  label: string;
-  checked: boolean;
-  onChange: () => void;
-  disabled?: boolean;
-  bold?: boolean;
-  small?: boolean;
-}) {
-  return (
-    <label
-      className={`flex items-center gap-2 ${bold ? 'font-medium' : ''} ${small ? 'text-xs' : ''} ${disabled ? 'cursor-not-allowed text-slate-400' : 'cursor-pointer'}`}
-    >
-      <input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
-      {label}
-    </label>
   );
 }
 

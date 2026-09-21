@@ -32,7 +32,10 @@ class AssistantProxyView(APIView):
 
     def call(self, request, method: str, path: str, **kwargs) -> Response:
         try:
-            return Response(self.service(request).request(method, path, **kwargs))
+            payload = self.service(request).request(method, path, **kwargs)
+            if payload is None:
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            return Response(payload)
         except AssistantServiceError as exc:
             return Response({"detail": str(exc)}, status=exc.status_code)
 

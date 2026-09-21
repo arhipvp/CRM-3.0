@@ -11,6 +11,8 @@ class FakeAssistantService:
         self.user_id = user_id
 
     def request(self, method, path, **kwargs):
+        if method == "DELETE":
+            return None
         return {"method": method, "path": path, "user_id": self.user_id, **kwargs}
 
     def download(self, path):
@@ -72,8 +74,8 @@ class AssistantProxyPermissionsTests(APITestCase):
     def test_vova_can_manage_library(self):
         self.client.force_authenticate(self.vova)
         response = self.client.delete("/api/v1/ai/documents/document-id/")
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["user_id"], self.vova.id)
+        self.assertEqual(response.status_code, 204)
+        self.assertEqual(response.content, b"")
 
     @patch("apps.ai_assistant.views.AssistantService", FakeAssistantService)
     def test_vova_can_read_catalog_and_classify_documents(self):

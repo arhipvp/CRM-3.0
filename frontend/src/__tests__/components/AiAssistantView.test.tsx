@@ -98,19 +98,30 @@ describe('AiAssistantView', () => {
     expect(select).toHaveValue('polza-pro');
   });
 
-  it('switches the saved scope with the selected chat and persists branch changes', async () => {
+  it('keeps scope in the selected chat and persists changes from its settings menu', async () => {
     render(<AiAssistantView currentUser={null} />);
 
-    expect(await screen.findByText('РЕСО')).toBeInTheDocument();
+    expect(await screen.findByText('Поиск: 1 ветки')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'ОСАГО' }));
-    expect(await screen.findByText('Вся библиотека')).toBeInTheDocument();
+    expect(await screen.findByText('Поиск: вся библиотека')).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Библиотека · 1' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Настроить область поиска этого чата' }));
     fireEvent.click(await screen.findByLabelText('РЕСО (1)'));
 
     await waitFor(() =>
       expect(api.updateAiConversationScope).toHaveBeenCalledWith('chat-2', [{ insurer: 'РЕСО' }]),
     );
+  });
+
+  it('keeps the library focused on shared documents, not chat scope settings', async () => {
+    render(<AiAssistantView currentUser={null} />);
+
+    fireEvent.click(await screen.findByRole('button', { name: 'Библиотека · 1' }));
+
+    expect(screen.getByRole('heading', { name: 'Источники' })).toBeInTheDocument();
+    expect(
+      screen.queryByText('Настройка применяется только к этому чату.'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders user questions on the right and assistant answers with a source section', async () => {
