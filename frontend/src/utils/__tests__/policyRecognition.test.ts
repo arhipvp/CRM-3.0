@@ -54,4 +54,13 @@ describe('buildPolicyDraftFromRecognition', () => {
 
     expect(draft.payments).toEqual([]);
   });
+
+  it('extracts the credit agreement number for a mortgage policy', () => {
+    const draft = buildPolicyDraftFromRecognition({
+      policy: { number: 'IP-1', credit_agreement_number: '123/ИП-2026' },
+    });
+
+    expect(draft.loanAgreementNumber).toBe('123/ИП-2026');
+    expect(draft.mortgageBankId).toBe('');
+  });
 });

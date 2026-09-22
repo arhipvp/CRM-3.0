@@ -68,6 +68,8 @@ DEFAULT_PROMPT = """Ты — ассистент, отвечающий за им�
     "deductible": 0,
     "official_dealer": "",
     "gap": false,
+    "mortgage_bank": "",
+    "loan_agreement_number": "",
     "note": "импортировано с помощью ИИ"
   },
   "payments": [
@@ -110,6 +112,11 @@ deductible — франшиза числом без пробелов и валю
 official_dealer — true, если явно указан ремонт/обслуживание у официального дилера; false, если явно указан неофициальный дилер или ремонт не у дилера; если информации нет — "".
 gap — true, если явно указан риск/покрытие GAP; если GAP не найден — false.
 
+Ипотечные реквизиты
+Заполняй mortgage_bank и loan_agreement_number только для ипотечных типов страхования.
+mortgage_bank выбирай строго из справочника банков CRM; если банк не удалось подтвердить или подобрать, оставляй пустую строку.
+loan_agreement_number — номер кредитного договора без добавления вымышленных символов. Для неипотечных типов оба поля оставляй пустыми строками.
+
 payments
 Первый элемент массива payments всегда должен иметь payment_date, равную start_date полиса, даже если в документе или графике указана другая плановая дата.
 Это правило относится только к payment_date: actual_payment_date заполняй по фактической дате из документа и не меняй её на дату начала полиса без основания.
@@ -142,6 +149,7 @@ payments
  VIN состоит из 17 латинских букв и цифр
  contractor = "" всегда
  Для не-КАСКО: deductible = 0, official_dealer = "", gap = false
+ Для неипотечных типов: mortgage_bank = "", loan_agreement_number = ""
  insurance_type корректно определён (при возможности)
   Нет null, -, N/A и прочего
 """
@@ -150,6 +158,7 @@ payments
 def _build_prompt(
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
     *,
     mode: str = "extract",
 ) -> str:
@@ -186,6 +195,12 @@ def _build_prompt(
             "\n\nСправочник CRM содержит следующие виды страхования: "
             f"{types_line}. Описания являются подсказками для выбора. "
             "Отображай значение только если оно есть в этом списке."
+        )
+    if extra_banks:
+        banks_line = _format_catalog_entries(extra_banks)
+        prompt += (
+            "\n\nСправочник CRM содержит следующие банки: "
+            f"{banks_line}. Для mortgage_bank используй точное название из этого списка."
         )
     return prompt
 
@@ -301,6 +316,8 @@ POLICY_SCHEMA = {
                     ]
                 },
                 "gap": {"type": "boolean"},
+                "mortgage_bank": {"type": "string"},
+                "loan_agreement_number": {"type": "string"},
                 "note": {"type": "string"},
             },
             "required": [
@@ -317,6 +334,8 @@ POLICY_SCHEMA = {
                 "deductible",
                 "official_dealer",
                 "gap",
+                "mortgage_bank",
+                "loan_agreement_number",
                 "note",
             ],
             "additionalProperties": False,
@@ -806,6 +825,7 @@ def _build_vision_messages(
     *,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
 ) -> tuple[list[dict], str]:
     max_pages = int(getattr(settings, "POLICY_RECOGNITION_MAX_VISION_PAGES", 6))
     visual_inputs = 0
@@ -857,7 +877,9 @@ def _build_vision_messages(
     messages = [
         {
             "role": "system",
-            "content": _build_prompt(extra_companies, extra_types, mode="extract"),
+            "content": _build_prompt(
+                extra_companies, extra_types, extra_banks, mode="extract"
+            ),
         },
         {"role": "user", "content": user_content},
     ]
@@ -1004,6 +1026,8 @@ def _basic_policy_validate(data: dict) -> None:
         "deductible",
         "official_dealer",
         "gap",
+        "mortgage_bank",
+        "loan_agreement_number",
         "note",
     )
     for key in required_policy_keys:
@@ -1174,6 +1198,11 @@ def _is_casco_type(value: object) -> bool:
     return "каско" in normalized or "casco" in normalized
 
 
+def _is_mortgage_type(value: object) -> bool:
+    normalized = _sanitize_text(value).lower()
+    return "ипотек" in normalized or "ипотеч" in normalized or "mortgage" in normalized
+
+
 def _normalize_policy_payload(data: dict) -> dict:
     """Подчистить типовые ошибки распознавания перед валидацией."""
 
@@ -1193,6 +1222,8 @@ def _normalize_policy_payload(data: dict) -> dict:
             "vehicle_brand",
             "vehicle_model",
             "vehicle_vin",
+            "mortgage_bank",
+            "loan_agreement_number",
         ):
             if key in policy:
                 policy[key] = _sanitize_text(policy.get(key))
@@ -1207,6 +1238,9 @@ def _normalize_policy_payload(data: dict) -> dict:
             policy["deductible"] = "0"
             policy["official_dealer"] = ""
             policy["gap"] = False
+        if not _is_mortgage_type(policy.get("insurance_type")):
+            policy["mortgage_bank"] = ""
+            policy["loan_agreement_number"] = ""
         policy["note"] = NOTE_VALUE
         for key in ("start_date", "end_date"):
             normalized = _normalize_date(policy.get(key))
@@ -1278,6 +1312,8 @@ def _collect_formal_issues(data: dict) -> list[str]:
         "deductible",
         "official_dealer",
         "gap",
+        "mortgage_bank",
+        "loan_agreement_number",
         "note",
     )
     for key in required_policy_keys:
@@ -1596,6 +1632,7 @@ def recognize_policy_interactive(
     messages: List[dict] | None = None,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     use_policy_model: bool = True,
@@ -1614,6 +1651,7 @@ def recognize_policy_interactive(
                 "content": _build_prompt(
                     extra_companies,
                     extra_types,
+                    extra_banks,
                     mode="extract",
                 ),
             },
@@ -1657,6 +1695,7 @@ def recognize_policy_interactive(
                 "content": _build_prompt(
                     extra_companies,
                     extra_types,
+                    extra_banks,
                     mode="verify",
                 ),
             },
@@ -1721,6 +1760,7 @@ def recognize_policy_from_text(
     *,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
     use_policy_model: bool = True,
 ) -> Tuple[dict, str]:
     """Распознать полис по тексту."""
@@ -1729,6 +1769,7 @@ def recognize_policy_from_text(
         text,
         extra_companies=extra_companies,
         extra_types=extra_types,
+        extra_banks=extra_banks,
         use_policy_model=use_policy_model,
     )
     return data, transcript
@@ -1739,6 +1780,7 @@ def recognize_policy_from_pdf_images(
     *,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по PDF-страницам и изображениям."""
 
@@ -1748,12 +1790,14 @@ def recognize_policy_from_pdf_images(
         files,
         extra_companies=extra_companies,
         extra_types=extra_types,
+        extra_banks=extra_banks,
     )
     data, transcript, _ = recognize_policy_interactive(
         source_text,
         messages=messages,
         extra_companies=extra_companies,
         extra_types=extra_types,
+        extra_banks=extra_banks,
     )
     return data, f"[vision fallback]\n{transcript}"
 
@@ -1764,6 +1808,7 @@ def recognize_policy_from_bytes(
     filename: str,
     extra_companies: List[CatalogEntry] | None = None,
     extra_types: List[CatalogEntry] | None = None,
+    extra_banks: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
     """Распознать полис по содержимому файла."""
 
@@ -1784,6 +1829,7 @@ def recognize_policy_from_bytes(
             [{"name": filename, "content": content, "text": ""}],
             extra_companies=extra_companies,
             extra_types=extra_types,
+            extra_banks=extra_banks,
         )
 
     text = ""
@@ -1815,6 +1861,7 @@ def recognize_policy_from_bytes(
                 text,
                 extra_companies=extra_companies,
                 extra_types=extra_types,
+                extra_banks=extra_banks,
             )
             if (
                 not text_needs_vision and not is_policy_recognition_result_poor(data)
@@ -1829,6 +1876,7 @@ def recognize_policy_from_bytes(
                 [{"name": filename, "content": content, "text": text}],
                 extra_companies=extra_companies,
                 extra_types=extra_types,
+                extra_banks=extra_banks,
             )
         except PolicyRecognitionError as vision_exc:
             if text_error is not None:
@@ -1842,5 +1890,8 @@ def recognize_policy_from_bytes(
         raise text_error
 
     return recognize_policy_from_text(
-        text, extra_companies=extra_companies, extra_types=extra_types
+        text,
+        extra_companies=extra_companies,
+        extra_types=extra_types,
+        extra_banks=extra_banks,
     )

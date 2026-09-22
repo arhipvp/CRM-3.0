@@ -19,6 +19,8 @@ POLICY_DRAFT_FIELDS = (
     "number",
     "insurance_company",
     "insurance_type",
+    "mortgage_bank",
+    "loan_agreement_number",
     "client",
     "is_vehicle",
     "brand",

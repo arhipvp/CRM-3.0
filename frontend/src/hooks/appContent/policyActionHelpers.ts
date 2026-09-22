@@ -23,6 +23,7 @@ export type PolicyRecognitionDraft = {
   values: PolicyFormValues;
   insuranceCompanyName?: string;
   insuranceTypeName?: string;
+  mortgageBankName?: string;
   sourceFileIds: string[];
 };
 
@@ -140,6 +141,14 @@ export const buildPolicyRecognitionDraft = ({
     },
     insuranceCompanyName: normalizeStringValue(policyObj.insurance_company),
     insuranceTypeName: recognizedInsuranceType,
+    mortgageBankName: normalizeStringValue(
+      policyObj.mortgage_bank ??
+        policyObj.mortgage_bank_name ??
+        policyObj.bank ??
+        parsed.mortgage_bank ??
+        parsed.mortgage_bank_name ??
+        parsed.bank,
+    ),
     sourceFileIds,
   };
 };

@@ -53,6 +53,47 @@ class InsuranceCompany(SoftDeleteModel):
         return super().save(*args, **kwargs)
 
 
+class Bank(SoftDeleteModel):
+    """Справочник банков для ипотечных полисов."""
+
+    name = models.CharField(
+        max_length=255,
+        unique=True,
+        help_text="Название банка",
+    )
+    description = models.TextField(
+        blank=True,
+        help_text="Дополнительная информация о банке",
+    )
+    logo = models.FileField(
+        upload_to="bank_logos/",
+        blank=True,
+        validators=[validate_insurance_company_logo],
+        help_text="Логотип в формате PNG, WebP или SVG размером до 2 МБ",
+    )
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "Банк"
+        verbose_name_plural = "Банки"
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs):
+        if (
+            self.logo
+            and not self.logo._committed
+            and Path(self.logo.name).suffix.lower() == ".svg"
+        ):
+            self.logo.save(
+                self.logo.name,
+                ContentFile(sanitize_insurance_company_svg(self.logo.file)),
+                save=False,
+            )
+        return super().save(*args, **kwargs)
+
+
 class InsuranceType(SoftDeleteModel):
     """Справочник видов страхования."""
 

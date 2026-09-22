@@ -1,7 +1,7 @@
 ﻿import { request } from './request';
 import { buildQueryString, FilterParams, unwrapList } from './helpers';
-import { mapInsuranceCompany, mapInsuranceType, mapSalesChannel } from './mappers';
-import type { InsuranceCompany, InsuranceType, SalesChannel } from '../types';
+import { mapBank, mapInsuranceCompany, mapInsuranceType, mapSalesChannel } from './mappers';
+import type { Bank, InsuranceCompany, InsuranceType, SalesChannel } from '../types';
 
 export async function fetchInsuranceCompanies(filters?: FilterParams): Promise<InsuranceCompany[]> {
   const qs = buildQueryString(filters);
@@ -13,6 +13,12 @@ export async function fetchInsuranceTypes(filters?: FilterParams): Promise<Insur
   const qs = buildQueryString(filters);
   const payload = await request(`/insurance_types/${qs}`);
   return unwrapList<Record<string, unknown>>(payload).map(mapInsuranceType);
+}
+
+export async function fetchBanks(filters?: FilterParams): Promise<Bank[]> {
+  const qs = buildQueryString(filters);
+  const payload = await request(`/banks/${qs}`);
+  return unwrapList<Record<string, unknown>>(payload).map(mapBank);
 }
 
 export async function fetchSalesChannels(): Promise<SalesChannel[]> {

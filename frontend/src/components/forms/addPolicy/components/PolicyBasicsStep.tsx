@@ -1,7 +1,13 @@
 import React from 'react';
 import { Button } from '../../../common/Button';
 
-import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../../types';
+import type {
+  Bank,
+  Client,
+  InsuranceCompany,
+  InsuranceType,
+  SalesChannel,
+} from '../../../../types';
 import { Combobox } from '../../../common/forms/Combobox';
 
 interface PolicyBasicsStepProps {
@@ -42,6 +48,14 @@ interface PolicyBasicsStepProps {
   onOfficialDealerChange: (value: boolean | null) => void;
   gap: boolean | null;
   onGapChange: (value: boolean | null) => void;
+  showMortgageFields: boolean;
+  mortgageBankId: string;
+  onMortgageBankChange: (value: string) => void;
+  loanAgreementNumber: string;
+  onLoanAgreementNumberChange: (value: string) => void;
+  banks: Bank[];
+  bankCatalogError?: string | null;
+  recognizedMortgageBankNotice?: string | null;
 }
 
 export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
@@ -82,6 +96,14 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
   onOfficialDealerChange,
   gap,
   onGapChange,
+  showMortgageFields,
+  mortgageBankId,
+  onMortgageBankChange,
+  loanAgreementNumber,
+  onLoanAgreementNumberChange,
+  banks,
+  bankCatalogError,
+  recognizedMortgageBankNotice,
 }) => {
   const booleanToSelectValue = (value: boolean | null) =>
     value === null ? '' : value ? 'true' : 'false';
@@ -314,6 +336,52 @@ export const PolicyBasicsStep: React.FC<PolicyBasicsStepProps> = ({
               <option value="true">Да</option>
               <option value="false">Нет</option>
             </select>
+          </div>
+        </div>
+      )}
+
+      {showMortgageFields && (
+        <div className="grid grid-cols-1 gap-4 rounded-xl border border-sky-100 bg-sky-50/40 p-3 md:grid-cols-2">
+          <div>
+            <label className="app-label" htmlFor="policy-mortgage-bank-select">
+              Банк *
+            </label>
+            <select
+              id="policy-mortgage-bank-select"
+              value={mortgageBankId}
+              onChange={(event) => onMortgageBankChange(event.target.value)}
+              disabled={loadingOptions || Boolean(bankCatalogError)}
+              className="field field-input mt-2 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:text-slate-500"
+            >
+              <option value="">Выберите банк</option>
+              {banks.map((bank) => (
+                <option key={bank.id} value={bank.id}>
+                  {bank.name}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs text-slate-500">
+              Нет нужного банка? Добавьте его в справочник через админку.
+            </p>
+            {bankCatalogError && (
+              <p className="app-alert app-alert-danger mt-2">{bankCatalogError}</p>
+            )}
+            {recognizedMortgageBankNotice && (
+              <p className="app-alert app-alert-warning mt-2">{recognizedMortgageBankNotice}</p>
+            )}
+          </div>
+          <div>
+            <label className="app-label" htmlFor="policy-loan-agreement-number-input">
+              Номер кредитного договора *
+            </label>
+            <input
+              id="policy-loan-agreement-number-input"
+              type="text"
+              value={loanAgreementNumber}
+              onChange={(event) => onLoanAgreementNumberChange(event.target.value)}
+              className="field field-input mt-2"
+              placeholder="№ 12345 от 01.01.2026"
+            />
           </div>
         </div>
       )}

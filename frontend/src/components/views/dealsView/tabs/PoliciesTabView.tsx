@@ -201,6 +201,15 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                 const dealTitle = (policy.dealTitle ?? '').trim() || 'Сделка';
                 const canOpenDeal = Boolean(policy.dealId && (onDealPreview || onDealSelect));
                 const policyDocuments = getPolicyDocumentsState(policy, documentsByPolicyId);
+                const normalizedInsuranceType = insuranceType
+                  .toLowerCase()
+                  .replace(/[^\p{L}\p{N}]/gu, '');
+                const isCasco =
+                  normalizedInsuranceType.includes('каско') ||
+                  normalizedInsuranceType.includes('casco');
+                const isMortgage =
+                  normalizedInsuranceType.includes('ипотек') ||
+                  normalizedInsuranceType.includes('mortgage');
 
                 return (
                   <Fragment key={policy.id}>
@@ -365,6 +374,35 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               <span className="whitespace-nowrap">{model.sum}</span>
                             </PolicyDataField>
                           </div>
+
+                          {isCasco && (
+                            <PolicyDataField label="Условия" className="w-full bg-violet-50/30">
+                              <div className="grid gap-2 text-xs font-normal text-slate-700 sm:grid-cols-3">
+                                <span>Франшиза: {model.deductible}</span>
+                                <span>Официальный дилер: {model.officialDealer}</span>
+                                <span>GAP: {model.gap}</span>
+                              </div>
+                            </PolicyDataField>
+                          )}
+                          {isMortgage && (
+                            <PolicyDataField label="Ипотека" className="w-full bg-sky-50/40">
+                              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-normal text-slate-700">
+                                {policy.mortgageBankLogoUrl && (
+                                  <img
+                                    src={policy.mortgageBankLogoUrl}
+                                    alt=""
+                                    className="h-6 max-w-20 object-contain"
+                                  />
+                                )}
+                                <span className="font-semibold text-slate-900">
+                                  {policy.mortgageBank || 'Банк не указан'}
+                                </span>
+                                <span>
+                                  Кредитный договор: {policy.loanAgreementNumber || 'Не указан'}
+                                </span>
+                              </div>
+                            </PolicyDataField>
+                          )}
 
                           <div className="flex flex-wrap gap-1.5 border-t border-slate-100 pt-2.5">
                             <Button

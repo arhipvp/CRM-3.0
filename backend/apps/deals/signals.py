@@ -3,6 +3,7 @@ Django signals для логирования изменений Deal.
 """
 
 import logging
+from pathlib import Path
 
 from apps.common.audit_helpers import (
     get_changed_fields,
@@ -11,12 +12,45 @@ from apps.common.audit_helpers import (
 )
 from apps.common.drive import DriveError, ensure_deal_folder
 from apps.users.models import AuditLog
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.core.files.base import ContentFile
+from django.db.models.signals import post_delete, post_migrate, post_save, pre_save
 from django.dispatch import receiver
 
-from .models import Deal, Quote
+from .models import Bank, Deal, Quote
 
 logger = logging.getLogger(__name__)
+
+
+INITIAL_BANKS = (
+    ("Сбер", "Сбербанк"),
+    ("ВТБ", "Банк ВТБ"),
+    ("Альфа", "Альфа-Банк"),
+)
+
+
+@receiver(post_migrate)
+def seed_initial_banks(sender, **kwargs):
+    """Идемпотентно создать базовый каталог банков после миграций deals."""
+
+    if sender.name != "apps.deals":
+        return
+    logos_dir = Path(__file__).resolve().parent / "static" / "deals" / "bank_logos"
+    for name, description in INITIAL_BANKS:
+        bank, created = Bank.objects.with_deleted().get_or_create(
+            name=name, defaults={"description": description}
+        )
+        if bank.deleted_at:
+            bank.deleted_at = None
+            bank.save(update_fields=["deleted_at", "updated_at"])
+        if not created or bank.logo:
+            continue
+        logo_path = logos_dir / f"{name.casefold()}.svg"
+        if logo_path.exists():
+            bank.logo.save(
+                f"{name.casefold()}.svg",
+                ContentFile(logo_path.read_bytes()),
+                save=True,
+            )
 
 
 @receiver(pre_save, sender=Deal)

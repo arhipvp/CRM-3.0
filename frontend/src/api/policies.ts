@@ -128,6 +128,8 @@ export async function createPolicy(data: {
   deductible?: number | null;
   officialDealer?: boolean | null;
   gap?: boolean | null;
+  mortgageBankId?: string | null;
+  loanAgreementNumber?: string | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;
@@ -148,6 +150,8 @@ export async function createPolicy(data: {
     deductible: data.deductible ?? 0,
     official_dealer: data.officialDealer ?? null,
     gap: data.gap ?? null,
+    mortgage_bank: data.mortgageBankId || null,
+    loan_agreement_number: data.loanAgreementNumber || '',
     counterparty: data.counterparty || '',
     note: data.note || '',
     sales_channel: data.salesChannelId || null,
@@ -201,6 +205,8 @@ interface PolicyDraftPayload {
   deductible?: number | null;
   officialDealer?: boolean | null;
   gap?: boolean | null;
+  mortgageBankId?: string | null;
+  loanAgreementNumber?: string | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;
@@ -253,6 +259,8 @@ const buildPolicyDraftBody = (data: PolicyDraftPayload): Record<string, unknown>
     deductible: data.deductible ?? 0,
     official_dealer: data.officialDealer ?? null,
     gap: data.gap ?? null,
+    mortgage_bank: data.mortgageBankId || null,
+    loan_agreement_number: data.loanAgreementNumber || '',
     counterparty: data.counterparty || '',
     note: data.note || '',
     sales_channel: data.salesChannelId || null,
@@ -493,6 +501,8 @@ interface PolicyUpdatePayload {
   deductible?: number | null;
   officialDealer?: boolean | null;
   gap?: boolean | null;
+  mortgageBankId?: string | null;
+  loanAgreementNumber?: string | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;
@@ -513,6 +523,8 @@ export async function updatePolicy(id: string, data: PolicyUpdatePayload): Promi
     deductible: data.deductible ?? 0,
     official_dealer: data.officialDealer ?? null,
     gap: data.gap ?? null,
+    mortgage_bank: data.mortgageBankId || null,
+    loan_agreement_number: data.loanAgreementNumber || '',
     counterparty: data.counterparty || '',
     note: data.note || '',
     sales_channel: data.salesChannelId || null,

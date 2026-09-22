@@ -1,6 +1,7 @@
 from apps.chat.views import ChatMessageViewSet
 from apps.clients.views import ClientViewSet
 from apps.deals.views import (
+    BankViewSet,
     DealViewSet,
     InsuranceCompanyViewSet,
     InsuranceTypeViewSet,
@@ -29,6 +30,7 @@ from rest_framework.routers import DefaultRouter
 router = DefaultRouter()
 router.register("clients", ClientViewSet, basename="client")
 router.register("deals", DealViewSet, basename="deal")
+router.register("banks", BankViewSet, basename="bank")
 router.register("quotes", QuoteViewSet, basename="quote")
 router.register(
     "insurance_companies",

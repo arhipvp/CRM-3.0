@@ -8,7 +8,7 @@ from apps.common.drive import (
     download_drive_file,
     ensure_deal_folder,
 )
-from apps.deals.models import InsuranceCompany, InsuranceType
+from apps.deals.models import Bank, InsuranceCompany, InsuranceType
 
 from ..ai_service import (
     PolicyRecognitionError,
@@ -59,6 +59,13 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
     )
     type_names = list(
         InsuranceType.objects.filter(name__isnull=False)
+        .exclude(name__exact="")
+        .order_by("name")
+        .values("name", "description")
+        .distinct()
+    )
+    bank_names = list(
+        Bank.objects.filter(name__isnull=False)
         .exclude(name__exact="")
         .order_by("name")
         .values("name", "description")
@@ -161,6 +168,7 @@ def recognize_policy_files(deal, file_ids: list[str]) -> dict:
             downloaded_files,
             company_names=company_names,
             type_names=type_names,
+            bank_names=bank_names,
         )
 
     return {"results": results}
@@ -172,6 +180,7 @@ def _append_recognition_results(
     *,
     company_names: list[dict],
     type_names: list[dict],
+    bank_names: list[dict],
 ) -> None:
     combined_text = "\n\n".join(
         f"Файл {file_data['name']}:\n{file_data['text']}"
@@ -213,6 +222,7 @@ def _append_recognition_results(
                 downloaded_files,
                 extra_companies=company_names,
                 extra_types=type_names,
+                extra_banks=bank_names,
             )
             used_vision = True
         else:
@@ -220,6 +230,7 @@ def _append_recognition_results(
                 str(combined_text),
                 extra_companies=company_names,
                 extra_types=type_names,
+                extra_banks=bank_names,
             )
             if is_policy_recognition_result_poor(data) and can_use_vision:
                 attempted_vision = True
@@ -227,6 +238,7 @@ def _append_recognition_results(
                     downloaded_files,
                     extra_companies=company_names,
                     extra_types=type_names,
+                    extra_banks=bank_names,
                 )
                 used_vision = True
     except PolicyRecognitionError as exc:
@@ -237,6 +249,7 @@ def _append_recognition_results(
                     downloaded_files,
                     extra_companies=company_names,
                     extra_types=type_names,
+                    extra_banks=bank_names,
                 )
                 used_vision = True
             except PolicyRecognitionError as vision_exc:

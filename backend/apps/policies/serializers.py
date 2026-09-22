@@ -1,13 +1,20 @@
 import re
 
 from apps.clients.models import Client
-from apps.deals.models import Deal, InsuranceCompany, InsuranceType, SalesChannel
+from apps.deals.models import Bank, Deal, InsuranceCompany, InsuranceType, SalesChannel
 from rest_framework import serializers
 
 from .models import Policy, PolicyIssuanceExecution
 from .status import resolve_computed_status
 
 VIN_PATTERN = re.compile(r"^[A-Za-z0-9]{17}$")
+
+
+def is_mortgage_insurance_type(insurance_type: InsuranceType | None) -> bool:
+    """Определить ипотечный тип по его пользовательскому наименованию."""
+
+    name = (getattr(insurance_type, "name", "") or "").casefold()
+    return "ипотек" in name or "ипотеч" in name or "mortgage" in name
 
 
 class PolicySerializer(serializers.ModelSerializer):
@@ -24,6 +31,10 @@ class PolicySerializer(serializers.ModelSerializer):
     insurance_type_name = serializers.CharField(
         source="insurance_type.name", read_only=True
     )
+    mortgage_bank_name = serializers.CharField(
+        source="mortgage_bank.name", read_only=True, allow_null=True
+    )
+    mortgage_bank_logo_url = serializers.SerializerMethodField(read_only=True)
     client_name = serializers.CharField(source="client.name", read_only=True)
     insured_client_name = serializers.CharField(
         source="insured_client.name",
@@ -65,6 +76,10 @@ class PolicySerializer(serializers.ModelSerializer):
             "insurance_company_logo_url",
             "insurance_type",
             "insurance_type_name",
+            "mortgage_bank",
+            "mortgage_bank_name",
+            "mortgage_bank_logo_url",
+            "loan_agreement_number",
             "deal",
             "deal_title",
             "client",
@@ -126,6 +141,14 @@ class PolicySerializer(serializers.ModelSerializer):
         url = company.logo.url
         return request.build_absolute_uri(url) if request else url
 
+    def get_mortgage_bank_logo_url(self, obj: Policy) -> str | None:
+        bank = obj.mortgage_bank
+        if not bank or not bank.logo:
+            return None
+        request = self.context.get("request")
+        url = bank.logo.url
+        return request.build_absolute_uri(url) if request else url
+
     def validate_vin(self, value: str) -> str:
         """Убедиться, что VIN — 17 латинских символов или цифр."""
 
@@ -170,6 +193,9 @@ class PolicySerializer(serializers.ModelSerializer):
                 "Policy note cannot be longer than 2000 characters."
             )
         return normalized
+
+    def validate_loan_agreement_number(self, value: str) -> str:
+        return str(value or "").strip()
 
     def get_computed_status(self, obj: Policy) -> str:
         return resolve_computed_status(obj)
@@ -227,6 +253,27 @@ class PolicySerializer(serializers.ModelSerializer):
         if status == Policy.PolicyStatus.EXPIRED and not end_date:
             errors["end_date"] = "End date is required for expired policies."
 
+        insurance_type = attrs.get(
+            "insurance_type", getattr(self.instance, "insurance_type", None)
+        )
+        if is_mortgage_insurance_type(insurance_type):
+            mortgage_bank = attrs.get(
+                "mortgage_bank", getattr(self.instance, "mortgage_bank", None)
+            )
+            loan_agreement_number = attrs.get(
+                "loan_agreement_number",
+                getattr(self.instance, "loan_agreement_number", ""),
+            )
+            if not mortgage_bank:
+                errors["mortgage_bank"] = "Укажите банк для ипотечного полиса."
+            if not str(loan_agreement_number or "").strip():
+                errors["loan_agreement_number"] = (
+                    "Укажите номер кредитного договора для ипотечного полиса."
+                )
+        else:
+            attrs["mortgage_bank"] = None
+            attrs["loan_agreement_number"] = ""
+
         if errors:
             raise serializers.ValidationError(errors)
         return attrs
@@ -272,6 +319,12 @@ class PolicyDraftSerializer(serializers.Serializer):
     insurance_type = serializers.PrimaryKeyRelatedField(
         queryset=InsuranceType.objects.all()
     )
+    mortgage_bank = serializers.PrimaryKeyRelatedField(
+        queryset=Bank.objects.all(), required=False, allow_null=True
+    )
+    loan_agreement_number = serializers.CharField(
+        required=False, allow_blank=True, default=""
+    )
     client = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.filter(deleted_at__isnull=True),
         required=False,
@@ -313,6 +366,9 @@ class PolicyDraftSerializer(serializers.Serializer):
     def validate_note(self, value: str) -> str:
         return PolicySerializer().validate_note(value)
 
+    def validate_loan_agreement_number(self, value: str) -> str:
+        return PolicySerializer().validate_loan_agreement_number(value)
+
     def validate(self, attrs):
         start_date = attrs.get("start_date")
         end_date = attrs.get("end_date")
@@ -320,6 +376,19 @@ class PolicyDraftSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 {"end_date": "End date cannot be earlier than start date."}
             )
+        if is_mortgage_insurance_type(attrs.get("insurance_type")):
+            errors = {}
+            if not attrs.get("mortgage_bank"):
+                errors["mortgage_bank"] = "Укажите банк для ипотечного полиса."
+            if not attrs.get("loan_agreement_number", "").strip():
+                errors["loan_agreement_number"] = (
+                    "Укажите номер кредитного договора для ипотечного полиса."
+                )
+            if errors:
+                raise serializers.ValidationError(errors)
+        else:
+            attrs["mortgage_bank"] = None
+            attrs["loan_agreement_number"] = ""
         return attrs
 
 

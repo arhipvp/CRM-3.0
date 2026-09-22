@@ -12,6 +12,10 @@ const isCascoTypeName = (value?: string | null) => {
   const normalized = (value ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
   return normalized.includes('каско') || normalized.includes('casco');
 };
+const isMortgageTypeName = (value?: string | null) => {
+  const normalized = (value ?? '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+  return normalized.includes('ипотек') || normalized.includes('mortgage');
+};
 
 const formatNullableBoolean = (value?: boolean | null) => {
   if (value === null || value === undefined) {
@@ -36,6 +40,9 @@ export interface PolicyCardModel {
   officialDealer: string;
   gap: string;
   hasCascoDetails: boolean;
+  hasMortgageDetails?: boolean;
+  mortgageBank?: string;
+  loanAgreementNumber?: string;
   note: string;
   paymentsCount: number;
   paymentsCountLabel: string;
@@ -49,6 +56,7 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
   const hasCascoDetails = isCasco
     ? policy.deductible != null || policy.officialDealer != null || policy.gap != null
     : false;
+  const isMortgage = isMortgageTypeName(policy.insuranceType);
   return {
     number: fallback(policy.number),
     startDate: formatDate(policy.startDate),
@@ -65,6 +73,9 @@ export const buildPolicyCardModel = (policy: Policy, payments: Payment[]): Polic
     officialDealer: formatNullableBoolean(policy.officialDealer),
     gap: formatNullableBoolean(policy.gap),
     hasCascoDetails,
+    hasMortgageDetails: isMortgage,
+    mortgageBank: fallback(policy.mortgageBank, 'Банк не указан'),
+    loanAgreementNumber: fallback(policy.loanAgreementNumber, 'Не указан'),
     note: fallback(policy.note, 'Без примечания'),
     paymentsCount,
     paymentsCountLabel: describeCount(paymentsCount, 'запись', 'записей'),

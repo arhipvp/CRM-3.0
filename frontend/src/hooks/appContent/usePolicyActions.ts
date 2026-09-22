@@ -77,6 +77,7 @@ export const usePolicyActions = ({
     values: PolicyFormValues;
     insuranceCompanyName?: string;
     insuranceTypeName?: string;
+    mortgageBankName?: string;
   } | null>(null);
   const [policyDefaultCounterparty, setPolicyDefaultCounterparty] = useState<string | undefined>(
     undefined,
@@ -200,6 +201,7 @@ export const usePolicyActions = ({
         values: draft.values,
         insuranceCompanyName: draft.insuranceCompanyName,
         insuranceTypeName: draft.insuranceTypeName,
+        mortgageBankName: draft.mortgageBankName,
       });
     },
     [clients, dealsById, salesChannels, retryPolicyClientLoad],

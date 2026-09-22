@@ -1,6 +1,6 @@
 ﻿from __future__ import annotations
 
-from unittest.mock import patch
+from unittest.mock import ANY, patch
 
 from apps.clients.models import Client
 from apps.common.tests.auth_utils import AuthenticatedAPITestCase
@@ -161,6 +161,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
             "Файл policy.docx:\ndocx policy text",
             extra_companies=[],
             extra_types=[],
+            extra_banks=ANY,
         )
 
     def test_recognize_jpg_uses_vision_without_text_extraction(self):
@@ -215,6 +216,7 @@ class PolicyRecognizeNestedDriveFilesTests(AuthenticatedAPITestCase):
             ],
             extra_companies=[],
             extra_types=[],
+            extra_banks=ANY,
         )
 
     def test_recognize_unsupported_image_returns_clear_error(self):

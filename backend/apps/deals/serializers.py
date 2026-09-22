@@ -8,6 +8,7 @@ from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
 from .models import (
+    Bank,
     Deal,
     DealViewer,
     InsuranceCompany,
@@ -102,6 +103,30 @@ class InsuranceCompanySerializer(serializers.ModelSerializer):
         if not obj.logo:
             return None
 
+        request = self.context.get("request")
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
+
+
+class BankSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Bank
+        fields = (
+            "id",
+            "name",
+            "description",
+            "logo_url",
+            "created_at",
+            "updated_at",
+            "deleted_at",
+        )
+        read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+    def get_logo_url(self, obj: Bank) -> str | None:
+        if not obj.logo:
+            return None
         request = self.context.get("request")
         url = obj.logo.url
         return request.build_absolute_uri(url) if request else url

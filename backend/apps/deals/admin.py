@@ -18,7 +18,7 @@ from import_export import resources
 from .insurance_type_descriptions import (
     populate_missing_ai_insurance_type_descriptions,
 )
-from .models import Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
+from .models import Bank, Deal, InsuranceCompany, InsuranceType, Quote, SalesChannel
 
 # ============ IMPORT/EXPORT RESOURCES ============
 
@@ -378,6 +378,66 @@ class InsuranceCompanyAdmin(SoftDeleteImportExportAdmin):
     ordering = ("name",)
     list_filter = (ShowDeletedFilter,)
     search_help_text = "Поиск по названию и описанию"
+    fieldsets = (
+        (
+            "Основная информация",
+            {"fields": ("name", "description", "logo", "logo_preview")},
+        ),
+        (
+            "Метаданные",
+            {
+                "fields": ("id", "created_at", "updated_at", "deleted_at"),
+                "classes": ("collapse",),
+            },
+        ),
+    )
+
+    @admin.display(boolean=True, description="Логотип")
+    def logo_present(self, obj):
+        return bool(obj.logo)
+
+    @admin.display(description="Предпросмотр")
+    def logo_preview(self, obj):
+        if not obj.logo:
+            return "—"
+        return format_html(
+            '<img src="{}" alt="Логотип {}" style="max-width: 160px; max-height: 80px; object-fit: contain;" />',
+            obj.logo.url,
+            obj.name,
+        )
+
+
+class BankAdminForm(forms.ModelForm):
+    class Meta:
+        model = Bank
+        fields = "__all__"
+
+    def clean_name(self):
+        raw_name = self.cleaned_data["name"].strip()
+        qs = Bank.objects.with_deleted().filter(name__iexact=raw_name)
+        if self.instance.pk:
+            qs = qs.exclude(pk=self.instance.pk)
+        if not qs.exists():
+            return raw_name
+
+        existing = qs.first()
+        message = "Банк с таким названием уже существует."
+        if existing.deleted_at:
+            admin_url = reverse("admin:deals_bank_change", args=[existing.pk])
+            message = mark_safe(
+                f'{message} Можно <a href="{admin_url}?show_deleted=true">восстановить его</a>.'
+            )
+        raise ValidationError(message)
+
+
+@admin.register(Bank)
+class BankAdmin(SoftDeleteImportExportAdmin):
+    form = BankAdminForm
+    list_display = ("name", "logo_present", "logo_preview", "description", "created_at")
+    search_fields = ("name", "description")
+    readonly_fields = ("id", "logo_preview", "created_at", "updated_at", "deleted_at")
+    ordering = ("name",)
+    list_filter = (ShowDeletedFilter,)
     fieldsets = (
         (
             "Основная информация",

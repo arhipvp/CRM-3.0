@@ -46,6 +46,7 @@ from .event_service import (
 from .filters import DealFilterSet
 from .lifecycle_service import close_deal, reopen_deal
 from .models import (
+    Bank,
     Deal,
     DealEvent,
     DealPin,
@@ -65,6 +66,7 @@ from .permissions import (
 from .query_flags import parse_bool_flag
 from .search import build_search_query
 from .serializers import (
+    BankSerializer,
     DealEventSerializer,
     DealSerializer,
     InsuranceCompanySerializer,
@@ -850,6 +852,12 @@ class QuoteViewSet(viewsets.ModelViewSet):
 class InsuranceCompanyViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = InsuranceCompanySerializer
     queryset = InsuranceCompany.objects.order_by("name")
+    pagination_class = None
+
+
+class BankViewSet(viewsets.ReadOnlyModelViewSet):
+    serializer_class = BankSerializer
+    queryset = Bank.objects.order_by("name")
     pagination_class = None
 
 

@@ -31,6 +31,10 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
     setOfficialDealer,
     gap,
     setGap,
+    mortgageBankId,
+    setMortgageBankId,
+    loanAgreementNumber,
+    setLoanAgreementNumber,
     counterparty,
     setCounterparty,
     setCounterpartyTouched,
@@ -51,7 +55,11 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
     handleClientSelect,
     companies,
     types,
+    banks,
     shouldShowCascoFields,
+    shouldShowMortgageFields,
+    bankCatalogError,
+    recognizedMortgageBankNotice,
     vehicleBrands,
     vehicleModels,
     loadingOptions,
@@ -176,6 +184,14 @@ export const AddPolicyForm: React.FC<AddPolicyFormProps> = (props) => {
                 onOfficialDealerChange={setOfficialDealer}
                 gap={gap}
                 onGapChange={setGap}
+                showMortgageFields={shouldShowMortgageFields}
+                mortgageBankId={mortgageBankId}
+                onMortgageBankChange={setMortgageBankId}
+                loanAgreementNumber={loanAgreementNumber}
+                onLoanAgreementNumberChange={setLoanAgreementNumber}
+                banks={banks}
+                bankCatalogError={bankCatalogError}
+                recognizedMortgageBankNotice={recognizedMortgageBankNotice}
               />
               <div className="space-y-2">
                 <label className="app-label" htmlFor="policy-note-input">

@@ -102,4 +102,21 @@ describe('policyActionHelpers', () => {
       'Комиссионное вознаграждение от Агентский канал',
     );
   });
+
+  it('keeps the recognized mortgage bank name for catalog matching in the form', () => {
+    const result = buildPolicyRecognitionDraft({
+      clients: [],
+      salesChannels: [],
+      parsed: {
+        policy: {
+          insurance_type: 'Ипотечное страхование',
+          mortgage_bank_name: 'Альфа-Банк',
+          loan_agreement_number: 'A-42',
+        },
+      },
+    });
+
+    expect(result?.mortgageBankName).toBe('Альфа-Банк');
+    expect(result?.values.loanAgreementNumber).toBe('A-42');
+  });
 });

@@ -267,6 +267,22 @@ export const PolicyCard: React.FC<PolicyCardProps> = ({
             <LabelValuePair label={POLICY_TEXT.fields.gap} value={model.gap} />
           </div>
         )}
+        {model.hasMortgageDetails && (
+          <div className="rounded-xl border border-sky-100 bg-sky-50 px-3 py-2">
+            <p className="app-label">Ипотека</p>
+            <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700">
+              {policy.mortgageBankLogoUrl && (
+                <img
+                  src={policy.mortgageBankLogoUrl}
+                  alt=""
+                  className="h-6 max-w-20 object-contain"
+                />
+              )}
+              <span className="font-semibold text-slate-900">{model.mortgageBank}</span>
+              <span>Кредитный договор: {model.loanAgreementNumber}</span>
+            </div>
+          </div>
+        )}
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700 whitespace-pre-wrap break-words">
           {model.note}
         </div>

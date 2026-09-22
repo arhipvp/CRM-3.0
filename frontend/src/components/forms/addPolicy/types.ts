@@ -28,6 +28,8 @@ export interface PolicyFormValues {
   deductible?: number | null;
   officialDealer?: boolean | null;
   gap?: boolean | null;
+  mortgageBankId?: string | null;
+  loanAgreementNumber?: string | null;
   counterparty?: string;
   note?: string;
   salesChannelId?: string;

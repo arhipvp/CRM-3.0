@@ -18,6 +18,8 @@ interface PolicyFormSnapshotInput {
   deductible: string;
   officialDealer: boolean | null;
   gap: boolean | null;
+  mortgageBankId: string;
+  loanAgreementNumber: string;
   counterparty: string;
   note: string;
   salesChannelId: string;
@@ -59,6 +61,8 @@ export const buildPolicyFormSnapshot = (input: PolicyFormSnapshotInput) =>
     deductible: input.deductible,
     officialDealer: input.officialDealer,
     gap: input.gap,
+    mortgageBankId: input.mortgageBankId,
+    loanAgreementNumber: input.loanAgreementNumber,
     counterparty: input.counterparty,
     note: input.note,
     salesChannelId: input.salesChannelId,
@@ -141,6 +145,8 @@ export const buildInitialPolicyFormSnapshot = ({
           : '0',
       officialDealer: initialValues.officialDealer ?? null,
       gap: initialValues.gap ?? null,
+      mortgageBankId: initialValues.mortgageBankId ?? '',
+      loanAgreementNumber: initialValues.loanAgreementNumber ?? '',
       counterparty:
         (isEditing
           ? initialValues.counterparty
@@ -179,6 +185,8 @@ export const buildInitialPolicyFormSnapshot = ({
     deductible: '0',
     officialDealer: null,
     gap: null,
+    mortgageBankId: '',
+    loanAgreementNumber: '',
     counterparty: defaultCounterparty ?? '',
     note: '',
     salesChannelId: '',

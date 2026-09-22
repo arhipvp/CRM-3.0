@@ -51,6 +51,7 @@ interface PolicyPrefill {
   values: PolicyFormValues;
   insuranceCompanyName?: string;
   insuranceTypeName?: string;
+  mortgageBankName?: string;
 }
 
 interface AppModalsProps {
@@ -309,6 +310,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
                 isEditing={false}
                 initialInsuranceCompanyName={policyPrefill?.insuranceCompanyName}
                 initialInsuranceTypeName={policyPrefill?.insuranceTypeName}
+                initialMortgageBankName={policyPrefill?.mortgageBankName}
                 defaultCounterparty={policyDefaultCounterparty}
                 executorName={policyDealExecutorName}
                 clients={clients}

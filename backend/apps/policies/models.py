@@ -33,6 +33,20 @@ class Policy(SoftDeleteModel):
         null=True,
         blank=True,
     )
+    mortgage_bank = models.ForeignKey(
+        "deals.Bank",
+        related_name="mortgage_policies",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        help_text="Банк по ипотечному полису",
+    )
+    loan_agreement_number = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        help_text="Номер кредитного договора по ипотечному полису",
+    )
 
     deal = models.ForeignKey(
         "deals.Deal",
@@ -157,6 +171,7 @@ class Policy(SoftDeleteModel):
             models.Index(fields=["deal"]),
             models.Index(fields=["insurance_company"]),
             models.Index(fields=["insurance_type"]),
+            models.Index(fields=["mortgage_bank"]),
             models.Index(fields=["client"]),
             models.Index(fields=["insured_client"]),
             models.Index(

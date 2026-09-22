@@ -1,5 +1,6 @@
 ﻿import type {
   ActivityActionType,
+  Bank,
   ActivityLog,
   ChatMessage,
   Client,
@@ -194,6 +195,16 @@ export const mapInsuranceCompany = (raw: Record<string, unknown>): InsuranceComp
 export const mapInsuranceType = (raw: Record<string, unknown>): InsuranceType => ({
   id: toStringValue(raw.id),
   name: toStringValue(raw.name),
+  description: toOptionalString(raw.description),
+  createdAt: toStringValue(raw.created_at),
+  updatedAt: toStringValue(raw.updated_at),
+  deletedAt: toNullableString(raw.deleted_at),
+});
+
+export const mapBank = (raw: Record<string, unknown>): Bank => ({
+  id: toStringValue(raw.id),
+  name: toStringValue(raw.name),
+  logoUrl: toNullableString(raw.logo_url ?? raw.logoUrl),
   description: toOptionalString(raw.description),
   createdAt: toStringValue(raw.created_at),
   updatedAt: toStringValue(raw.updated_at),
@@ -410,6 +421,10 @@ export const mapPolicy = (raw: Record<string, unknown>): Policy => ({
         ? null
         : Boolean(raw.official_dealer ?? raw.officialDealer),
   gap: raw.gap === undefined ? null : raw.gap === null ? null : Boolean(raw.gap),
+  mortgageBankId: toNullableString(raw.mortgage_bank ?? raw.mortgageBank),
+  mortgageBank: toNullableString(raw.mortgage_bank_name ?? raw.mortgageBankName),
+  mortgageBankLogoUrl: toNullableString(raw.mortgage_bank_logo_url ?? raw.mortgageBankLogoUrl),
+  loanAgreementNumber: toNullableString(raw.loan_agreement_number ?? raw.loanAgreementNumber),
   counterparty: toOptionalString(raw.counterparty),
   note: toOptionalString(raw.note),
   salesChannel: toOptionalString(raw.sales_channel_name ?? raw.sales_channel),

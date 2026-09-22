@@ -97,6 +97,16 @@ export interface InsuranceType {
   deletedAt?: string | null;
 }
 
+export interface Bank {
+  id: string;
+  name: string;
+  logoUrl?: string | null;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+}
+
 export interface Document {
   id: string;
   title: string;
@@ -466,6 +476,10 @@ export interface Policy {
   deductible?: number | null;
   officialDealer?: boolean | null;
   gap?: boolean | null;
+  mortgageBankId?: string | null;
+  mortgageBank?: string | null;
+  mortgageBankLogoUrl?: string | null;
+  loanAgreementNumber?: string | null;
   counterparty?: string;
   note?: string;
   salesChannel?: string;

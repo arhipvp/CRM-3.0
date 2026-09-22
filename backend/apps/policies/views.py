@@ -146,6 +146,7 @@ class PolicyViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 "insured_client",
                 "insurance_company",
                 "insurance_type",
+                "mortgage_bank",
                 "sales_channel",
             )
             .prefetch_related(

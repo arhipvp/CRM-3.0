@@ -3,11 +3,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchInsuranceCompanies,
   fetchInsuranceTypes,
+  fetchBanks,
   fetchVehicleBrands,
   fetchVehicleModels,
 } from '../../../api';
 import { useClientLookup } from '../../../hooks/useClientLookup';
-import type { Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../types';
+import type { Bank, Client, InsuranceCompany, InsuranceType, SalesChannel } from '../../../types';
 import { formatErrorMessage } from '../../../utils/formatErrorMessage';
 import {
   buildCommissionIncomeNote,
@@ -37,6 +38,7 @@ export interface AddPolicyFormProps {
   isEditing?: boolean;
   initialInsuranceCompanyName?: string;
   initialInsuranceTypeName?: string;
+  initialMortgageBankName?: string;
   defaultCounterparty?: string;
   executorName?: string | null;
   clients: Client[];
@@ -54,6 +56,10 @@ const normalizeTypeForComparison = (value: string) =>
 const isCascoTypeName = (value?: string | null) => {
   const normalized = normalizeTypeForComparison(value ?? '');
   return normalized.includes('каско') || normalized.includes('casco');
+};
+const isMortgageTypeName = (value?: string | null) => {
+  const normalized = normalizeTypeForComparison(value ?? '');
+  return normalized.includes('ипотек') || normalized.includes('mortgage');
 };
 
 const createPaymentDraftWithDefaults = ({
@@ -77,6 +83,7 @@ export const useAddPolicyFormController = ({
   isEditing = false,
   initialInsuranceCompanyName,
   initialInsuranceTypeName,
+  initialMortgageBankName,
   defaultCounterparty,
   executorName,
   clients,
@@ -93,6 +100,8 @@ export const useAddPolicyFormController = ({
   const [deductible, setDeductible] = useState('0');
   const [officialDealer, setOfficialDealer] = useState<boolean | null>(null);
   const [gap, setGap] = useState<boolean | null>(null);
+  const [mortgageBankId, setMortgageBankId] = useState('');
+  const [loanAgreementNumber, setLoanAgreementNumber] = useState('');
   const [counterparty, setCounterparty] = useState('');
   const [note, setNote] = useState('');
   const [counterpartyTouched, setCounterpartyTouched] = useState(false);
@@ -154,11 +163,20 @@ export const useAddPolicyFormController = ({
   const [hasManualEndDate, setHasManualEndDate] = useState(false);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [types, setTypes] = useState<InsuranceType[]>([]);
+  const [banks, setBanks] = useState<Bank[]>([]);
+  const [isBankCatalogLoaded, setBankCatalogLoaded] = useState(false);
+  const [bankCatalogError, setBankCatalogError] = useState<string | null>(null);
+  const [recognizedMortgageBankNotice, setRecognizedMortgageBankNotice] = useState<string | null>(
+    null,
+  );
   const selectedInsuranceType = useMemo(
     () => types.find((type) => type.id === insuranceTypeId),
     [insuranceTypeId, types],
   );
   const shouldShowCascoFields = isCascoTypeName(
+    selectedInsuranceType?.name || initialInsuranceTypeName,
+  );
+  const shouldShowMortgageFields = isMortgageTypeName(
     selectedInsuranceType?.name || initialInsuranceTypeName,
   );
   const [vehicleBrands, setVehicleBrands] = useState<string[]>([]);
@@ -212,6 +230,8 @@ export const useAddPolicyFormController = ({
         deductible,
         officialDealer,
         gap,
+        mortgageBankId,
+        loanAgreementNumber,
         counterparty,
         note,
         salesChannelId,
@@ -232,6 +252,8 @@ export const useAddPolicyFormController = ({
       deductible,
       officialDealer,
       gap,
+      mortgageBankId,
+      loanAgreementNumber,
       counterparty,
       note,
       salesChannelId,
@@ -265,6 +287,8 @@ export const useAddPolicyFormController = ({
         deductible: string;
         officialDealer: boolean | null;
         gap: boolean | null;
+        mortgageBankId: string;
+        loanAgreementNumber: string;
         counterparty: string;
         note: string;
         salesChannelId: string;
@@ -306,15 +330,33 @@ export const useAddPolicyFormController = ({
       })
       .catch(() => {
         if (!isMounted) return;
-        setOptionsError(
-          'Не удалось загрузить справочники страховых компаний и типов. Обновите страницу и попробуйте снова.',
-        );
+        setOptionsError('Не удалось загрузить справочники. Обновите страницу и попробуйте снова.');
       })
       .finally(() => {
         if (!isMounted) return;
         setLoadingOptions(false);
       });
 
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+    fetchBanks()
+      .then((bankList) => {
+        if (!isMounted) return;
+        setBanks(bankList);
+        setBankCatalogLoaded(true);
+        setBankCatalogError(null);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setBankCatalogError(
+          'Не удалось загрузить справочник банков. Для ипотечного полиса обновите страницу и повторите попытку.',
+        );
+      });
     return () => {
       isMounted = false;
     };
@@ -331,6 +373,8 @@ export const useAddPolicyFormController = ({
     setDeductible(initialFormState.deductible || '0');
     setOfficialDealer(initialFormState.officialDealer ?? null);
     setGap(initialFormState.gap ?? null);
+    setMortgageBankId(initialFormState.mortgageBankId || '');
+    setLoanAgreementNumber(initialFormState.loanAgreementNumber || '');
     setCounterparty(initialFormState.counterparty || '');
     setNote(initialFormState.note || '');
     setSalesChannelId(initialFormState.salesChannelId || '');
@@ -397,6 +441,28 @@ export const useAddPolicyFormController = ({
   }, [initialInsuranceTypeName, types]);
 
   useEffect(() => {
+    if (!initialMortgageBankName || !isBankCatalogLoaded) {
+      return;
+    }
+    const aliases: Record<string, string> = {
+      сбербанк: 'сбер',
+      альфабанк: 'альфа',
+      втббанк: 'втб',
+    };
+    const recognized = normalizeTypeForComparison(initialMortgageBankName);
+    const canonicalName = aliases[recognized] ?? recognized;
+    const match = banks.find((bank) => normalizeTypeForComparison(bank.name) === canonicalName);
+    if (match) {
+      setMortgageBankId(match.id);
+      setRecognizedMortgageBankNotice(null);
+      return;
+    }
+    setRecognizedMortgageBankNotice(
+      `Распознанный банк «${initialMortgageBankName}» отсутствует в справочнике. Добавьте его через админку и выберите в поле выше.`,
+    );
+  }, [banks, initialMortgageBankName, isBankCatalogLoaded]);
+
+  useEffect(() => {
     if (!insuranceTypeId || !selectedInsuranceType || shouldShowCascoFields) {
       return;
     }
@@ -404,6 +470,14 @@ export const useAddPolicyFormController = ({
     setOfficialDealer(null);
     setGap(null);
   }, [insuranceTypeId, selectedInsuranceType, shouldShowCascoFields]);
+
+  useEffect(() => {
+    if (!insuranceTypeId || !selectedInsuranceType || shouldShowMortgageFields) {
+      return;
+    }
+    setMortgageBankId('');
+    setLoanAgreementNumber('');
+  }, [insuranceTypeId, selectedInsuranceType, shouldShowMortgageFields]);
 
   useEffect(() => {
     let isMounted = true;
@@ -570,6 +644,10 @@ export const useAddPolicyFormController = ({
         setError('Заполните номер полиса, страховую компанию и тип страхования.');
         return;
       }
+      if (shouldShowMortgageFields && (!mortgageBankId || !loanAgreementNumber.trim())) {
+        setError('Для ипотечного полиса укажите банк и номер кредитного договора.');
+        return;
+      }
     }
     if (currentStep === 2) {
       if (!payments.length) {
@@ -697,6 +775,10 @@ export const useAddPolicyFormController = ({
       setError('Заполните номер полиса, страховую компанию и тип страхования.');
       return;
     }
+    if (shouldShowMortgageFields && (!mortgageBankId || !loanAgreementNumber.trim())) {
+      setError('Для ипотечного полиса укажите банк и номер кредитного договора.');
+      return;
+    }
     if (paymentErrorsCount > 0) {
       setError('Исправьте ошибки в платежах перед сохранением полиса.');
       return;
@@ -747,6 +829,8 @@ export const useAddPolicyFormController = ({
         deductible: shouldShowCascoFields ? normalizedDeductible : 0,
         officialDealer: shouldShowCascoFields ? officialDealer : null,
         gap: shouldShowCascoFields ? gap : null,
+        mortgageBankId: shouldShowMortgageFields ? mortgageBankId : null,
+        loanAgreementNumber: shouldShowMortgageFields ? loanAgreementNumber.trim() : null,
         counterparty: counterparty.trim() || undefined,
         note: note.trim() || undefined,
         salesChannelId: salesChannelId || undefined,
@@ -784,6 +868,10 @@ export const useAddPolicyFormController = ({
     setOfficialDealer,
     gap,
     setGap,
+    mortgageBankId,
+    setMortgageBankId,
+    loanAgreementNumber,
+    setLoanAgreementNumber,
     counterparty,
     setCounterparty,
     setCounterpartyTouched,
@@ -809,8 +897,12 @@ export const useAddPolicyFormController = ({
     handleClientSelect,
     companies,
     types,
+    banks,
+    bankCatalogError,
+    recognizedMortgageBankNotice,
     selectedInsuranceType,
     shouldShowCascoFields,
+    shouldShowMortgageFields,
     vehicleBrands,
     vehicleModels,
     loadingOptions,

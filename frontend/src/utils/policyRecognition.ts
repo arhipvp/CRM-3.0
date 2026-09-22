@@ -183,6 +183,15 @@ export const buildPolicyDraftFromRecognition = (
       pickRecognitionValue(parsed, policyData, ['official_dealer', 'officialDealer']),
     ),
     gap: parseBooleanValue(pickRecognitionValue(parsed, policyData, ['gap'])),
+    mortgageBankId: '',
+    loanAgreementNumber: toOptionalString(
+      pickRecognitionValue(parsed, policyData, [
+        'loan_agreement_number',
+        'loanAgreementNumber',
+        'credit_agreement_number',
+        'creditAgreementNumber',
+      ]),
+    ),
     counterparty: normalizeStringValue(
       pickRecognitionValue(parsed, policyData, ['counterparty', 'contractor', 'seller']),
     ),

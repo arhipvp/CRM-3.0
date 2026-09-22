@@ -34,6 +34,8 @@ export const buildPolicyFormValues = (
   deductible: policy.deductible ?? 0,
   officialDealer: policy.officialDealer ?? null,
   gap: policy.gap ?? null,
+  mortgageBankId: policy.mortgageBankId ?? null,
+  loanAgreementNumber: policy.loanAgreementNumber ?? null,
   counterparty: policy.counterparty,
   note: policy.note,
   salesChannelId: policy.salesChannelId,
