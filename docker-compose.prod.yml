@@ -46,10 +46,11 @@ services:
       AI_API_KEY: ${AI_API_KEY}
       AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
       AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash-lite}
-      INSURANCE_ASSISTANT_URL: ${INSURANCE_ASSISTANT_URL:-http://insurance_assistant:8765}
-      INSURANCE_ASSISTANT_INTERNAL_TOKEN: ${INSURANCE_ASSISTANT_INTERNAL_TOKEN}
-      INSURANCE_ASSISTANT_TIMEOUT_SECONDS: ${INSURANCE_ASSISTANT_TIMEOUT_SECONDS:-300}
       INSURANCE_ASSISTANT_LIBRARY_MANAGER: ${INSURANCE_ASSISTANT_LIBRARY_MANAGER:-Vova}
+      AI_ASSISTANT_QDRANT_URL: http://qdrant:6333
+      AI_ASSISTANT_QDRANT_COLLECTION: crm_insurance_documents_v2
+      AI_ASSISTANT_CHAT_MODEL: ${INSURANCE_ASSISTANT_POLZA_CHAT_MODEL:-${AI_MODEL:-google/gemini-2.5-flash-lite}}
+      AI_ASSISTANT_EMBEDDING_MODEL: ${INSURANCE_ASSISTANT_EMBEDDING_MODEL:-text-embedding-3-large}
       POLICY_RECOGNITION_MODEL: ${POLICY_RECOGNITION_MODEL:-google/gemini-2.5-flash-lite}
       POLICY_RECOGNITION_VISION_FALLBACK_ENABLED: ${POLICY_RECOGNITION_VISION_FALLBACK_ENABLED:-true}
       POLICY_RECOGNITION_PDF_RENDER_DPI: ${POLICY_RECOGNITION_PDF_RENDER_DPI:-180}
@@ -120,39 +121,6 @@ services:
     networks:
       - crm_network
     restart: unless-stopped
-
-  insurance_assistant:
-    build:
-      context: ./tools/insurance_assistant
-      dockerfile: Dockerfile
-    image: crm30-insurance-assistant:${IMAGE_TAG:-latest}
-    container_name: crm3-insurance-assistant
-    environment:
-      INSURANCE_ASSISTANT_DATA_DIR: /data
-      INSURANCE_ASSISTANT_QDRANT_URL: http://qdrant:6333
-      INSURANCE_ASSISTANT_INTERNAL_TOKEN: ${INSURANCE_ASSISTANT_INTERNAL_TOKEN}
-      INSURANCE_ASSISTANT_PRODUCTION_MODE: "true"
-      POLZA_AI_API_KEY: ${AI_API_KEY}
-      POLZA_AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
-      POLZA_CHAT_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
-      POLZA_CHAT_MODEL: ${INSURANCE_ASSISTANT_POLZA_CHAT_MODEL:-${AI_MODEL:-google/gemini-2.5-flash-lite}}
-      IA_EMBEDDING_PROVIDER: polza
-      IA_EMBEDDING_MODEL: ${INSURANCE_ASSISTANT_EMBEDDING_MODEL:-text-embedding-3-large}
-    volumes:
-      - insurance_assistant_data:/data
-    depends_on:
-      - qdrant
-    expose:
-      - "8765"
-    networks:
-      - crm_network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8765/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
 
   telegram_bot:
     image: crm30-backend:${IMAGE_TAG:-latest}
@@ -243,6 +211,71 @@ services:
     restart: unless-stopped
     healthcheck:
       disable: true
+
+  ai_answer_worker:
+    image: crm30-backend:${IMAGE_TAG:-latest}
+    container_name: crm3-ai-answer-worker
+    entrypoint: ["python", "manage.py", "run_ai_answer_worker"]
+    init: true
+    environment:
+      DEBUG: ${DEBUG:-False}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 5432
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-crm3}
+      DJANGO_DB_USER: ${DJANGO_DB_USER:-crm3}
+      DJANGO_DB_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
+      AI_MODEL: ${AI_MODEL:-google/gemini-2.5-flash-lite}
+      AI_ASSISTANT_CHAT_MODEL: ${INSURANCE_ASSISTANT_POLZA_CHAT_MODEL:-${AI_MODEL:-google/gemini-2.5-flash-lite}}
+      AI_ASSISTANT_EMBEDDING_MODEL: ${INSURANCE_ASSISTANT_EMBEDDING_MODEL:-text-embedding-3-large}
+      AI_ASSISTANT_QDRANT_URL: http://qdrant:6333
+      AI_ASSISTANT_QDRANT_COLLECTION: crm_insurance_documents_v2
+      AI_ANSWER_CONCURRENCY: ${AI_ANSWER_CONCURRENCY:-2}
+    depends_on:
+      backend:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - backend_media:/app/media
+    networks:
+      - crm_network
+    restart: unless-stopped
+
+  ai_index_worker:
+    image: crm30-backend:${IMAGE_TAG:-latest}
+    container_name: crm3-ai-index-worker
+    entrypoint: ["python", "manage.py", "run_ai_index_worker"]
+    init: true
+    environment:
+      DEBUG: ${DEBUG:-False}
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DJANGO_DB_ENGINE: django.db.backends.postgresql
+      DJANGO_DB_HOST: db
+      DJANGO_DB_PORT: 5432
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-crm3}
+      DJANGO_DB_USER: ${DJANGO_DB_USER:-crm3}
+      DJANGO_DB_PASSWORD: ${DJANGO_DB_PASSWORD:-crm3}
+      AI_API_KEY: ${AI_API_KEY}
+      AI_BASE_URL: ${AI_BASE_URL:-https://polza.ai/api/v1}
+      AI_ASSISTANT_EMBEDDING_MODEL: ${INSURANCE_ASSISTANT_EMBEDDING_MODEL:-text-embedding-3-large}
+      AI_ASSISTANT_QDRANT_URL: http://qdrant:6333
+      AI_ASSISTANT_QDRANT_COLLECTION: crm_insurance_documents_v2
+    depends_on:
+      backend:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    volumes:
+      - ./backend:/app
+      - backend_media:/app/media
+    networks:
+      - crm_network
+    restart: unless-stopped
 
   frontend:
     build:

@@ -228,14 +228,15 @@ GOOGLE_DRIVE_OAUTH_POST_UPDATE_COMMAND = config(
 AI_API_KEY = config("AI_API_KEY", default="")
 AI_BASE_URL = config("AI_BASE_URL", default="https://polza.ai/api/v1")
 AI_MODEL = config("AI_MODEL", default="google/gemini-2.5-flash-lite")
-INSURANCE_ASSISTANT_URL = config(
-    "INSURANCE_ASSISTANT_URL", default="http://insurance_assistant:8765"
+AI_ASSISTANT_CHAT_MODEL = config("AI_ASSISTANT_CHAT_MODEL", default=AI_MODEL)
+AI_ASSISTANT_EMBEDDING_MODEL = config(
+    "AI_ASSISTANT_EMBEDDING_MODEL", default="text-embedding-3-large"
 )
-INSURANCE_ASSISTANT_INTERNAL_TOKEN = config(
-    "INSURANCE_ASSISTANT_INTERNAL_TOKEN", default=""
+AI_ASSISTANT_QDRANT_URL = config(
+    "AI_ASSISTANT_QDRANT_URL", default="http://localhost:6333"
 )
-INSURANCE_ASSISTANT_TIMEOUT_SECONDS = float(
-    config("INSURANCE_ASSISTANT_TIMEOUT_SECONDS", default="300")
+AI_ASSISTANT_QDRANT_COLLECTION = config(
+    "AI_ASSISTANT_QDRANT_COLLECTION", default="crm_insurance_documents_v2"
 )
 INSURANCE_ASSISTANT_LIBRARY_MANAGER = config(
     "INSURANCE_ASSISTANT_LIBRARY_MANAGER", default="Vova"

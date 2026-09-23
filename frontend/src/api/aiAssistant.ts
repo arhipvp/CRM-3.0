@@ -1,4 +1,4 @@
-import { API_BASE, getAccessToken, request, requestBlob } from './request';
+import { request, requestBlob } from './request';
 
 export interface AiConversation {
   id: string;
@@ -89,6 +89,33 @@ export interface AiMessage {
   content: string;
   citations: AiCitation[];
   usage?: { provider: string; model: string; cost_rub?: number | null };
+  run?: AiAnswerRun | null;
+}
+
+export type AiRunStatus =
+  | 'queued'
+  | 'searching'
+  | 'generating'
+  | 'completed'
+  | 'failed'
+  | 'stopped'
+  | 'interrupted';
+
+export interface AiAnswerRun {
+  id: string;
+  status: AiRunStatus;
+  phase?: string;
+  stop_requested?: boolean;
+  found_chunks: number;
+  created_at: string;
+  started_at?: string | null;
+  finished_at?: string | null;
+  updated_at?: string;
+  error?: string | null;
+}
+
+export interface AiAnswerSubmission {
+  run_id: string;
 }
 
 export interface AiDocument {
@@ -120,6 +147,13 @@ export const deleteAiConversation = (id: string) =>
   request<void>(`/ai/conversations/${id}/`, { method: 'DELETE' });
 export const fetchAiMessages = (id: string) =>
   request<AiMessage[]>(`/ai/conversations/${id}/messages/`);
+export const submitAiQuestion = (id: string, content: string, clientRequestId: string) =>
+  request<AiAnswerSubmission>(`/ai/conversations/${id}/messages/`, {
+    method: 'POST',
+    body: JSON.stringify({ content, client_request_id: clientRequestId }),
+  });
+export const stopAiAnswer = (conversationId: string, runId: string) =>
+  request<void>(`/ai/conversations/${conversationId}/runs/${runId}/stop/`, { method: 'POST' });
 export const fetchAiDocuments = () => request<AiDocument[]>('/ai/documents/');
 export const fetchAiCatalog = () => request<AiCatalog>('/ai/catalog/');
 export const fetchAiProviders = () => request<AiProvidersResponse>('/ai/providers/');
@@ -149,45 +183,5 @@ export async function fetchAiDocumentContent(documentId: string): Promise<string
     return URL.createObjectURL(blob);
   } catch {
     throw new Error('Не удалось открыть источник. Попробуйте ещё раз позже.');
-  }
-}
-
-export async function streamAiAnswer(
-  conversationId: string,
-  content: string,
-  onEvent: (event: string, payload: unknown) => void,
-): Promise<void> {
-  const response = await fetch(`${API_BASE}/ai/conversations/${conversationId}/messages/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${getAccessToken() ?? ''}`,
-    },
-    body: JSON.stringify({ content }),
-  });
-  if (!response.ok || !response.body)
-    throw new Error('Не удалось получить ответ страхового помощника.');
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let pending = '';
-  for (;;) {
-    const { done, value } = await reader.read();
-    pending += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-    let boundary = pending.indexOf('\n\n');
-    while (boundary >= 0) {
-      const packet = pending.slice(0, boundary);
-      pending = pending.slice(boundary + 2);
-      const event = packet.match(/^event:\s*(.+)$/m)?.[1] ?? 'message';
-      const data = packet.match(/^data:\s*(.+)$/m)?.[1];
-      if (data) {
-        try {
-          onEvent(event, JSON.parse(data));
-        } catch {
-          onEvent(event, data);
-        }
-      }
-      boundary = pending.indexOf('\n\n');
-    }
-    if (done) break;
   }
 }

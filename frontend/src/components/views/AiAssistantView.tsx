@@ -10,7 +10,8 @@ import {
   fetchAiDocuments,
   fetchAiMessages,
   fetchAiProviders,
-  streamAiAnswer,
+  stopAiAnswer,
+  submitAiQuestion,
   updateAiDocumentClassification,
   updateAiConversationModel,
   updateAiConversationScope,
@@ -22,62 +23,32 @@ import {
   type AiMessage,
   type AiProvider,
   type AiScopeBranch,
+  type AiAnswerRun,
 } from '../../api/aiAssistant';
 import { AiChatMessage } from './aiAssistant/AiChatMessage';
 import { ClassificationFields } from './aiAssistant/ClassificationFields';
 import { AiLibraryTree } from './aiAssistant/AiLibraryTree';
 import { AiScopeMenu } from './aiAssistant/AiScopeMenu';
+import {
+  documentInLibraryBranch,
+  documentLabel,
+  documentStatus,
+  scopeKey,
+  scopeLabel,
+  statusClass,
+} from './aiAssistant/libraryHelpers';
 import type { User } from '../../types';
 import { Button } from '../common/Button';
 import { PageHeader } from '../common/layoutPrimitives';
 
 type Tab = 'chat' | 'library';
+const isActiveRun = (run?: AiAnswerRun | null) =>
+  run != null && ['queued', 'searching', 'generating'].includes(run.status);
 const emptyCatalog: AiCatalog = {
   total: 0,
   unclassified: 0,
   insurers: [],
   suggestions: { insurers: [], insurance_kinds: [], products: [] },
-};
-const scopeKey = (value: AiScopeBranch) =>
-  value.unclassified
-    ? 'unclassified'
-    : [value.insurer, value.insurance_kind, value.product].filter(Boolean).join('::');
-const scopeLabel = (value: AiScopeBranch) =>
-  value.unclassified
-    ? 'Нераспределено'
-    : [value.insurer, value.insurance_kind, value.product].filter(Boolean).join(' → ');
-const documentLabel = (value?: AiClassification | null) => {
-  const parts = [value?.insurer, value?.insurance_kind, value?.product].filter(Boolean);
-  return parts.length ? parts.join(' → ') : 'Нераспределено';
-};
-const documentInLibraryBranch = (document: AiDocument, branch: AiScopeBranch | null) => {
-  if (!branch) return true;
-  const classification = document.classification;
-  if (branch.unclassified)
-    return !classification?.insurer && !classification?.insurance_kind && !classification?.product;
-  return (
-    (!branch.insurer || classification?.insurer === branch.insurer) &&
-    (!branch.insurance_kind || classification?.insurance_kind === branch.insurance_kind) &&
-    (!branch.product || classification?.product === branch.product)
-  );
-};
-const documentStatus = (status: string) => {
-  const labels: Record<string, string> = {
-    queued: 'В очереди',
-    indexing: 'Обрабатывается',
-    ready: 'Готово',
-    failed: 'Ошибка',
-  };
-  return labels[status] ?? status;
-};
-const statusClass = (status: string) => {
-  const classes: Record<string, string> = {
-    queued: 'bg-amber-50 text-amber-800',
-    indexing: 'bg-blue-50 text-blue-800',
-    ready: 'bg-emerald-50 text-emerald-800',
-    failed: 'bg-red-50 text-red-800',
-  };
-  return classes[status] ?? 'bg-slate-100 text-slate-700';
 };
 
 export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
@@ -100,6 +71,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [notice, setNotice] = useState<string | null>(null);
   const [classificationError, setClassificationError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [now, setNow] = useState(Date.now());
   const [savingModel, setSavingModel] = useState(false);
   const [savingScope, setSavingScope] = useState(false);
   const [scopeOpen, setScopeOpen] = useState(false);
@@ -108,6 +80,12 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const [deleting, setDeleting] = useState<Set<string>>(new Set());
   const [opening, setOpening] = useState<Set<string>>(new Set());
   const uploadInput = useRef<HTMLInputElement>(null);
+  const selectedIdRef = useRef<string | null>(null);
+
+  const loadMessages = useCallback(async (id: string) => {
+    const items = await fetchAiMessages(id);
+    if (selectedIdRef.current === id) setMessages(items);
+  }, []);
 
   const loadLibrary = useCallback(async () => {
     const [items, tree] = await Promise.all([fetchAiDocuments(), fetchAiCatalog()]);
@@ -127,13 +105,38 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
       .catch(() => setError('Не удалось загрузить список моделей Polza.'));
   }, [loadLibrary]);
   useEffect(() => {
+    selectedIdRef.current = selectedId;
+    setMessages([]);
     if (selectedId)
-      void fetchAiMessages(selectedId)
-        .then(setMessages)
-        .catch((err) => setError(String(err)));
-  }, [selectedId]);
+      void loadMessages(selectedId).catch(() => setError('Не удалось загрузить историю чата.'));
+  }, [selectedId, loadMessages]);
+  const activeRun = messages.find(
+    (message) => message.role === 'assistant' && isActiveRun(message.run),
+  )?.run;
   useEffect(() => {
-    if (!documents.some((document) => ['queued', 'indexing'].includes(document.status))) return;
+    if (!selectedId || !activeRun) return;
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+      void loadMessages(selectedId).catch(() =>
+        setError('Не удалось обновить ответ. Повторите позже.'),
+      );
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [selectedId, activeRun, loadMessages]);
+  useEffect(() => {
+    if (!selectedId) return;
+    const refresh = () => {
+      if (document.visibilityState === 'visible')
+        void loadMessages(selectedId).catch(() => setError('Не удалось обновить ответ.'));
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
+  }, [selectedId, loadMessages]);
+  useEffect(() => {
+    if (
+      !documents.some((document) => ['queued', 'indexing', 'processing'].includes(document.status))
+    )
+      return;
     const timer = window.setInterval(() => {
       void loadLibrary().catch(() => setError('Не удалось обновить статус обработки документов.'));
     }, 2500);
@@ -213,11 +216,12 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
   const createChat = async () => {
     const chat = await createAiConversation();
     setConversations((items) => [chat, ...items]);
+    selectedIdRef.current = chat.id;
     setSelectedId(chat.id);
     setMessages([]);
   };
   const changeModel = async (model: string) => {
-    if (!selected || !selectedProvider || !model || savingModel) return;
+    if (!selected || !selectedProvider || !model || savingModel || activeRun || loading) return;
     setSavingModel(true);
     setError(null);
     try {
@@ -230,7 +234,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
     }
   };
   const saveScope = async (nextScope: AiScopeBranch[]) => {
-    if (!selected || savingScope) {
+    if (!selected || savingScope || activeRun || loading) {
       if (!selected) setError('Сначала создайте или выберите чат для настройки области поиска.');
       return;
     }
@@ -251,60 +255,68 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
         ? scope.filter((item) => scopeKey(item) !== scopeKey(branch))
         : [...scope, branch],
     );
-  const send = async () => {
-    const text = question.trim();
-    if (!text || loading) return;
+  const send = async (override?: string) => {
+    const text = (override ?? question).trim();
+    if (!text || loading || activeRun) return;
     let id = selectedId;
-    if (!id) {
-      const chat = await createAiConversation(text.slice(0, 60));
-      setConversations((items) => [chat, ...items]);
-      setSelectedId(chat.id);
-      id = chat.id;
-    }
-    setQuestion('');
     setLoading(true);
     setError(null);
-    setMessages((items) => [
-      ...items,
-      { id: `local-${Date.now()}`, role: 'user', content: text, citations: [] },
-      { id: 'pending', role: 'assistant', content: '', citations: [] },
-    ]);
     try {
-      await streamAiAnswer(id, text, (event, payload) => {
-        if (event === 'delta' && typeof payload === 'string')
-          setMessages((items) =>
-            items.map((item) =>
-              item.id === 'pending' ? { ...item, content: item.content + payload } : item,
-            ),
-          );
-        if (event === 'done' && payload && typeof payload === 'object') {
-          const result = payload as {
-            content?: string;
-            citations?: AiMessage['citations'];
-            usage?: AiMessage['usage'];
-          };
-          setMessages((items) =>
-            items.map((item) =>
-              item.id === 'pending'
-                ? {
-                    ...item,
-                    id: `answer-${Date.now()}`,
-                    content: result.content ?? item.content,
-                    citations: result.citations ?? [],
-                    usage: result.usage,
-                  }
-                : item,
-            ),
-          );
-        }
-        if (event === 'error') setError(typeof payload === 'string' ? payload : 'Ошибка ответа');
-      });
+      if (!id) {
+        const chat = await createAiConversation(text.slice(0, 60));
+        setConversations((items) => [chat, ...items]);
+        selectedIdRef.current = chat.id;
+        setSelectedId(chat.id);
+        id = chat.id;
+      }
+      const requestId = crypto.randomUUID();
+      setQuestion('');
+      setMessages((items) => [
+        ...items,
+        { id: `local-${requestId}`, role: 'user', content: text, citations: [] },
+        {
+          id: `pending-${requestId}`,
+          role: 'assistant',
+          content: '',
+          citations: [],
+          run: {
+            id: requestId,
+            status: 'queued',
+            found_chunks: 0,
+            created_at: new Date().toISOString(),
+          },
+        },
+      ]);
+      await submitAiQuestion(id, text, requestId);
+      await loadMessages(id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setMessages((items) => items.filter((item) => item.id !== 'pending'));
+      setError(
+        err instanceof Error
+          ? `Не удалось подтвердить отправку: ${err.message}. Проверьте историю перед повтором, чтобы не оплатить запрос дважды.`
+          : 'Не удалось подтвердить отправку. Проверьте историю перед повтором.',
+      );
+      if (id) void loadMessages(id).catch(() => undefined);
     } finally {
       setLoading(false);
     }
+  };
+  const stop = async (runId: string) => {
+    if (!selectedId) return;
+    try {
+      await stopAiAnswer(selectedId, runId);
+      await loadMessages(selectedId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось остановить ответ.');
+    }
+  };
+  const retry = (message: AiMessage) => {
+    const index = messages.findIndex((item) => item.id === message.id);
+    const priorQuestion = [...messages.slice(0, index)]
+      .reverse()
+      .find((item) => item.role === 'user');
+    if (!priorQuestion) return;
+    if (!window.confirm('Повторить вопрос? Polza может списать оплату ещё раз.')) return;
+    void send(priorQuestion.content);
   };
   const upload = async (files: File[]) => {
     if (!files.length || uploading) return;
@@ -444,7 +456,9 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 <span className="sr-only">Модель Polza для этого чата</span>
                 <select
                   value={selectedModel}
-                  disabled={!selected || !selectedProvider || loading || savingModel}
+                  disabled={
+                    !selected || !selectedProvider || loading || activeRun != null || savingModel
+                  }
                   onChange={(event) => void changeModel(event.target.value)}
                   className="rounded border border-[var(--app-border)] bg-white px-2 py-1 text-xs text-slate-700 disabled:cursor-not-allowed disabled:bg-slate-100"
                   aria-label="Модель Polza для этого чата"
@@ -477,7 +491,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   type="button"
                   aria-expanded={scopeOpen}
                   aria-label="Настроить область поиска этого чата"
-                  disabled={!selected || savingScope}
+                  disabled={!selected || savingScope || loading || activeRun != null}
                   className="cursor-pointer text-[var(--app-brand-700)] underline decoration-dotted underline-offset-2 transition-colors hover:text-[var(--app-brand-900)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--app-brand-500)] disabled:cursor-not-allowed disabled:text-slate-400"
                   onClick={() => setScopeOpen((open) => !open)}
                 >
@@ -487,7 +501,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   <AiScopeMenu
                     catalog={catalog}
                     scope={scope}
-                    disabled={!selected || savingScope}
+                    disabled={!selected || savingScope || loading || activeRun != null}
                     onReset={() => void saveScope([])}
                     onToggle={toggleScope}
                   />
@@ -502,6 +516,7 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                   <button
                     type="button"
                     aria-label={`Убрать ${scopeLabel(branch)}`}
+                    disabled={loading || activeRun != null || savingScope}
                     onClick={() => toggleScope(branch)}
                   >
                     ×
@@ -514,9 +529,11 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 <AiChatMessage
                   key={message.id}
                   message={message}
-                  loading={loading}
+                  now={now}
                   opening={opening}
                   onOpenDocument={openDocument}
+                  onStop={(runId) => void stop(runId)}
+                  onRetry={retry}
                 />
               ))}
             </div>
@@ -533,7 +550,11 @@ export function AiAssistantView({ currentUser }: { currentUser: User | null }) {
                 className="min-h-12 flex-1 rounded border border-[var(--app-border)] p-3 text-sm"
                 placeholder="Спросите по страховым документам…"
               />
-              <Button onClick={() => void send()} variant="primary" disabled={loading}>
+              <Button
+                onClick={() => void send()}
+                variant="primary"
+                disabled={loading || activeRun != null}
+              >
                 Отправить
               </Button>
             </div>

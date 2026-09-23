@@ -197,27 +197,46 @@ jobs:
           # Qdrant is a pinned public runtime image, unlike the local CRM images
           # built below. It must be present before compose runs with --pull=never.
           docker pull qdrant/qdrant:v1.12.4
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant insurance_assistant backend telegram_bot external_job_worker frontend nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant backend telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend nginx
+
+          # The retired FastAPI container is no longer in Compose. Keep its
+          # named data volume for rollback, but do not leave its process running.
+          docker stop crm3-insurance-assistant 2>/dev/null || true
 
           echo "MARK: after app compose up"
           echo "Running containers:"
           docker compose -f docker-compose.prod.yml --env-file .env.production ps
 
-          echo "Waiting for external job worker to start"
-          external_job_worker_running=false
-          for attempt in $(seq 1 30); do
-            if [ "$(docker inspect -f '{{.State.Running}}' crm3-external-job-worker 2>/dev/null || true)" = "true" ]; then
-              external_job_worker_running=true
-              echo "External job worker is running."
-              break
+          for worker in crm3-external-job-worker crm3-ai-answer-worker crm3-ai-index-worker; do
+            echo "Waiting for ${worker} to start"
+            worker_running=false
+            for attempt in $(seq 1 30); do
+              if [ "$(docker inspect -f '{{.State.Running}}' "${worker}" 2>/dev/null || true)" = "true" ]; then
+                worker_running=true
+                echo "${worker} is running."
+                break
+              fi
+              sleep 1
+            done
+            if [ "${worker_running}" != "true" ]; then
+              echo "ERROR: ${worker} did not reach running state within 30 seconds."
+              docker inspect -f 'status={{.State.Status}} exit_code={{.State.ExitCode}} oom_killed={{.State.OOMKilled}} restart_count={{.RestartCount}}' "${worker}" 2>/dev/null || true
+              echo "Inspect worker logs over SSH; they are omitted from CI output to avoid exposing sensitive data."
+              exit 1
             fi
-            sleep 1
           done
 
-          if [ "${external_job_worker_running}" != "true" ]; then
-            echo "ERROR: external job worker did not reach running state within 30 seconds."
-            docker inspect -f 'status={{.State.Status}} exit_code={{.State.ExitCode}} oom_killed={{.State.OOMKilled}} restart_count={{.RestartCount}}' crm3-external-job-worker 2>/dev/null || true
-            echo "Inspect external job worker logs over SSH; they are omitted from CI output to avoid exposing sensitive external-service data."
+          echo "Waiting for internal Qdrant health"
+          qdrant_healthy=false
+          for attempt in $(seq 1 30); do
+            if docker exec crm3-backend python -c "import httpx; httpx.get('http://qdrant:6333/healthz', timeout=3).raise_for_status()" >/dev/null 2>&1; then
+              qdrant_healthy=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${qdrant_healthy}" != "true" ]; then
+            echo "ERROR: Qdrant is not healthy on the internal Docker network."
             exit 1
           fi
 

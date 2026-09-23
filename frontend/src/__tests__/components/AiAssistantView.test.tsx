@@ -12,6 +12,8 @@ const api = vi.hoisted(() => ({
   uploadAiDocuments: vi.fn(),
   updateAiConversationModel: vi.fn(),
   updateAiConversationScope: vi.fn(),
+  submitAiQuestion: vi.fn(),
+  stopAiAnswer: vi.fn(),
 }));
 
 vi.mock('../../api/aiAssistant', () => ({
@@ -53,7 +55,8 @@ vi.mock('../../api/aiAssistant', () => ({
     ],
   })),
   formatAiCitationLocation: vi.fn(),
-  streamAiAnswer: vi.fn(),
+  submitAiQuestion: api.submitAiQuestion,
+  stopAiAnswer: api.stopAiAnswer,
   updateAiDocumentClassification: api.updateAiDocumentClassification,
   updateAiConversationModel: api.updateAiConversationModel,
   updateAiConversationScope: api.updateAiConversationScope,
@@ -70,6 +73,8 @@ describe('AiAssistantView', () => {
     api.uploadAiDocuments.mockReset();
     api.updateAiConversationModel.mockReset();
     api.updateAiConversationScope.mockReset();
+    api.submitAiQuestion.mockReset();
+    api.stopAiAnswer.mockReset();
     api.updateAiConversationModel.mockResolvedValue({
       id: 'chat-1',
       title: 'КАСКО',
@@ -97,6 +102,8 @@ describe('AiAssistantView', () => {
     api.deleteAiDocument.mockResolvedValue(undefined);
     api.updateAiDocumentClassification.mockResolvedValue([]);
     api.uploadAiDocuments.mockResolvedValue([]);
+    api.submitAiQuestion.mockResolvedValue({ run_id: 'run-1' });
+    api.stopAiAnswer.mockResolvedValue({});
   });
 
   it('uses the chat default and saves a newly selected model for that chat', async () => {
@@ -273,5 +280,93 @@ describe('AiAssistantView', () => {
     expect(screen.getByText('Страховой помощник')).toBeInTheDocument();
     expect(screen.getByText('Источники')).toBeInTheDocument();
     expect(screen.getByTitle('Открыть источник')).toHaveClass('cursor-pointer');
+  });
+
+  it('restores a running answer and blocks another question and settings changes', async () => {
+    api.fetchAiMessages.mockResolvedValue([
+      { id: 'question', role: 'user', content: 'Условия КАСКО?', citations: [] },
+      {
+        id: 'answer',
+        role: 'assistant',
+        content: 'Частичный ответ',
+        citations: [],
+        run: {
+          id: 'run-1',
+          status: 'generating',
+          found_chunks: 8,
+          created_at: new Date(Date.now() - 35_000).toISOString(),
+        },
+      },
+    ]);
+    render(<AiAssistantView currentUser={null} />);
+
+    expect(await screen.findByText('Частичный ответ')).toBeInTheDocument();
+    expect(screen.getByText('Модель продолжает формировать ответ')).toBeInTheDocument();
+    expect(screen.getByText(/найдено фрагментов: 8/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled();
+    expect(screen.getByLabelText('Модель Polza для этого чата')).toBeDisabled();
+    expect(screen.getByLabelText('Настроить область поиска этого чата')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Остановить' }));
+    await waitFor(() => expect(api.stopAiAnswer).toHaveBeenCalledWith('chat-1', 'run-1'));
+  });
+
+  it('submits one durable request and replaces optimistic messages with server history', async () => {
+    api.fetchAiMessages.mockResolvedValueOnce([]).mockResolvedValueOnce([
+      { id: 'question-1', role: 'user', content: 'Какой риск?', citations: [] },
+      {
+        id: 'answer-1',
+        role: 'assistant',
+        content: '',
+        citations: [],
+        run: {
+          id: 'run-1',
+          status: 'queued',
+          found_chunks: 0,
+          created_at: new Date().toISOString(),
+        },
+      },
+    ]);
+    render(<AiAssistantView currentUser={null} />);
+    await screen.findByLabelText('Модель Polza для этого чата');
+    fireEvent.change(screen.getByPlaceholderText('Спросите по страховым документам…'), {
+      target: { value: 'Какой риск?' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+    await waitFor(() => expect(api.submitAiQuestion).toHaveBeenCalledOnce());
+    expect(api.submitAiQuestion).toHaveBeenCalledWith('chat-1', 'Какой риск?', expect.any(String));
+    expect(await screen.findByText('В очереди')).toBeInTheDocument();
+    expect(screen.getAllByText('Какой риск?')).toHaveLength(1);
+  });
+
+  it('restores the selected chat and explicitly repeats a failed answer with a new request id', async () => {
+    api.fetchAiMessages.mockImplementation(async (id: string) =>
+      id === 'chat-2'
+        ? [
+            { id: 'question-2', role: 'user', content: 'Вопрос ОСАГО', citations: [] },
+            {
+              id: 'answer-2',
+              role: 'assistant',
+              content: 'Сохранённый частичный ответ',
+              citations: [],
+              run: {
+                id: 'run-2',
+                status: 'failed',
+                found_chunks: 3,
+                created_at: new Date().toISOString(),
+              },
+            },
+          ]
+        : [],
+    );
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    render(<AiAssistantView currentUser={null} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'ОСАГО' }));
+    expect(await screen.findByText('Сохранённый частичный ответ')).toBeInTheDocument();
+    expect(screen.getByText('Ошибка ответа')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+    await waitFor(() => expect(api.submitAiQuestion).toHaveBeenCalledOnce());
+    expect(api.submitAiQuestion).toHaveBeenCalledWith('chat-2', 'Вопрос ОСАГО', expect.any(String));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining('оплату ещё раз'));
+    confirm.mockRestore();
   });
 });

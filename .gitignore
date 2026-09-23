@@ -83,7 +83,7 @@ mailcow.pre-pull-backup-*/
 tools/sber_issuance/local/
 tools/sber_issuance/.local_runs/
 
-# Local insurance RAG assistant state (documents, vectors, chats and logs)
+# Retired local RAG state stays ignored; do not delete user data during migration.
 tools/insurance_assistant/data/
 tools/insurance_assistant/.venv/
 tools/insurance_assistant/web/node_modules/

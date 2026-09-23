@@ -18,6 +18,7 @@ Backend — это одиночный Django-проект, распределё�
   `GET /api/v1/financial_records/` поддерживает фильтры `sales_channel`, `payment_scheduled_date_from`, `payment_scheduled_date_to`, сортировку по `payment_scheduled_date` и поиск. Параметр `search_exclude=true` исключает записи, содержащие строку из `search` (например, `search=черновик&search_exclude=true`). `GET /api/v1/financial_records/export-xlsx/` выгружает XLSX с теми же фильтрами списка.
 - `tasks`: `Task` отслеживает статусы (todo, in_progress, done и др.), приоритеты, ответственных и чек-листы, связанные со сделками. `GET /api/v1/tasks/` поддерживает `active_only=true`, размер страницы до 500 записей и компактный list-ответ с `checklist_count`; полный чек-лист включается параметром `include_checklist=true`.
 - `documents`: `Document` хранит файлы и метаданные, а Open Notebook используется как отдельный источник для библиотечных блокнотов и ответов.
+- `ai_assistant`: общая страховая библиотека, личные чаты и постоянные задания ответов. Файлы сохраняются в CRM `media`, фрагменты и состояния — в PostgreSQL, векторы — в закрытом Qdrant. Ответы генерирует Polza в отдельном worker; локальный Codex для production не используется.
 - `notes`, `chat`, `notifications`: коммуникация и логирование событий в контексте сделки (заметки, чаты, уведомления и отметки прочтения).
 - `users`: роли (`Role`), права (`Permission`), связи (`UserRole`, `RolePermission`) и `AuditLog` фиксируют управление доступом.
 
@@ -51,6 +52,12 @@ Backend — это одиночный Django-проект, распределё�
 - `manage.py` управляет миграциями (`makemigrations`, `migrate`), shell, `loaddata`, `test`, `check --deploy`.
 - Google Drive/OpenAI-интеграции подключаются через env. Для Google Drive поддерживается только OAuth-конфигурация через `GOOGLE_DRIVE_OAUTH_*` и folder id-переменные.
 - `entrypoint.sh` (в Docker) применяет миграции и запускает сервер (gunicorn/uvicorn).
+
+### Страховой ИИ: задания и workers
+
+`POST /api/v1/ai/conversations/{id}/messages/` с `content` и уникальным для попытки `client_request_id` атомарно сохраняет вопрос, пустой ответ и задание; возвращает `202` и ID задания. Повтор той же отправки возвращает прежнее задание без нового платного обращения. `GET .../messages/` показывает сохранённый текст, цитаты, стоимость и этап (`queued`, `searching`, `generating`, `completed`, `failed`, `stopped`, `interrupted`). Интерфейс опрашивает его примерно раз в две секунды и восстанавливает после закрытия вкладки. В одной беседе разрешено только одно активное задание, но другие беседы могут обрабатываться параллельно. Остановить ответ может только владелец. Если worker аварийно завершился после начала работы, ответ и накопленный текст остаются, задание помечается как прерванное, автоматического повторного платного вызова нет. Очередные задания продолжаются после перезапуска.
+
+Production Compose запускает отдельные `python manage.py run_ai_answer_worker` и `python manage.py run_ai_index_worker`; второй не блокирует ответы при обработке больших файлов. Ответный worker по умолчанию обрабатывает до двух разных чатов параллельно (`AI_ANSWER_CONCURRENCY=2`). Для обоих нужны PostgreSQL, `AI_API_KEY`, `AI_BASE_URL`, `AI_ASSISTANT_QDRANT_URL` и одна новая коллекция `AI_ASSISTANT_QDRANT_COLLECTION=crm_insurance_documents_v2`. Модель чата по умолчанию — `AI_ASSISTANT_CHAT_MODEL` (или `AI_MODEL`), эмбеддинги — `AI_ASSISTANT_EMBEDDING_MODEL`. Векторы индексируются через Polza, точные формулировки и номера пунктов ищутся в PostgreSQL. Миграции Django создаются и применяются обычным `manage.py migrate` до старта workers. Прежние локальные документы и чаты не мигрируют; старые volumes сохраняются для отката.
 
 ## Запуск и окружение
 ```bash

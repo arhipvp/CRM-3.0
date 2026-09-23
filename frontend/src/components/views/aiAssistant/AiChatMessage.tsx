@@ -11,17 +11,21 @@ const documentLabel = (value?: AiClassification | null) => {
 
 export function AiChatMessage({
   message,
-  loading,
+  now,
   opening,
   onOpenDocument,
+  onStop,
+  onRetry,
 }: {
   message: AiMessage;
-  loading: boolean;
+  now: number;
   opening: Set<string>;
   onOpenDocument: (
     id: string,
     location?: AiMessage['citations'][number]['location'],
   ) => Promise<void>;
+  onStop: (runId: string) => void;
+  onRetry: (message: AiMessage) => void;
 }) {
   if (message.role === 'user') {
     return (
@@ -33,6 +37,37 @@ export function AiChatMessage({
       </div>
     );
   }
+
+  const run = message.run;
+  const active = run && ['queued', 'searching', 'generating'].includes(run.status);
+  const elapsed = run
+    ? Math.max(
+        0,
+        Math.floor(
+          ((run.finished_at ? Date.parse(run.finished_at) : now) - Date.parse(run.created_at)) /
+            1000,
+        ),
+      )
+    : 0;
+  const elapsedLabel = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`;
+  const statusLabel =
+    run?.stop_requested && active
+      ? 'Останавливаю ответ'
+      : run?.status === 'queued'
+        ? 'В очереди'
+        : run?.status === 'searching'
+          ? 'Ищу подтверждения в документах'
+          : run?.status === 'generating'
+            ? elapsed > 30
+              ? 'Модель продолжает формировать ответ'
+              : 'Модель формирует ответ'
+            : run?.status === 'failed'
+              ? 'Ошибка ответа'
+              : run?.status === 'stopped'
+                ? 'Остановлено'
+                : run?.status === 'interrupted'
+                  ? 'Прервано после перезапуска'
+                  : '';
 
   return (
     <div className="flex items-start gap-2.5">
@@ -53,9 +88,50 @@ export function AiChatMessage({
               </span>
             )}
           </div>
+          {run && run.status !== 'completed' && (
+            <div
+              role="status"
+              className={`mb-2 flex flex-wrap items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs ${active ? 'bg-blue-50 text-blue-800' : 'bg-amber-50 text-amber-900'}`}
+            >
+              {active && (
+                <span
+                  aria-hidden="true"
+                  className="size-2 animate-pulse rounded-full bg-blue-500"
+                />
+              )}
+              <span>{statusLabel}</span>
+              <span>· {elapsedLabel}</span>
+              {run.status !== 'queued' && <span>· найдено фрагментов: {run.found_chunks}</span>}
+              {active && (
+                <button
+                  type="button"
+                  onClick={() => onStop(run.id)}
+                  disabled={run.stop_requested}
+                  className="cursor-pointer font-medium underline hover:text-blue-950 disabled:cursor-wait disabled:opacity-60"
+                >
+                  {run.stop_requested ? 'Останавливаю…' : 'Остановить'}
+                </button>
+              )}
+              {!active && (
+                <button
+                  type="button"
+                  onClick={() => onRetry(message)}
+                  className="cursor-pointer font-medium underline hover:text-amber-950"
+                >
+                  Повторить
+                </button>
+              )}
+            </div>
+          )}
           <p className="whitespace-pre-wrap leading-6 text-slate-800">
-            {message.content || (loading ? 'Подбираю подтверждения в документах…' : '')}
+            {message.content || (active ? 'Ответ появится здесь по мере готовности…' : '')}
           </p>
+          {run?.error && !active && <p className="mt-2 text-xs text-red-700">{run.error}</p>}
+          {run && ['failed', 'stopped', 'interrupted'].includes(run.status) && (
+            <p className="mt-2 text-xs text-amber-800">
+              Повторный запрос может тарифицироваться Polza ещё раз.
+            </p>
+          )}
         </div>
         {message.citations.length > 0 && (
           <div className="border-t border-emerald-100 bg-emerald-50/60 px-4 py-3">
