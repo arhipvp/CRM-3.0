@@ -104,6 +104,7 @@ INSTALLED_APPS = [
     "apps.policies",
     "apps.mailboxes",
     "apps.ai_assistant",
+    "apps.codex_reader",
 ]
 
 MIDDLEWARE = [

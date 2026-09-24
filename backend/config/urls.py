@@ -51,6 +51,7 @@ urlpatterns = [
     path("api/v1/auth/password/", change_password_view, name="change-password"),
     path("api/v1/auth/me/", current_user_view, name="current-user"),
     path("api/v1/ai/", include("apps.ai_assistant.urls")),
+    path("api/v1/codex/", include("apps.codex_reader.urls")),
     path(
         "api/v1/notifications/settings/",
         NotificationSettingsView.as_view(),

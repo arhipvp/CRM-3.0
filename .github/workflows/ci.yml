@@ -217,7 +217,7 @@ jobs:
           COVERAGE_FILE: coverage.core
         run: |
           cd backend
-          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= tests apps/users/tests.py apps/common/tests apps/clients/tests.py
+          pytest -v -n 4 --dist=loadfile --durations=20 --cov=. --cov-report= tests apps/users/tests.py apps/common/tests apps/clients/tests.py apps/codex_reader/tests.py
 
       - name: Upload core coverage data
         uses: actions/upload-artifact@v6
