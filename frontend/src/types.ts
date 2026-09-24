@@ -68,7 +68,7 @@ export interface Quote {
   insuranceCompanyLogoUrl?: string | null;
   insuranceTypeId: string;
   insuranceType: string;
-  sumInsured: number;
+  sumInsured: number | null;
   premium: number;
   deductible?: number | null;
   officialDealer: boolean;

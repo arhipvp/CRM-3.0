@@ -10,7 +10,7 @@ import { FormField } from '../common/forms/FormField';
 export interface QuoteFormValues {
   insuranceCompanyId: string;
   insuranceTypeId: string;
-  sumInsured: number;
+  sumInsured: number | null;
   premium: number;
   deductible?: number | null;
   officialDealer: boolean;
@@ -36,7 +36,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   );
   const [insuranceTypeId, setInsuranceTypeId] = useState(initialValues?.insuranceTypeId ?? '');
   const [sumInsured, setSumInsured] = useState(
-    initialValues ? String(initialValues.sumInsured) : '',
+    initialValues?.sumInsured != null ? String(initialValues.sumInsured) : '',
   );
   const [premium, setPremium] = useState(initialValues ? String(initialValues.premium) : '');
   const [deductible, setDeductible] = useState(
@@ -53,6 +53,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
   const [loadingOptions, setLoadingOptions] = useState(true);
   const [companies, setCompanies] = useState<InsuranceCompany[]>([]);
   const [types, setTypes] = useState<InsuranceType[]>([]);
+  const isOsago = types.find((type) => type.id === insuranceTypeId)?.name.trim() === 'ОСАГО';
 
   useEffect(() => {
     let isMounted = true;
@@ -86,8 +87,8 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!insuranceCompanyId || !insuranceTypeId || !sumInsured || !premium) {
-      setError('Заполните компанию, тип, сумму и премию.');
+    if (!insuranceCompanyId || !insuranceTypeId || (!isOsago && !sumInsured) || !premium) {
+      setError('Заполните компанию, тип, страховую сумму и премию. Для ОСАГО сумма не требуется.');
       return;
     }
 
@@ -98,7 +99,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
       await onSubmit({
         insuranceCompanyId,
         insuranceTypeId,
-        sumInsured: Number(sumInsured),
+        sumInsured: sumInsured.trim() ? Number(sumInsured) : null,
         premium: Number(premium),
         deductible: deductible.trim() ? Number(deductible) : undefined,
         officialDealer,
@@ -152,7 +153,7 @@ export const AddQuoteForm: React.FC<AddQuoteFormProps> = ({
           </select>
         </FormField>
 
-        <FormField label="Страховая сумма, ₽" required htmlFor="quote-sum-insured">
+        <FormField label="Страховая сумма, ₽" required={!isOsago} htmlFor="quote-sum-insured">
           <input
             id="quote-sum-insured"
             type="number"

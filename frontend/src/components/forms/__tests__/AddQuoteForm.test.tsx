@@ -5,7 +5,10 @@ import { AddQuoteForm } from '../AddQuoteForm';
 
 vi.mock('../../../api', () => ({
   fetchInsuranceCompanies: vi.fn().mockResolvedValue([{ id: 'company-1', name: 'Компания 1' }]),
-  fetchInsuranceTypes: vi.fn().mockResolvedValue([{ id: 'type-1', name: 'КАСКО' }]),
+  fetchInsuranceTypes: vi.fn().mockResolvedValue([
+    { id: 'type-1', name: 'КАСКО' },
+    { id: 'type-2', name: 'ОСАГО' },
+  ]),
 }));
 
 describe('AddQuoteForm', () => {
@@ -47,5 +50,29 @@ describe('AddQuoteForm', () => {
         }),
       );
     });
+  });
+
+  it('допускает ОСАГО без единой страховой суммы', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(<AddQuoteForm onSubmit={onSubmit} onCancel={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole('option', { name: 'ОСАГО' })).toBeInTheDocument());
+    fireEvent.change(screen.getByRole('combobox', { name: /страховая компания/i }), {
+      target: { value: 'company-1' },
+    });
+    fireEvent.change(screen.getByRole('combobox', { name: /тип страхования/i }), {
+      target: { value: 'type-2' },
+    });
+    fireEvent.change(screen.getByLabelText(/Премия, ₽/), { target: { value: '4200' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sumInsured: null,
+          premium: 4200,
+        }),
+      ),
+    );
   });
 });

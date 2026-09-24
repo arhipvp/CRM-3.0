@@ -24,7 +24,7 @@ const buildQuote = (overrides: Partial<Quote> = {}): Quote => ({
   insuranceCompanyLogoUrl: overrides.insuranceCompanyLogoUrl ?? null,
   insuranceTypeId: overrides.insuranceTypeId ?? 'type-1',
   insuranceType: overrides.insuranceType ?? 'Каско',
-  sumInsured: overrides.sumInsured ?? 1000000,
+  sumInsured: overrides.sumInsured === undefined ? 1000000 : overrides.sumInsured,
   premium: overrides.premium ?? 50000,
   deductible: overrides.deductible ?? null,
   officialDealer: overrides.officialDealer ?? false,
@@ -82,5 +82,30 @@ describe('QuotesTab', () => {
     expect(within(rows[0]).getByText('Компания 3')).toBeInTheDocument();
     expect(within(rows[1]).getByText('Компания 2')).toBeInTheDocument();
     expect(within(rows[2]).getByText('Компания 1')).toBeInTheDocument();
+  });
+
+  it('показывает расчёт ОСАГО без суммы и открывает ссылку из комментария', () => {
+    render(
+      <QuotesTab
+        selectedDeal={selectedDeal}
+        quotes={[
+          buildQuote({
+            insuranceType: 'ОСАГО',
+            sumInsured: null,
+            comments: 'Pampadu: https://agents.pampadu.ru/app/insurance/osago/test',
+          }),
+        ]}
+        onRequestAddQuote={vi.fn()}
+        onRequestEditQuote={vi.fn()}
+        onDeleteQuote={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const row = screen.getAllByRole('row')[1];
+    expect(within(row).getByText('—')).toBeInTheDocument();
+    expect(within(row).getByRole('link', { name: /agents\.pampadu\.ru/ })).toHaveAttribute(
+      'href',
+      'https://agents.pampadu.ru/app/insurance/osago/test',
+    );
   });
 });

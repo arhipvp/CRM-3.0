@@ -392,7 +392,11 @@ class Quote(SoftDeleteModel):
         blank=True,
     )
     sum_insured = models.DecimalField(
-        max_digits=14, decimal_places=2, help_text="Страховая сумма"
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Страховая сумма",
     )
     premium = models.DecimalField(max_digits=12, decimal_places=2, help_text="Премия")
     deductible = models.DecimalField(

@@ -6,6 +6,8 @@ Backend — это одиночный Django-проект, распределё�
 ### Важные контракты API
 - `GET /api/v1/deals/` и `GET /api/v1/deals/{id}/` по умолчанию возвращают только поля сделки. Вложенные `quotes`, `documents` и `policies` запрашиваются явно: `?embed=quotes,documents,policies`.
 - `GET /api/v1/users/` и `GET /api/v1/audit_logs/` всегда используют ответ пагинации DRF: `{ count, next, previous, results }`; поддерживаются `page` и ограниченный `page_size` (не более 200).
+- `POST /api/v1/codex/write/deals/{id}/notes/` создаёт заметку из `{ "body": "..." }`, а `POST /api/v1/codex/write/deals/{id}/offers/` атомарно сохраняет предложения и итоговую заметку. Оба метода принимают только отдельный ключ записи `crm3w_...` в `Authorization: Bearer` и заголовок `Idempotency-Key` с UUID; повтор того же запроса возвращает прежние ID, а повтор с другим содержимым — `409`. Ключ чтения `crm3_...` не принимает эти методы. Ответ содержит `note_id`, `quote_ids`, `replayed`.
+- Для предложений передаются `platform`, `calculation_url` (HTTPS), `period_start`, `period_end`, `note` и массив `offers` (1–30): `insurance_company`, `insurance_type`, `premium`, `sum_insured`, `status` (`preliminary` или `refined`). Сумма премии положительная; страховая сумма положительная либо `null` только для ОСАГО. Несуществующие наименования страховой компании и вида страхования добавляются в справочники. Заметка получает имя автора `Codex`; у расчёта `seller` остаётся пустым, а комментарий содержит «Создано: Codex» вместе с источником и статусом.
 
 ### Приложения и их назначение
 - `clients`: `Client` содержит имя, телефон, email, дату рождения, заметки и связку с менеджером; служит источником для сделок и полисов.

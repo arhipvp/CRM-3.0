@@ -172,7 +172,7 @@ export const mapQuote = (raw: Record<string, unknown>): Quote => ({
   ),
   insuranceTypeId: toStringValue(raw.insurance_type),
   insuranceType: toStringValue(raw.insurance_type_name ?? raw.insurance_type ?? ''),
-  sumInsured: toNumberValue(raw.sum_insured),
+  sumInsured: toNullableNumber(raw.sum_insured),
   premium: toNumberValue(raw.premium),
   deductible: toNullableNumber(raw.deductible),
   officialDealer: Boolean(raw.official_dealer ?? raw.officialDealer ?? false),

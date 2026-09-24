@@ -364,7 +364,7 @@ export async function createQuote(data: {
   dealId: string;
   insuranceCompanyId: string;
   insuranceTypeId: string;
-  sumInsured: number;
+  sumInsured: number | null;
   premium: number;
   deductible?: number | null;
   officialDealer: boolean;
@@ -400,7 +400,7 @@ export async function updateQuote(
   data: {
     insuranceCompanyId: string;
     insuranceTypeId: string;
-    sumInsured: number;
+    sumInsured: number | null;
     premium: number;
     deductible?: number | null;
     officialDealer: boolean;

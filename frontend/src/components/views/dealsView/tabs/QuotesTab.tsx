@@ -3,6 +3,7 @@ import type { Deal, Quote } from '../../../../types';
 import { formatCurrency, formatDate } from '../helpers';
 import { ColoredLabel } from '../../../common/ColoredLabel';
 import { InsuranceCompanyLogo } from '../../../common/InsuranceCompanyLogo';
+import { LinkifiedText } from '../../../common/LinkifiedText';
 import { TableHeadCell } from '../../../common/TableHeadCell';
 import { DataTableShell } from '../../../common/table/DataTableShell';
 import { EmptyTableState } from '../../../common/table/EmptyTableState';
@@ -81,7 +82,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
     const compareQuotes = (a: Quote, b: Quote) => {
       switch (sortConfig.key) {
         case 'sumInsured':
-          return a.sumInsured - b.sumInsured;
+          return (a.sumInsured ?? -1) - (b.sumInsured ?? -1);
         case 'premium':
           return a.premium - b.premium;
         case 'deductible':
@@ -233,7 +234,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td
                     className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
                   >
-                    {formatCurrency(String(quote.sumInsured))}
+                    {quote.sumInsured == null ? '—' : formatCurrency(String(quote.sumInsured))}
                   </td>
                   <td
                     className={`${TABLE_CELL_CLASS_SM} align-top text-slate-900 whitespace-nowrap ${deletedTextClass}`}
@@ -261,7 +262,7 @@ export const QuotesTab: React.FC<QuotesTabProps> = ({
                   <td
                     className={`${TABLE_CELL_CLASS_SM} align-top text-slate-600 ${deletedTextClass}`}
                   >
-                    {quote.comments || '-'}
+                    <LinkifiedText text={quote.comments} fallback="-" />
                   </td>
                   <td className={`${TABLE_CELL_CLASS_SM} align-top ${deletedTextClass}`}>
                     <ColoredLabel

@@ -19,6 +19,7 @@ from django.test import override_settings
 from rest_framework.test import APITestCase
 
 from .models import CodexReadKey
+from .write_test_cases import CodexWriteApiTests
 
 
 class CodexReadApiTests(APITestCase):

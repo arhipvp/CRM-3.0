@@ -8,8 +8,19 @@ from .views import (
     DealMailboxMessageView,
     DealSectionView,
 )
+from .write_views import CodexNoteCreateView, CodexOffersCreateView
 
 urlpatterns = [
+    path(
+        "write/deals/<uuid:deal_id>/notes/",
+        CodexNoteCreateView.as_view(),
+        name="codex-write-note",
+    ),
+    path(
+        "write/deals/<uuid:deal_id>/offers/",
+        CodexOffersCreateView.as_view(),
+        name="codex-write-offers",
+    ),
     path("deals/", DealListView.as_view(), name="codex-deals"),
     path("deals/<uuid:deal_id>/", DealDetailView.as_view(), name="codex-deal"),
     path(

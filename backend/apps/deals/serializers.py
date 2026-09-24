@@ -21,6 +21,13 @@ User = get_user_model()
 
 
 class QuoteSerializer(serializers.ModelSerializer):
+    sum_insured = serializers.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        required=False,
+        allow_null=True,
+        coerce_to_string=False,
+    )
     deductible = serializers.DecimalField(
         max_digits=12,
         decimal_places=2,
