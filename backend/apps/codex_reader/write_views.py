@@ -49,6 +49,14 @@ class OfferInput(StrictSerializer):
         required=False,
     )
     status = serializers.ChoiceField(choices=("preliminary", "refined"))
+    official_dealer = serializers.BooleanField(required=False)
+    deductible = serializers.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        min_value=Decimal("0"),
+        allow_null=True,
+        required=False,
+    )
 
     def validate(self, attrs):
         if (
@@ -58,6 +66,14 @@ class OfferInput(StrictSerializer):
             raise serializers.ValidationError(
                 {"sum_insured": "Required except for OSAGO."}
             )
+        if attrs["insurance_type"].casefold() == "каско":
+            missing = {}
+            if "official_dealer" not in attrs:
+                missing["official_dealer"] = "Required for KASKO."
+            if attrs.get("deductible") is None:
+                missing["deductible"] = "Required for KASKO."
+            if missing:
+                raise serializers.ValidationError(missing)
         return attrs
 
 
@@ -123,8 +139,6 @@ class CodexWriteView(APIView):
             )
 
     def _save(self, request, deal_id, serializer_class, operation):
-        serializer = serializer_class(data=request.data)
-        serializer.is_valid(raise_exception=True)
         idempotency_key = self._idempotency_key(request)
         request_hash = hashlib.sha256(
             json.dumps(
@@ -151,6 +165,8 @@ class CodexWriteView(APIView):
                         status=409,
                     )
                 return Response({**prior.response, "replayed": True}, status=200)
+            serializer = serializer_class(data=request.data)
+            serializer.is_valid(raise_exception=True)
             deal = Deal.objects.filter(pk=deal_id).first()
             if deal is None:
                 raise Http404
@@ -224,6 +240,8 @@ class CodexOffersCreateView(CodexWriteView):
                 insurance_type=insurance_type,
                 premium=offer["premium"],
                 sum_insured=offer.get("sum_insured"),
+                deductible=offer.get("deductible"),
+                official_dealer=offer.get("official_dealer", False),
                 comments=comments,
             )
             quote.save()

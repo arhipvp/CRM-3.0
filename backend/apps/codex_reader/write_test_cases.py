@@ -1,3 +1,5 @@
+import hashlib
+import json
 import uuid
 from decimal import Decimal
 from unittest.mock import patch
@@ -87,6 +89,83 @@ class CodexWriteApiTests(APITestCase):
         self.assertEqual(Quote.objects.count(), 2)
         self.assertEqual(Note.objects.count(), 1)
         self.assertEqual(CodexWriteRequest.objects.count(), 1)
+
+    def test_kasko_fields_are_saved_and_read_back(self):
+        offer = {
+            **self.payload["offers"][0],
+            "insurance_type": "КАСКО",
+            "official_dealer": True,
+            "deductible": "0.00",
+        }
+        response = self.post(self.offers_url, {**self.payload, "offers": [offer]})
+        self.assertEqual(response.status_code, 201, response.data)
+        quote = Quote.objects.get(pk=response.data["quote_ids"][0])
+        self.assertTrue(quote.official_dealer)
+        self.assertEqual(quote.deductible, Decimal("0.00"))
+
+        _, read_token = CodexReadKey.issue("reader")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {read_token}")
+        read_response = self.client.get(
+            f"/api/v1/codex/deals/{self.deal.id}/sections/quotes/"
+        )
+        self.assertEqual(read_response.status_code, 200)
+        saved = read_response.data["results"][0]
+        self.assertTrue(saved["official_dealer"])
+        self.assertEqual(saved["deductible"], "0.00")
+
+    def test_kasko_requires_verified_dealer_and_deductible(self):
+        base = {**self.payload["offers"][0], "insurance_type": "КАСКО"}
+        variants = (
+            base,
+            {**base, "official_dealer": False},
+            {**base, "deductible": "0.00"},
+            {**base, "official_dealer": True, "deductible": None},
+            {**base, "official_dealer": True, "deductible": "-1.00"},
+        )
+        for offer in variants:
+            with self.subTest(offer=offer):
+                response = self.post(
+                    self.offers_url, {**self.payload, "offers": [offer]}
+                )
+                self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(Quote.objects.count(), 0)
+        self.assertEqual(Note.objects.count(), 0)
+
+    def test_legacy_kasko_request_replays_before_new_validation(self):
+        legacy = {
+            **self.payload,
+            "offers": [{**self.payload["offers"][0], "insurance_type": "КАСКО"}],
+        }
+        request_id = uuid.uuid4()
+        request_hash = hashlib.sha256(
+            json.dumps(
+                {"deal_id": str(self.deal.id), "operation": "offers", "data": legacy},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        company = InsuranceCompany.objects.create(name="Росгосстрах")
+        insurance_type = InsuranceType.objects.create(name="КАСКО")
+        quote = Quote.objects.create(
+            deal=self.deal,
+            insurance_company=company,
+            insurance_type=insurance_type,
+            premium=Decimal("3624.00"),
+        )
+        note = Note.objects.create(deal=self.deal, body="Прежний расчёт")
+        CodexWriteRequest.objects.create(
+            key=self.key,
+            idempotency_key=request_id,
+            request_hash=request_hash,
+            response={"note_id": str(note.id), "quote_ids": [str(quote.id)]},
+        )
+        response = self.post(self.offers_url, legacy, request_id)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertTrue(response.data["replayed"])
+        self.assertEqual(response.data["quote_ids"], [str(quote.id)])
+        self.assertEqual(Quote.objects.count(), 1)
+        self.assertEqual(Note.objects.count(), 1)
 
     def test_note_only_and_no_cross_endpoint_key_reuse(self):
         key = uuid.uuid4()
