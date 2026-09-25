@@ -6,6 +6,7 @@ from .views import (
     DealFilesView,
     DealListView,
     DealMailboxMessageView,
+    DealPassportView,
     DealSectionView,
 )
 from .write_views import CodexNoteCreateView, CodexOffersCreateView
@@ -23,6 +24,11 @@ urlpatterns = [
     ),
     path("deals/", DealListView.as_view(), name="codex-deals"),
     path("deals/<uuid:deal_id>/", DealDetailView.as_view(), name="codex-deal"),
+    path(
+        "deals/<uuid:deal_id>/passport/",
+        DealPassportView.as_view(),
+        name="codex-deal-passport",
+    ),
     path(
         "deals/<uuid:deal_id>/sections/<str:section>/",
         DealSectionView.as_view(),

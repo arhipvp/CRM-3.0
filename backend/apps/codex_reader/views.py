@@ -33,6 +33,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -44,6 +45,7 @@ MAX_PAGE_SIZE = 100
 MAX_FILE_BYTES = 25 * 1024 * 1024
 MAX_RESPONSE_TEXT = 20000
 MAX_FILES = 5000
+MAX_PASSPORT_BYTES = 5 * 1024 * 1024
 SECTIONS = {
     "client",
     "policies",
@@ -69,20 +71,20 @@ def _serialize_value(value):
     return str(value)
 
 
-def _model_data(instance, *, exclude=()):
+def _model_data(instance, *, exclude=(), max_text=MAX_RESPONSE_TEXT):
     data = {}
     truncated_fields = []
     for field in instance._meta.concrete_fields:
         if field.name in exclude:
             continue
         value = getattr(instance, field.attname)
-        if isinstance(value, str) and len(value) > MAX_RESPONSE_TEXT:
-            value = value[:MAX_RESPONSE_TEXT]
+        if max_text is not None and isinstance(value, str) and len(value) > max_text:
+            value = value[:max_text]
             truncated_fields.append(field.name)
-        elif isinstance(value, (dict, list)):
+        elif max_text is not None and isinstance(value, (dict, list)):
             encoded = json.dumps(value, ensure_ascii=False, default=str)
-            if len(encoded) > MAX_RESPONSE_TEXT:
-                value = encoded[:MAX_RESPONSE_TEXT]
+            if len(encoded) > max_text:
+                value = encoded[:max_text]
                 truncated_fields.append(field.name)
         data[field.name] = _serialize_value(value)
     if truncated_fields:
@@ -197,6 +199,82 @@ class DealDetailView(CodexReadView):
         data["client_name"] = deal.client.name
         data["sections"] = sorted(SECTIONS)
         return Response(data)
+
+
+class DealPassportView(CodexReadView):
+    """One bounded, source-preserving snapshot for insurance research."""
+
+    def get(self, request, deal_id):
+        deal = _deal(deal_id)
+        policies = Policy.objects.filter(deal=deal).select_related(
+            "insurance_company", "insurance_type", "mortgage_bank", "client"
+        )
+        quotes = Quote.objects.filter(deal=deal).select_related(
+            "insurance_company", "insurance_type"
+        )
+
+        def named_record(record):
+            item = _model_data(record, max_text=None)
+            item["insurance_company_name"] = (
+                record.insurance_company.name if record.insurance_company else None
+            )
+            item["insurance_type_name"] = (
+                record.insurance_type.name if record.insurance_type else None
+            )
+            return item
+
+        policy_items = []
+        for policy in policies:
+            item = named_record(policy)
+            item["mortgage_bank_name"] = (
+                policy.mortgage_bank.name if policy.mortgage_bank else None
+            )
+            item["client_name"] = policy.client.name if policy.client else None
+            policy_items.append(item)
+
+        warnings = []
+        files_status = "ok"
+        try:
+            files = _catalog(deal)
+            for item in files:
+                item["download_url"] = request.build_absolute_uri(
+                    f"/api/v1/codex/deals/{deal.id}/files/{item['id']}/download/"
+                )
+        except DriveError:
+            files = []
+            files_status = "unavailable"
+            warnings.append("Drive is unavailable; file catalog is incomplete.")
+        except ValueError:
+            files = []
+            files_status = "too_large"
+            warnings.append("File catalog exceeds limit; files cannot be listed.")
+
+        payload = {
+            "schema_version": 1,
+            "generated_at": timezone.now().isoformat(),
+            "deal": _model_data(deal, max_text=None),
+            "client": _model_data(deal.client, max_text=None),
+            "policies": policy_items,
+            "quotes": [named_record(quote) for quote in quotes],
+            "notes": [
+                _model_data(note, max_text=None)
+                for note in Note.objects.filter(deal=deal)
+            ],
+            "files": {"status": files_status, "items": files},
+            "warnings": warnings,
+        }
+        if (
+            len(json.dumps(payload, ensure_ascii=False, default=str).encode("utf-8"))
+            > MAX_PASSPORT_BYTES
+        ):
+            return Response(
+                {
+                    "code": "passport_too_large",
+                    "detail": "Passport exceeds 5 MiB limit; use paginated sections.",
+                },
+                status=413,
+            )
+        return Response(payload)
 
 
 class DealSectionView(CodexReadView):

@@ -5,7 +5,15 @@ from unittest.mock import patch
 
 from apps.chat.models import ChatMessage
 from apps.clients.models import Client
-from apps.deals.models import Deal, DealEvent, InsuranceCompany, InsuranceType, Quote
+from apps.common.drive import DriveError
+from apps.deals.models import (
+    Bank,
+    Deal,
+    DealEvent,
+    InsuranceCompany,
+    InsuranceType,
+    Quote,
+)
 from apps.documents.models import Document
 from apps.finances.models import FinancialRecord, Payment
 from apps.mailboxes.models import Mailbox
@@ -18,7 +26,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from rest_framework.test import APITestCase
 
-from .models import CodexReadKey
+from .models import CodexReadKey, CodexWriteKey
 from .write_test_cases import CodexWriteApiTests as CodexWriteApiTests
 
 
@@ -254,3 +262,120 @@ class CodexReadApiTests(APITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data["results"]), 100)
         self.assertIn("page_size=100", response.data["next"])
+
+    def test_passport_contains_all_records_and_only_deal_files(self):
+        company = InsuranceCompany.objects.create(name="РЕСО")
+        kind = InsuranceType.objects.create(name="Ипотека / жизнь")
+        bank = Bank.objects.create(name="Сбербанк")
+        for number in ("P-1", "P-2"):
+            Policy.objects.create(
+                number=number,
+                deal=self.deal,
+                client=self.customer,
+                insurance_company=company,
+                insurance_type=kind,
+                mortgage_bank=bank,
+            )
+        for premium in ("100.00", "200.00"):
+            Quote.objects.create(
+                deal=self.deal,
+                insurance_company=company,
+                insurance_type=kind,
+                premium=Decimal(premium),
+            )
+        Note.objects.create(deal=self.deal, body="Первая")
+        Note.objects.create(deal=self.deal, body="Вторая")
+        Policy.objects.create(number="FOREIGN", deal=self.other_deal)
+        Quote.objects.create(
+            deal=self.other_deal,
+            insurance_company=company,
+            insurance_type=kind,
+            premium=Decimal("999.00"),
+        )
+        Note.objects.create(deal=self.other_deal, body="Чужая заметка")
+        with tempfile.TemporaryDirectory() as directory, override_settings(
+            MEDIA_ROOT=directory
+        ):
+            own_document = Document.objects.create(
+                deal=self.deal,
+                title="own.pdf",
+                file=SimpleUploadedFile("own.pdf", b"own"),
+            )
+            foreign_document = Document.objects.create(
+                deal=self.other_deal,
+                title="foreign.pdf",
+                file=SimpleUploadedFile("foreign.pdf", b"foreign"),
+            )
+            response = self.client.get(self.base + "passport/")
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertEqual(data["schema_version"], 1)
+        self.assertTrue(data["generated_at"])
+        self.assertEqual(data["deal"]["id"], str(self.deal.id))
+        self.assertEqual(data["client"]["id"], str(self.customer.id))
+        self.assertEqual(len(data["policies"]), 2)
+        self.assertEqual(len(data["quotes"]), 2)
+        self.assertEqual(len(data["notes"]), 2)
+        self.assertEqual(data["policies"][0]["mortgage_bank_name"], "Сбербанк")
+        self.assertEqual(data["quotes"][0]["insurance_company_name"], "РЕСО")
+        self.assertEqual(data["files"]["status"], "ok")
+        self.assertEqual(
+            [item["id"] for item in data["files"]["items"]], [f"l_{own_document.id}"]
+        )
+        self.assertIn("/download/", data["files"]["items"][0]["download_url"])
+        self.assertNotIn(str(foreign_document.id), str(data))
+        self.assertNotIn("Чужая заметка", str(data))
+
+    def test_passport_closed_deleted_and_key_scope(self):
+        self.deal.status = Deal.DealStatus.WON
+        self.deal.save(update_fields=["status"])
+        url = self.base + "passport/"
+        self.assertEqual(self.client.get(url).status_code, 200)
+        self.assertEqual(self.client.post(url, {}).status_code, 405)
+        self.client.credentials(HTTP_AUTHORIZATION="Bearer invalid")
+        self.assertEqual(self.client.get(url).status_code, 403)
+        _, write_token = CodexWriteKey.issue("write-test")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {write_token}")
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
+        self.key.revoke()
+        self.assertEqual(self.client.get(url).status_code, 403)
+        self.key, self.token = CodexReadKey.issue("new-test")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.token}")
+        self.deal.delete()
+        self.assertEqual(self.client.get(url).status_code, 404)
+
+    @patch(
+        "apps.codex_reader.views.build_drive_file_tree_map",
+        side_effect=DriveError("unavailable"),
+    )
+    def test_passport_drive_failure_returns_data_and_warning(self, unused_tree):
+        self.deal.drive_folder_id = "deal-folder"
+        self.deal.save(update_fields=["drive_folder_id"])
+        Note.objects.create(deal=self.deal, body="Retained")
+        response = self.client.get(self.base + "passport/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["files"], {"status": "unavailable", "items": []})
+        self.assertTrue(response.data["warnings"])
+        self.assertEqual(response.data["notes"][0]["body"], "Retained")
+
+    @patch("apps.codex_reader.views.MAX_PASSPORT_BYTES", 100)
+    def test_passport_size_limit_is_explicit(self):
+        response = self.client.get(self.base + "passport/")
+        self.assertEqual(response.status_code, 413)
+        self.assertEqual(response.data["code"], "passport_too_large")
+
+    def test_passport_does_not_truncate_fields_below_aggregate_limit(self):
+        body = "Д" * 21000
+        Note.objects.create(deal=self.deal, body=body)
+        response = self.client.get(self.base + "passport/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["notes"][0]["body"], body)
+        self.assertNotIn("_truncated_fields", response.data["notes"][0])
+
+    @patch("apps.codex_reader.views._catalog", side_effect=ValueError("too many"))
+    def test_passport_excess_file_catalog_is_explicit(self, unused_catalog):
+        response = self.client.get(self.base + "passport/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["files"], {"status": "too_large", "items": []})
+        self.assertTrue(response.data["warnings"])
