@@ -18,7 +18,7 @@ describe('DealTabs', () => {
     expect(workTab).toHaveAttribute('aria-selected', 'false');
     expect(overviewTab).toHaveAttribute('tabindex', '0');
     expect(workTab).toHaveAttribute('tabindex', '-1');
-    expect(screen.getAllByRole('tab')).toHaveLength(5);
+    expect(screen.getAllByRole('tab')).toHaveLength(7);
     fireEvent.click(workTab);
     expect(onChange).toHaveBeenCalledWith('tasks');
   });
@@ -29,8 +29,8 @@ describe('DealTabs', () => {
 
     const overviewTab = screen.getByRole('tab', { name: 'Обзор' });
     fireEvent.keyDown(overviewTab, { key: 'ArrowRight' });
-    expect(onChange).toHaveBeenCalledWith('tasks');
-    expect(screen.getByRole('tab', { name: 'Работа' })).toHaveFocus();
+    expect(onChange).toHaveBeenCalledWith('data_people');
+    expect(screen.getByRole('tab', { name: 'Данные' })).toHaveFocus();
 
     fireEvent.keyDown(overviewTab, { key: 'End' });
     expect(onChange).toHaveBeenLastCalledWith('chat');

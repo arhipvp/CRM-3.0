@@ -181,6 +181,9 @@ export const AppOverlayShell: React.FC<AppOverlayShellProps> = ({
             phone: editingClient.phone ?? '',
             email: editingClient.email ?? '',
             birthDate: editingClient.birthDate ?? '',
+            sex: editingClient.sex,
+            birthPlace: editingClient.birthPlace,
+            registrationAddress: editingClient.registrationAddress,
             notes: editingClient.notes ?? '',
           }}
           onSubmit={handleUpdateClient}

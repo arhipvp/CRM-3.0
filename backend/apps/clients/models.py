@@ -26,6 +26,11 @@ class Client(SoftDeleteModel):
         null=True,
         help_text="Client email address",
     )
+    sex = models.CharField(
+        max_length=10, choices=[("male", "Мужской"), ("female", "Женский")], blank=True
+    )
+    birth_place = models.CharField(max_length=255, blank=True)
+    registration_address = models.TextField(blank=True)
     birth_date = models.DateField(null=True, blank=True, help_text="Дата рождения")
     notes = models.TextField(blank=True, help_text="Примечание о клиенте")
     is_counterparty = models.BooleanField(

@@ -364,6 +364,27 @@ class DealEvent(models.Model):
 class Quote(SoftDeleteModel):
     """Расчет страхового продукта, подготовленный по сделке."""
 
+    insurance_request = models.ForeignKey(
+        "insurance_requests.InsuranceRequest",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="quotes",
+    )
+    request_version = models.ForeignKey(
+        "insurance_requests.RequestVersion",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="quotes",
+    )
+    request_variant = models.ForeignKey(
+        "insurance_requests.RequestVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="quotes",
+    )
     deal = models.ForeignKey(
         "deals.Deal", related_name="quotes", on_delete=models.CASCADE
     )

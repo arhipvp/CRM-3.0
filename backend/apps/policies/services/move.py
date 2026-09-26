@@ -22,6 +22,10 @@ def move_policy_to_deal(policy: Policy, target_deal: Deal, user) -> Policy:
         raise PermissionDenied("Только продавец исходной сделки может перенести полис.")
     if target_deal.pk == source_deal.pk:
         raise ValidationError({"deal": "Полис уже находится в выбранной сделке."})
+    if policy.insurance_request_id:
+        raise ValidationError(
+            {"insurance_request": "Перед переносом снимите связь полиса с заявкой."}
+        )
 
     if policy.drive_folder_id:
         target_folder_id = ensure_deal_folder(target_deal)

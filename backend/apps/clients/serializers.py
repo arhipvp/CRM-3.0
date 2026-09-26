@@ -1,9 +1,15 @@
+from django.utils import timezone
 from rest_framework import serializers
 
 from .models import Client
 
 
 class ClientSerializer(serializers.ModelSerializer):
+    def validate_birth_date(self, value):
+        if value and value > timezone.localdate():
+            raise serializers.ValidationError("Дата рождения не может быть в будущем.")
+        return value
+
     deal_count = serializers.IntegerField(read_only=True)
     referred_by = serializers.PrimaryKeyRelatedField(
         queryset=Client.objects.with_deleted(), required=False, allow_null=True
@@ -59,6 +65,10 @@ class ClientMergeSerializer(serializers.Serializer):
             required=False, allow_blank=True, allow_null=True
         )
         notes = serializers.CharField(required=False, allow_blank=True)
+        current_passport_id = serializers.CharField(required=False, allow_blank=False)
+        current_driver_license_id = serializers.CharField(
+            required=False, allow_blank=False
+        )
 
     target_client_id = serializers.UUIDField(
         help_text="ID клиента, в который будут перенесены данные."

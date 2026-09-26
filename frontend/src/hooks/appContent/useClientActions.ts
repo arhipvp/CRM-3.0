@@ -89,7 +89,12 @@ export const useClientActions = ({
   );
   const [isClientMergePreviewConfirmed, setIsClientMergePreviewConfirmed] = useState(false);
   const [clientMergeStep, setClientMergeStep] = useState<'select' | 'preview'>('select');
-  const [clientMergeFieldOverrides, setClientMergeFieldOverrides] = useState({
+  const [clientMergeFieldOverrides, setClientMergeFieldOverrides] = useState<
+    typeof EMPTY_CLIENT_MERGE_FIELDS & {
+      current_passport_id?: string;
+      current_driver_license_id?: string;
+    }
+  >({
     ...EMPTY_CLIENT_MERGE_FIELDS,
   });
   const [clientMergeSession, setClientMergeSession] = useState<ClientMergeSessionStatus | null>(
@@ -477,6 +482,12 @@ export const useClientActions = ({
           phone: clientMergeFieldOverrides.phone,
           email: clientMergeFieldOverrides.email || null,
           notes: clientMergeFieldOverrides.notes,
+          ...(clientMergeFieldOverrides.current_passport_id
+            ? { current_passport_id: clientMergeFieldOverrides.current_passport_id }
+            : {}),
+          ...(clientMergeFieldOverrides.current_driver_license_id
+            ? { current_driver_license_id: clientMergeFieldOverrides.current_driver_license_id }
+            : {}),
         },
       });
       window.localStorage.setItem(CLIENT_MERGE_SESSION_STORAGE_KEY, session.id);
@@ -496,6 +507,8 @@ export const useClientActions = ({
     }
   }, [
     clientMergeFieldOverrides.email,
+    clientMergeFieldOverrides.current_passport_id,
+    clientMergeFieldOverrides.current_driver_license_id,
     clientMergeFieldOverrides.name,
     clientMergeFieldOverrides.notes,
     clientMergeFieldOverrides.phone,

@@ -10,6 +10,8 @@ type ClientMergeFieldOverrides = {
   phone: string;
   email: string;
   notes: string;
+  current_passport_id?: string;
+  current_driver_license_id?: string;
 };
 
 type ClientMergeStep = 'select' | 'preview';
@@ -127,6 +129,33 @@ export const ClientMergeModal: React.FC<ClientMergeModalProps> = ({
         {mergeStep === 'preview' && mergePreview && (
           <div className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <p className="text-sm font-semibold text-slate-900">Предпросмотр объединения</p>
+            {mergePreview.documentConflicts?.map((conflict) => {
+              const field =
+                conflict.kind === 'passport' ? 'current_passport_id' : 'current_driver_license_id';
+              return (
+                <label key={conflict.kind} className="block text-sm text-slate-700">
+                  {conflict.kind === 'passport'
+                    ? 'Актуальный паспорт после объединения'
+                    : 'Актуальное ВУ после объединения'}
+                  <select
+                    required
+                    value={fieldOverrides[field] ?? ''}
+                    disabled={isMergingClients || Boolean(mergeSession)}
+                    onChange={(event) =>
+                      onFieldOverridesChange({ ...fieldOverrides, [field]: event.target.value })
+                    }
+                    className="mt-1 w-full rounded-xl border border-slate-200 bg-white px-3 py-2"
+                  >
+                    <option value="">Выберите документ</option>
+                    {conflict.documents.map((doc) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              );
+            })}
             <div className="grid grid-cols-1 gap-2 text-sm text-slate-700 md:grid-cols-2">
               <p>Сделок к переносу: {String(mergePreview.movedCounts?.deals ?? 0)}</p>
               <p>Полисов к переносу: {String(mergePreview.movedCounts?.policies_unique ?? 0)}</p>

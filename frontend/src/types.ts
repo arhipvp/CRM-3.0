@@ -41,6 +41,9 @@ export interface Client {
   phone?: string;
   email?: string | null;
   birthDate?: string | null;
+  sex?: string;
+  birthPlace?: string;
+  registrationAddress?: string;
   notes?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -417,6 +420,10 @@ export interface ClientMergeSessionStatus {
 }
 
 export interface ClientMergePreviewResponse {
+  documentConflicts?: Array<{
+    kind: 'passport' | 'driver_license';
+    documents: Array<{ id: string; client_id: string; label: string }>;
+  }>;
   targetClientId: string;
   sourceClientIds: string[];
   includeDeleted: boolean;

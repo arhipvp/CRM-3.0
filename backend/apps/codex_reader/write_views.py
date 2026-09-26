@@ -36,6 +36,8 @@ class NoteInput(StrictSerializer):
 
 
 class OfferInput(StrictSerializer):
+    request_variant = serializers.UUIDField(required=False)
+    request_version = serializers.IntegerField(required=False, min_value=1)
     insurance_company = serializers.CharField(max_length=255, trim_whitespace=True)
     insurance_type = serializers.CharField(max_length=255, trim_whitespace=True)
     premium = serializers.DecimalField(
@@ -59,6 +61,10 @@ class OfferInput(StrictSerializer):
     )
 
     def validate(self, attrs):
+        if ("request_variant" in attrs) != ("request_version" in attrs):
+            raise serializers.ValidationError(
+                {"request_variant": "Variant and version must be supplied together."}
+            )
         if (
             attrs.get("sum_insured") is None
             and attrs["insurance_type"].casefold() != "осаго"
@@ -197,6 +203,7 @@ class CodexOffersCreateView(CodexWriteView):
     def _create(self, deal, data):
         quote_ids = []
         for offer in data["offers"]:
+            links = self._request_links(deal, data, offer)
             company = InsuranceCompany.objects.filter(
                 name__iexact=offer["insurance_company"]
             ).first()
@@ -243,9 +250,89 @@ class CodexOffersCreateView(CodexWriteView):
                 deductible=offer.get("deductible"),
                 official_dealer=offer.get("official_dealer", False),
                 comments=comments,
+                **links,
             )
             quote.save()
+            if links:
+                variant = links["request_variant"]
+                variant.status = "quoted"
+                variant.explanation = ""
+                variant.save(update_fields=["status", "explanation", "updated_at"])
             quote_ids.append(str(quote.id))
         note = Note(deal=deal, body=data["note"], author_name="Codex")
         note.save()
         return {"note_id": str(note.id), "quote_ids": quote_ids}
+
+    def _request_links(self, deal, data, offer):
+        if "request_variant" not in offer:
+            return {}
+        from apps.insurance_requests.models import InsuranceRequest, RequestVariant
+        from apps.insurance_requests.quote_links import validate_quote_links
+
+        variant = RequestVariant.objects.filter(pk=offer["request_variant"]).first()
+        if variant is None:
+            raise serializers.ValidationError({"request_variant": "Variant not found."})
+        # Same lock order as editing a request: request before variant.
+        locked = (
+            InsuranceRequest.objects.select_for_update()
+            .filter(pk=variant.insurance_request_id)
+            .first()
+        )
+        if locked is None:
+            raise serializers.ValidationError(
+                {"request_variant": "Request is unavailable."}
+            )
+        variant = RequestVariant.objects.select_related(
+            "insurance_request", "request_version", "insurance_company", "platform"
+        ).get(pk=variant.pk)
+        if variant.request_version_id != offer["request_version"]:
+            raise serializers.ValidationError(
+                {"request_version": "Version does not match variant."}
+            )
+        application = variant.insurance_request
+        if variant.platform.deleted_at or not variant.platform.is_current:
+            raise serializers.ValidationError({"platform": "Platform is unavailable."})
+        if (
+            variant.insurance_company.name.casefold()
+            != offer["insurance_company"].casefold()
+        ):
+            raise serializers.ValidationError(
+                {"insurance_company": "Company does not match variant."}
+            )
+        if (
+            application.insurance_type.name.casefold()
+            != offer["insurance_type"].casefold()
+        ):
+            raise serializers.ValidationError(
+                {"insurance_type": "Type does not match request."}
+            )
+        if variant.platform.name.casefold() != data["platform"].casefold():
+            raise serializers.ValidationError(
+                {"platform": "Platform does not match variant."}
+            )
+        snapshot = variant.request_version.snapshot
+        if any(
+            snapshot.get(field) != data[payload_field].isoformat()
+            for field, payload_field in (
+                ("start_date", "period_start"),
+                ("end_date", "period_end"),
+            )
+        ):
+            raise serializers.ValidationError(
+                {"period_start": "Period does not match request."}
+            )
+        result = validate_quote_links(
+            {
+                "deal": deal,
+                "request_variant": variant,
+                "insurance_company": variant.insurance_company,
+                "insurance_type": application.insurance_type,
+                "sum_insured": offer.get("sum_insured"),
+                "deductible": offer.get("deductible"),
+                "official_dealer": offer.get("official_dealer"),
+            }
+        )
+        return {
+            field: result[field]
+            for field in ("insurance_request", "request_version", "request_variant")
+        }

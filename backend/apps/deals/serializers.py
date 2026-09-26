@@ -54,6 +54,9 @@ class QuoteSerializer(serializers.ModelSerializer):
         fields = (
             "id",
             "deal",
+            "insurance_request",
+            "request_version",
+            "request_variant",
             "seller",
             "insurance_company",
             "insurance_type",
@@ -72,6 +75,20 @@ class QuoteSerializer(serializers.ModelSerializer):
             "deleted_at",
         )
         read_only_fields = ("id", "created_at", "updated_at", "deleted_at")
+
+    def validate(self, attrs):
+        from apps.deals.permissions import can_modify_deal
+        from apps.insurance_requests.quote_links import validate_quote_links
+        from rest_framework.exceptions import PermissionDenied
+
+        attrs = validate_quote_links(attrs, self.instance)
+        if attrs.get("insurance_request"):
+            request = self.context.get("request")
+            if request is not None and not can_modify_deal(
+                request.user, attrs["insurance_request"].deal
+            ):
+                raise PermissionDenied("Нет прав на изменение заявки этой сделки.")
+        return attrs
 
     def get_seller_name(self, obj):
         seller = getattr(obj, "seller", None)

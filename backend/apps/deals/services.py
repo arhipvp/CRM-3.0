@@ -20,6 +20,12 @@ from apps.common.drive import (
 )
 from apps.documents.models import Document
 from apps.finances.models import Payment
+from apps.insurance_requests.models import (
+    DealParticipant,
+    InsuranceRequest,
+    Mortgage,
+    Vehicle,
+)
 from apps.notes.models import Note
 from apps.policies.models import Policy
 from apps.tasks.models import Task
@@ -365,6 +371,9 @@ class DealMergeService:
         ("payments", Payment),
         ("quotes", Quote),
         ("chat_messages", ChatMessage),
+        ("vehicles", Vehicle),
+        ("mortgages", Mortgage),
+        ("insurance_requests", InsuranceRequest),
     )
 
     def __init__(
@@ -447,6 +456,11 @@ class DealMergeService:
                 }
                 for record in queryset.values("id", "deleted_at")[:200]
             ]
+        moved_counts["participants"] = (
+            self._manager_for(DealParticipant)
+            .filter(deal_id__in=self._all_merge_ids)
+            .count()
+        )
 
         merged_pinned_user_ids = set(
             DealPin.objects.filter(deal_id__in=self._all_merge_ids).values_list(
@@ -520,6 +534,17 @@ class DealMergeService:
 
         moved_counts: dict[str, int] = {}
 
+        if not self.include_deleted and any(
+            model.objects.with_deleted()
+            .filter(deal_id__in=self._all_merge_ids)
+            .exists()
+            for model in (DealParticipant, Vehicle, Mortgage, InsuranceRequest)
+        ):
+            raise ValueError(
+                "Для объединения сделок со структурированными данными включите перенос удалённых записей. "
+                "Это необходимо для сохранения связей заявок, объектов и участников."
+            )
+
         # Drive-first: если упадем на Drive, транзакция БД не стартует.
         self._prepare_drive_folders(self.target_deal.client)
 
@@ -556,6 +581,8 @@ class DealMergeService:
                 moved_counts[alias] = manager.filter(
                     deal_id__in=self._all_merge_ids
                 ).update(deal=result_deal)
+
+            moved_counts["participants"] = self._move_participants(result_deal)
 
             self._copy_manual_deadline_events(result_deal)
             sync_manual_expected_close_from_events(result_deal.id)
@@ -616,6 +643,29 @@ class DealMergeService:
             "moved_counts": moved_counts,
             "warnings": list(self._warnings),
         }
+
+    def _move_participants(self, result_deal):
+        # The deal post-save signal creates a default member. Preserve the actual
+        # source memberships, including an explicitly removed main client.
+        DealParticipant.objects.filter(deal=result_deal).delete()
+        count = 0
+        for participant in (
+            self._manager_for(DealParticipant)
+            .filter(deal_id__in=self._all_merge_ids)
+            .order_by("created_at", "id")
+        ):
+            existing = DealParticipant.objects.filter(
+                deal=result_deal, client_id=participant.client_id
+            ).first()
+            if existing and participant.deleted_at is None:
+                if participant.is_current and not existing.is_current:
+                    existing.is_current = True
+                    existing.save(update_fields=["is_current", "updated_at"])
+                participant.delete()
+            participant.deal = result_deal
+            participant.save()
+            count += 1
+        return count
 
     def _copy_manual_deadline_events(self, result_deal: Deal) -> None:
         source_events = list(

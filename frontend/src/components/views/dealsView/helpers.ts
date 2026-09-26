@@ -24,6 +24,10 @@ export const closedDealStatuses: DealStatus[] = ['won', 'lost'];
 
 export const DEAL_TABS = [
   { id: 'overview', label: 'Обзор' },
+  { id: 'data_people', label: 'Люди' },
+  { id: 'data_vehicles', label: 'Машины' },
+  { id: 'data_mortgages', label: 'Ипотека' },
+  { id: 'requests', label: 'Заявки' },
   { id: 'tasks', label: 'Задачи' },
   { id: 'quotes', label: 'Расчёты' },
   { id: 'recognition', label: 'Распознавание полиса' },
@@ -41,6 +45,8 @@ export const isDealTabId = (value: string | null | undefined): value is DealTabI
 
 export const DEAL_TAB_GROUPS = [
   { id: 'overview', label: 'Обзор', tabs: ['overview'] },
+  { id: 'data', label: 'Данные', tabs: ['data_people', 'data_vehicles', 'data_mortgages'] },
+  { id: 'requests', label: 'Заявки', tabs: ['requests'] },
   { id: 'work', label: 'Работа', tabs: ['tasks', 'quotes'] },
   { id: 'policies', label: 'Полисы и финансы', tabs: ['policies'] },
   { id: 'documents', label: 'Документы', tabs: ['files', 'recognition'] },

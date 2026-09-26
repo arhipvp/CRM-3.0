@@ -33,6 +33,14 @@ const OsagoCalculationTab = lazy(async () => {
   const module = await import('./tabs/OsagoCalculationTab');
   return { default: module.OsagoCalculationTab };
 });
+const InsuranceDataTab = lazy(async () => {
+  const module = await import('./tabs/InsuranceDataTab');
+  return { default: module.InsuranceDataTab };
+});
+const InsuranceRequestsTab = lazy(async () => {
+  const module = await import('./tabs/InsuranceRequestsTab');
+  return { default: module.InsuranceRequestsTab };
+});
 const TabLoadingFallback = () => <div className="py-8 text-sm text-slate-500">Загрузка...</div>;
 
 interface DealDetailsPanelTabContentProps {
@@ -71,6 +79,33 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
   activityProps,
 }) => {
   switch (activeTab) {
+    case 'data_people':
+    case 'data_vehicles':
+    case 'data_mortgages':
+      return calculationTabProps.selectedDeal ? (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <InsuranceDataTab
+            key={`${calculationTabProps.selectedDeal.id}-${activeTab}`}
+            dealId={calculationTabProps.selectedDeal.id}
+            section={
+              activeTab === 'data_people'
+                ? 'people'
+                : activeTab === 'data_vehicles'
+                  ? 'vehicles'
+                  : 'mortgages'
+            }
+          />
+        </Suspense>
+      ) : null;
+    case 'requests':
+      return calculationTabProps.selectedDeal ? (
+        <Suspense fallback={<TabLoadingFallback />}>
+          <InsuranceRequestsTab
+            key={calculationTabProps.selectedDeal.id}
+            dealId={calculationTabProps.selectedDeal.id}
+          />
+        </Suspense>
+      ) : null;
     case 'overview':
       return (
         <div className="space-y-6">

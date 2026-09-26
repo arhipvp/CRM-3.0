@@ -2,6 +2,7 @@ import re
 
 from apps.clients.models import Client
 from apps.deals.models import Bank, Deal, InsuranceCompany, InsuranceType, SalesChannel
+from apps.insurance_requests.models import InsuranceRequest
 from rest_framework import serializers
 
 from .models import Policy, PolicyIssuanceExecution
@@ -82,6 +83,7 @@ class PolicySerializer(serializers.ModelSerializer):
             "loan_agreement_number",
             "deal",
             "deal_title",
+            "insurance_request",
             "client",
             "client_name",
             "insured_client",
@@ -213,6 +215,9 @@ class PolicySerializer(serializers.ModelSerializer):
         return PolicyIssuanceExecutionStatusSerializer(execution).data
 
     def validate(self, attrs):
+        from apps.insurance_requests.quote_links import validate_policy_link
+
+        attrs = validate_policy_link(attrs, self.instance)
         attrs = attrs.copy()
         client = attrs.get("client") if "client" in attrs else None
         insured_client = (
@@ -308,6 +313,9 @@ class PolicyDraftPaymentSerializer(serializers.Serializer):
 
 
 class PolicyDraftSerializer(serializers.Serializer):
+    insurance_request = serializers.PrimaryKeyRelatedField(
+        queryset=InsuranceRequest.objects.all(), required=False, allow_null=True
+    )
     deal = serializers.PrimaryKeyRelatedField(
         queryset=Deal.objects.filter(deleted_at__isnull=True),
         required=False,

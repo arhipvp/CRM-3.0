@@ -102,6 +102,10 @@ class DealMergeServiceTestCase(TestCase):
                 "payments": 1,
                 "quotes": 1,
                 "chat_messages": 1,
+                "vehicles": 0,
+                "mortgages": 0,
+                "insurance_requests": 0,
+                "participants": 2,
                 "deal_pins": 0,
                 "deal_viewers": 0,
             },
@@ -608,6 +612,14 @@ class DealMergeAPITestCase(AuthenticatedAPITestCase):
         self.assertEqual(
             str(response.data["result_deal"]["client"]), str(self.client_obj.id)
         )
+
+    def test_merge_rejects_excluding_deleted_structured_data(self):
+        self.authenticate(self.seller)
+        payload = self._payload([self.source])
+        payload["include_deleted"] = False
+        response = self.api_client.post("/api/v1/deals/merge/", payload, format="json")
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("include_deleted", response.data)
 
     def test_merge_requires_same_client(self):
         other_client = Client.objects.create(name="Other")

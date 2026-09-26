@@ -65,6 +65,8 @@ class DealMergeMixin:
                 actor=actor,
                 include_deleted=include_deleted,
             ).merge()
+        except ValueError as exc:
+            raise ValidationError({"include_deleted": str(exc)}) from exc
         except DriveError as exc:
             return Response(
                 {

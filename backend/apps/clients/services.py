@@ -325,8 +325,113 @@ class ClientMergeService:
                 },
             },
             "drive_plan": drive_plan,
+            "document_conflicts": self.document_conflicts(),
             "warnings": warnings,
         }
+
+    def document_conflicts(self):
+        from apps.insurance_requests.models import ClientPassport, DriverLicense
+
+        result = []
+        ids = [self.target_client.pk, *[c.pk for c in self.source_clients]]
+        for kind, model in (
+            ("passport", ClientPassport),
+            ("driver_license", DriverLicense),
+        ):
+            docs = list(
+                model.objects.filter(client_id__in=ids, is_current=True).select_related(
+                    "client"
+                )
+            )
+            if len(docs) > 1:
+                result.append(
+                    {
+                        "kind": kind,
+                        "documents": [
+                            {
+                                "id": str(doc.pk),
+                                "client_id": str(doc.client_id),
+                                "label": f"{doc.client.name}: {doc.series} {doc.number}",
+                            }
+                            for doc in docs
+                        ],
+                    }
+                )
+        return result
+
+    def validate_document_choices(self):
+        from apps.insurance_requests.models import ClientPassport, DriverLicense
+
+        ids = [self.target_client.pk, *[c.pk for c in self.source_clients]]
+        for kind, model in (
+            ("passport", ClientPassport),
+            ("driver_license", DriverLicense),
+        ):
+            docs = list(model.objects.filter(client_id__in=ids, is_current=True))
+            chosen = self.field_overrides.get(f"current_{kind}_id")
+            if chosen and str(chosen) not in {str(doc.pk) for doc in docs}:
+                raise ValueError(
+                    "Выбранный актуальный документ не принадлежит объединяемым клиентам или уже изменён."
+                )
+            if len(docs) > 1 and not chosen:
+                raise ValueError(
+                    "Выберите актуальный паспорт и ВУ в предпросмотре объединения."
+                )
+
+    def _move_insurance_data(self):
+        from apps.insurance_requests.models import (
+            ClientPassport,
+            DealParticipant,
+            DriverLicense,
+            InsuranceRequest,
+        )
+
+        source_ids = [c.pk for c in self.source_clients]
+        all_ids = [self.target_client.pk, *source_ids]
+        self.validate_document_choices()
+        for kind, model in (
+            ("passport", ClientPassport),
+            ("driver_license", DriverLicense),
+        ):
+            current = list(
+                model.objects.filter(
+                    client_id__in=all_ids, is_current=True
+                ).values_list("pk", flat=True)
+            )
+            chosen = self.field_overrides.get(f"current_{kind}_id") or (
+                str(current[0]) if current else None
+            )
+            model.objects.filter(client_id__in=all_ids, is_current=True).update(
+                is_current=False
+            )
+            model.objects.with_deleted().filter(client_id__in=source_ids).update(
+                client=self.target_client
+            )
+            if chosen:
+                model.objects.filter(pk=chosen).update(is_current=True)
+        for participant in (
+            DealParticipant.objects.with_deleted()
+            .filter(client_id__in=source_ids)
+            .order_by("created_at")
+        ):
+            existing = DealParticipant.objects.filter(
+                deal_id=participant.deal_id, client=self.target_client
+            ).first()
+            if existing and participant.deleted_at is None:
+                if participant.is_current and not existing.is_current:
+                    existing.is_current = True
+                    existing.save(update_fields=["is_current", "updated_at"])
+                participant.deleted_at = timezone.now()
+            participant.client = self.target_client
+            participant.save()
+        requests = InsuranceRequest.objects.with_deleted()
+        for role in ("policyholder", "owner", "borrower", "insured_person"):
+            requests.filter(**{f"{role}_id__in": source_ids}).update(
+                **{role: self.target_client}
+            )
+        for request in requests.filter(drivers__id__in=source_ids).distinct():
+            request.drivers.add(self.target_client)
+            request.drivers.remove(*source_ids)
 
     def _apply_field_overrides(self) -> None:
         name = self.field_overrides.get("name")
@@ -421,6 +526,7 @@ class ClientMergeService:
 
     def merge(self, *, sync_drive: bool = True) -> dict:
         self.resolve_referred_by()
+        self.validate_document_choices()
         self._apply_field_overrides()
 
         deal_manager = self._deal_manager()
@@ -443,25 +549,24 @@ class ClientMergeService:
         with transaction.atomic():
             self.target_client.referred_by_id = self.resolve_referred_by(lock=True)
             self.target_client.save()
+            self._move_insurance_data()
 
             for source in self.source_clients:
                 source_deal_qs = deal_manager.filter(client_id=source.id)
-                source_deal_ids = list(source_deal_qs.values_list("id", flat=True))
                 deals_moved = source_deal_qs.update(client=self.target_client)
                 moved_counts["deals"] += deals_moved
 
                 updated_policy_ids: set[str] = set()
-                if source_deal_ids:
-                    deal_policy_ids = list(
-                        policy_manager.filter(deal_id__in=source_deal_ids).values_list(
-                            "id", flat=True
-                        )
+                primary_policy_ids = list(
+                    policy_manager.filter(client_id=source.id).values_list(
+                        "id", flat=True
                     )
-                    if deal_policy_ids:
-                        policy_manager.filter(id__in=deal_policy_ids).update(
-                            client=self.target_client
-                        )
-                        updated_policy_ids.update(deal_policy_ids)
+                )
+                if primary_policy_ids:
+                    policy_manager.filter(id__in=primary_policy_ids).update(
+                        client=self.target_client
+                    )
+                    updated_policy_ids.update(primary_policy_ids)
 
                 insured_policy_ids = list(
                     policy_manager.filter(insured_client_id=source.id).values_list(
@@ -526,9 +631,13 @@ class ClientMergeSessionService:
         field_overrides: dict,
         preview_snapshot_id: str = "",
     ) -> ClientMergeSession:
-        ClientMergeService(
-            target_client=target_client, source_clients=source_clients
-        ).resolve_referred_by()
+        service = ClientMergeService(
+            target_client=target_client,
+            source_clients=source_clients,
+            field_overrides=field_overrides,
+        )
+        service.resolve_referred_by()
+        service.validate_document_choices()
         session = ClientMergeSession(
             target_client_id=target_client.id,
             source_client_ids=[str(client.id) for client in source_clients],

@@ -16,6 +16,13 @@ class Policy(SoftDeleteModel):
         EXPIRED = "expired", "Expired"
         CANCELED = "canceled", "Canceled"
 
+    insurance_request = models.ForeignKey(
+        "insurance_requests.InsuranceRequest",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="policies",
+    )
     number = models.CharField(max_length=50, help_text="Policy number")
     insurance_company = models.ForeignKey(
         "deals.InsuranceCompany",

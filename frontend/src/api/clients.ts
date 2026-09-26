@@ -161,6 +161,9 @@ export async function createClient(data: {
   referredBy?: string | null;
   phone?: string;
   birthDate?: string | null;
+  sex?: string;
+  birthPlace?: string;
+  registrationAddress?: string;
   notes?: string | null;
   email?: string | null;
 }): Promise<Client> {
@@ -172,6 +175,9 @@ export async function createClient(data: {
       referred_by: data.referredBy,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      sex: data.sex,
+      birth_place: data.birthPlace,
+      registration_address: data.registrationAddress,
       email: data.email?.trim() || null,
       notes: data.notes ?? '',
     }),
@@ -187,6 +193,9 @@ export async function updateClient(
     referredBy?: string | null;
     phone?: string;
     birthDate?: string | null;
+    sex?: string;
+    birthPlace?: string;
+    registrationAddress?: string;
     notes?: string | null;
     email?: string | null;
   },
@@ -199,6 +208,9 @@ export async function updateClient(
       referred_by: data.referredBy,
       phone: data.phone,
       birth_date: data.birthDate || null,
+      sex: data.sex,
+      birth_place: data.birthPlace,
+      registration_address: data.registrationAddress,
       email: data.email?.trim() || null,
       notes: data.notes ?? '',
     }),
@@ -280,6 +292,8 @@ export async function mergeClients(data: {
     phone?: string;
     email?: string | null;
     notes?: string;
+    current_passport_id?: string;
+    current_driver_license_id?: string;
   };
 }): Promise<ClientMergeResponse> {
   const payload = await request<Record<string, unknown>>('/clients/merge/', {
@@ -306,6 +320,8 @@ type ClientMergePayload = {
     phone?: string;
     email?: string | null;
     notes?: string;
+    current_passport_id?: string;
+    current_driver_license_id?: string;
   };
 };
 
@@ -446,6 +462,9 @@ export async function previewClientMerge(data: {
       : [],
     includeDeleted: Boolean(payload.include_deleted ?? true),
     previewSnapshotId: String(payload.preview_snapshot_id ?? ''),
+    documentConflicts: Array.isArray(payload.document_conflicts)
+      ? (payload.document_conflicts as NonNullable<ClientMergePreviewResponse['documentConflicts']>)
+      : [],
     movedCounts:
       payload.moved_counts && typeof payload.moved_counts === 'object'
         ? (payload.moved_counts as Record<string, number>)

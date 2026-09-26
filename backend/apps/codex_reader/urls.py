@@ -1,5 +1,6 @@
 from django.urls import path
 
+from .request_views import DealStructuredDataView, RequestPassportView
 from .views import (
     DealDetailView,
     DealFileDownloadView,
@@ -12,6 +13,16 @@ from .views import (
 from .write_views import CodexNoteCreateView, CodexOffersCreateView
 
 urlpatterns = [
+    path(
+        "deals/<uuid:deal_id>/data/",
+        DealStructuredDataView.as_view(),
+        name="codex-deal-data",
+    ),
+    path(
+        "deals/<uuid:deal_id>/requests/<uuid:request_id>/passport/",
+        RequestPassportView.as_view(),
+        name="codex-request-passport",
+    ),
     path(
         "write/deals/<uuid:deal_id>/notes/",
         CodexNoteCreateView.as_view(),

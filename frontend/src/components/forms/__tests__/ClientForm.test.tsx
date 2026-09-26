@@ -17,6 +17,31 @@ const pasteDate = (input: Element, value: string) => {
 };
 
 describe('ClientForm', () => {
+  it('saves personal details without a client relevance flag', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    render(
+      <ClientForm
+        initial={{
+          name: 'Клиент',
+          sex: 'female',
+          birthPlace: 'Москва',
+          registrationAddress: 'Москва, улица Примерная',
+        }}
+        onSubmit={onSubmit}
+      />,
+    );
+    expect(screen.queryByRole('checkbox', { name: 'Актуальный' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+    expect(onSubmit.mock.calls[0][0]).toEqual(
+      expect.objectContaining({
+        sex: 'female',
+        birthPlace: 'Москва',
+        registrationAddress: 'Москва, улица Примерная',
+      }),
+    );
+    expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('isCurrent');
+  });
   it('searches remote clients, excludes self and deleted clients, and saves the selected referrer', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     vi.mocked(fetchClientLookup).mockResolvedValueOnce({
@@ -62,7 +87,7 @@ describe('ClientForm', () => {
         onSubmit={onSubmit}
       />,
     );
-    expect(screen.getByRole('combobox')).toHaveValue('Рекомендатель');
+    expect(screen.getByRole('combobox', { name: 'Клиент от…' })).toHaveValue('Рекомендатель');
     expect(screen.getByText(/Рекомендатель удалён/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Очистить рекомендателя' }));
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
@@ -80,7 +105,9 @@ describe('ClientForm', () => {
         onSubmit={onSubmit}
       />,
     );
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Новый' } });
+    fireEvent.change(screen.getByRole('combobox', { name: 'Клиент от…' }), {
+      target: { value: 'Новый' },
+    });
     fireEvent.click(screen.getByRole('button', { name: 'Сохранить' }));
     expect(onSubmit).not.toHaveBeenCalled();
     expect(screen.getByText(/Выберите рекомендателя из списка/)).toBeInTheDocument();

@@ -22,6 +22,7 @@ POLICY_DRAFT_FIELDS = (
     "mortgage_bank",
     "loan_agreement_number",
     "client",
+    "insurance_request",
     "is_vehicle",
     "brand",
     "model",
@@ -268,6 +269,9 @@ def apply_policy_draft(
     source_file_id = data.pop("source_file_id", None)
     source_file_ids = data.pop("source_file_ids", []) or []
     payments = data.pop("payments", []) or []
+    from apps.insurance_requests.quote_links import validate_policy_link
+
+    data = validate_policy_link({**data, "deal": deal}, policy)
     data["client"] = _resolve_client(deal, data)
     _ensure_policy_number_is_available(data["number"], policy)
 

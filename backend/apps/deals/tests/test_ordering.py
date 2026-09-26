@@ -14,15 +14,23 @@ class DealOrderingTests(AuthenticatedAPITestCase):
             username="seller-ordering", password="pass"  # pragma: allowlist secret
         )
         self.authenticate(self.seller)
+        self.created_at_base = timezone.now()
+        self.deal_sequence = 0
 
     def _deal(self, title, client, **dates):
-        return Deal.objects.create(
+        deal = Deal.objects.create(
             title=title,
             client=client,
             seller=self.seller,
             status=Deal.DealStatus.OPEN,
             **dates,
         )
+        # Windows clock resolution may give consecutive inserts equal timestamps.
+        # These tests exercise creation order, not the random UUID tie-breaker.
+        self.deal_sequence += 1
+        deal.created_at = self.created_at_base + timedelta(seconds=self.deal_sequence)
+        Deal.objects.filter(pk=deal.pk).update(created_at=deal.created_at)
+        return deal
 
     @staticmethod
     def _result_ids(response):

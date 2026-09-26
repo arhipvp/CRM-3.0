@@ -18,8 +18,11 @@ interface ClientFormProps {
     referredByName?: string | null;
     referredByDeleted?: boolean;
     phone?: string;
-    email?: string;
+    email?: string | null;
     birthDate?: string | null;
+    sex?: string;
+    birthPlace?: string;
+    registrationAddress?: string;
     notes?: string | null;
   };
   onSubmit: (data: {
@@ -29,6 +32,9 @@ interface ClientFormProps {
     phone?: string;
     email?: string | null;
     birthDate?: string | null;
+    sex?: string;
+    birthPlace?: string;
+    registrationAddress?: string;
     notes?: string | null;
   }) => Promise<void>;
   submitLabel?: string;
@@ -54,6 +60,11 @@ export const ClientForm: React.FC<ClientFormProps> = ({
   const [phone, setPhone] = useState(initial?.phone ?? '');
   const [email, setEmail] = useState(initial?.email ?? '');
   const [birthDate, setBirthDate] = useState(initial?.birthDate ?? '');
+  const [sex, setSex] = useState(initial?.sex ?? '');
+  const [birthPlace, setBirthPlace] = useState(initial?.birthPlace ?? '');
+  const [registrationAddress, setRegistrationAddress] = useState(
+    initial?.registrationAddress ?? '',
+  );
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setSubmitting] = useState(false);
@@ -78,6 +89,9 @@ export const ClientForm: React.FC<ClientFormProps> = ({
         phone: phone.trim() || undefined,
         email: email.trim() || null,
         birthDate: birthDate || null,
+        sex,
+        birthPlace,
+        registrationAddress,
         notes: notes.trim() || undefined,
       });
     } catch (err) {
@@ -184,6 +198,34 @@ export const ClientForm: React.FC<ClientFormProps> = ({
         />
       </FormField>
 
+      <FormField label="Пол" htmlFor="client-sex">
+        <select
+          id="client-sex"
+          className="field field-input"
+          value={sex}
+          onChange={(e) => setSex(e.target.value)}
+        >
+          <option value="">Не указан</option>
+          <option value="male">Мужской</option>
+          <option value="female">Женский</option>
+        </select>
+      </FormField>
+      <FormField label="Место рождения" htmlFor="client-birth-place">
+        <input
+          id="client-birth-place"
+          className="field field-input"
+          value={birthPlace}
+          onChange={(e) => setBirthPlace(e.target.value)}
+        />
+      </FormField>
+      <FormField label="Адрес прописки" htmlFor="client-registration-address">
+        <input
+          id="client-registration-address"
+          className="field field-input"
+          value={registrationAddress}
+          onChange={(e) => setRegistrationAddress(e.target.value)}
+        />
+      </FormField>
       <FormField label="Примечание">
         <textarea
           value={notes}

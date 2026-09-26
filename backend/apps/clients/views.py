@@ -70,6 +70,12 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Client.objects.alive().order_by("-created_at")
+        action_name = getattr(self, "action", None)
+        params = getattr(getattr(self, "request", None), "query_params", {})
+        if action_name == "restore" or (
+            action_name in {"list", "retrieve"} and params.get("show_deleted") == "true"
+        ):
+            queryset = Client.objects.with_deleted().order_by("-created_at")
         if getattr(self, "action", None) in {
             "list",
             "retrieve",
@@ -86,6 +92,17 @@ class ClientViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 )
             )
         return queryset
+
+    @action(detail=True, methods=["post"])
+    def restore(self, request, pk=None):
+        client = self.get_object()
+        if not self._can_modify(request.user, client):
+            raise PermissionDenied(
+                "Только владелец или администратор может восстановить клиента."
+            )
+        client._audit_actor = request.user
+        client.restore()
+        return Response(self.get_serializer(client).data)
 
     @action(detail=False, methods=["get"], url_path="stats")
     def stats(self, request):
