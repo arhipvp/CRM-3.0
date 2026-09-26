@@ -17,9 +17,7 @@ from .models import (
 
 class InsuranceDataTests(TestCase):
     def setUp(self):
-        self.user = get_user_model().objects.create_user(
-            username="insurance-owner", password="test"
-        )
+        self.user = get_user_model().objects.create_user(username="insurance-owner")
         self.client_record = Client.objects.create(name="Клиент", created_by=self.user)
         self.deal = Deal.objects.create(
             title="Тест", client=self.client_record, seller=self.user
