@@ -29,12 +29,12 @@ describe('DealTabs', () => {
 
     const overviewTab = screen.getByRole('tab', { name: 'Обзор' });
     fireEvent.keyDown(overviewTab, { key: 'ArrowRight' });
-    expect(onChange).toHaveBeenCalledWith('data_people');
-    expect(screen.getByRole('tab', { name: 'Данные' })).toHaveFocus();
+    expect(onChange).toHaveBeenCalledWith('tasks');
+    expect(screen.getByRole('tab', { name: 'Работа' })).toHaveFocus();
 
     fireEvent.keyDown(overviewTab, { key: 'End' });
-    expect(onChange).toHaveBeenLastCalledWith('chat');
-    expect(screen.getByRole('tab', { name: 'Активность' })).toHaveFocus();
+    expect(onChange).toHaveBeenLastCalledWith('data_people');
+    expect(screen.getByRole('tab', { name: 'Данные' })).toHaveFocus();
   });
 
   it('shows spinner for tasks tab and hides its counter while loading', () => {

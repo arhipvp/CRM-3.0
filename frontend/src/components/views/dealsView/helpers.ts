@@ -45,12 +45,12 @@ export const isDealTabId = (value: string | null | undefined): value is DealTabI
 
 export const DEAL_TAB_GROUPS = [
   { id: 'overview', label: 'Обзор', tabs: ['overview'] },
-  { id: 'data', label: 'Данные', tabs: ['data_people', 'data_vehicles', 'data_mortgages'] },
-  { id: 'requests', label: 'Заявки', tabs: ['requests'] },
   { id: 'work', label: 'Работа', tabs: ['tasks', 'quotes'] },
   { id: 'policies', label: 'Полисы и финансы', tabs: ['policies'] },
   { id: 'documents', label: 'Документы', tabs: ['files', 'recognition'] },
   { id: 'activity', label: 'Активность', tabs: ['chat', 'events', 'history'] },
+  { id: 'requests', label: 'Заявки', tabs: ['requests'] },
+  { id: 'data', label: 'Данные', tabs: ['data_people', 'data_vehicles', 'data_mortgages'] },
 ] as const satisfies ReadonlyArray<{
   id: string;
   label: string;
