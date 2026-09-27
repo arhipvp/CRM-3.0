@@ -45,14 +45,14 @@ def validate_quote_links(attrs, instance=None):
             {"request_variant": "Выберите актуальный вариант открытой заявки."}
         )
     if not historical:
-        from .services import request_snapshot
+        from .services import request_snapshot, snapshots_equal
 
         live = request_snapshot(application)
         saved = dict(version.snapshot)
         for field in ("is_current", "version"):
             live.pop(field, None)
             saved.pop(field, None)
-        if live != saved:
+        if not snapshots_equal(live, saved):
             raise ValidationError(
                 {
                     "request_version": "Исходные данные изменились. Сохраните новую версию заявки перед расчётом."

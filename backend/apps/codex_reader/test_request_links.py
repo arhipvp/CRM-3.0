@@ -160,6 +160,46 @@ class RequestLinksTests(APITestCase):
         self.version.save()
         self.assertEqual(self.post_offer().status_code, 201)
 
+    def legacy_ownership_snapshot(self):
+        for field in (
+            "ownership_type",
+            "vehicle_bank",
+            "leasing_company",
+            "vehicle_bank_name",
+            "leasing_company_name",
+        ):
+            self.version.snapshot.pop(field)
+        self.version.save()
+
+    def test_offer_accepts_legacy_ownership_defaults_without_rewriting_snapshot(self):
+        self.legacy_ownership_snapshot()
+        saved = deepcopy(self.version.snapshot)
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.read_token}")
+        passport = self.client.get(
+            f"/api/v1/codex/deals/{self.deal.pk}/requests/{self.application.pk}/passport/"
+        )
+        self.assertEqual(passport.status_code, 200, passport.data)
+        self.assertFalse(passport.data["sources_changed"])
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.write_token}")
+        key = uuid.uuid4()
+        result = self.post_offer(key=key)
+        self.assertEqual(result.status_code, 201, result.data)
+        replay = self.post_offer(key=key)
+        self.assertEqual(replay.status_code, 200, replay.data)
+        self.assertEqual(result.data["quote_ids"], replay.data["quote_ids"])
+        self.version.refresh_from_db()
+        self.assertEqual(self.version.snapshot, saved)
+        self.assertEqual(Quote.objects.count(), 1)
+
+    def test_offer_rejects_real_ownership_change_from_legacy_snapshot(self):
+        self.legacy_ownership_snapshot()
+        self.application.ownership_type = "owned"
+        self.application.save(update_fields=["ownership_type", "updated_at"])
+        result = self.post_offer()
+        self.assertEqual(result.status_code, 400, result.data)
+        self.assertIn("request_version", result.data)
+        self.assertFalse(Quote.objects.exists())
+
     def test_batch_failure_is_atomic_and_maximum_preserves_actual_amounts(self):
         payload = deepcopy(self.payload)
         second = {**payload["offers"][0], "deductible": "999.00"}
