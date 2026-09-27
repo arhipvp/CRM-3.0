@@ -1,5 +1,11 @@
 from django.urls import path
 
+from .preparation_read_views import (
+    ClientPreparationDetailView,
+    ClientSearchView,
+    PreparationReferencesView,
+)
+from .preparation_views import PrepApplyView, PrepPreviewView
 from .request_views import DealStructuredDataView, RequestPassportView
 from .views import (
     DealDetailView,
@@ -13,6 +19,23 @@ from .views import (
 from .write_views import CodexNoteCreateView, CodexOffersCreateView
 
 urlpatterns = [
+    path(
+        "write/deals/<uuid:deal_id>/preparation/preview/",
+        PrepPreviewView.as_view(),
+        name="codex-preparation-preview",
+    ),
+    path(
+        "write/deals/<uuid:deal_id>/preparation/apply/",
+        PrepApplyView.as_view(),
+        name="codex-preparation-apply",
+    ),
+    path("clients/", ClientSearchView.as_view(), name="codex-client-search"),
+    path(
+        "clients/<uuid:client_id>/",
+        ClientPreparationDetailView.as_view(),
+        name="codex-client-detail",
+    ),
+    path("references/", PreparationReferencesView.as_view(), name="codex-references"),
     path(
         "deals/<uuid:deal_id>/data/",
         DealStructuredDataView.as_view(),
