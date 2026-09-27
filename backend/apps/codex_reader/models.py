@@ -34,7 +34,7 @@ class CodexReadKey(models.Model):
 
 
 class CodexWriteKey(models.Model):
-    """Revocable credential for Codex notes, quotes and confirmed preparation."""
+    """Revocable credential for notes, quotes, preparation and lifecycle changes."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=120)

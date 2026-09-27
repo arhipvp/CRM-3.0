@@ -3,7 +3,7 @@ from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
-    help = "Issue, list, or revoke Codex create-only API keys."
+    help = "Issue, list, or revoke scoped Codex write API keys."
 
     def add_arguments(self, parser):
         subparsers = parser.add_subparsers(dest="action", required=True)

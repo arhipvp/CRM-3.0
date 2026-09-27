@@ -1,5 +1,12 @@
 from django.urls import path
 
+from .lifecycle_read_views import (
+    LifecycleRecordDetailView,
+    LifecycleRecordHistoryView,
+    LifecycleRecordListView,
+    RequestVersionsView,
+)
+from .lifecycle_views import LifecycleApplyView, LifecyclePreviewView
 from .preparation_read_views import (
     ClientPreparationDetailView,
     ClientSearchView,
@@ -19,6 +26,36 @@ from .views import (
 from .write_views import CodexNoteCreateView, CodexOffersCreateView
 
 urlpatterns = [
+    path(
+        "write/deals/<uuid:deal_id>/lifecycle/preview/",
+        LifecyclePreviewView.as_view(),
+        name="codex-lifecycle-preview",
+    ),
+    path(
+        "write/deals/<uuid:deal_id>/lifecycle/apply/",
+        LifecycleApplyView.as_view(),
+        name="codex-lifecycle-apply",
+    ),
+    path(
+        "deals/<uuid:deal_id>/records/<str:entity>/",
+        LifecycleRecordListView.as_view(),
+        name="codex-records",
+    ),
+    path(
+        "deals/<uuid:deal_id>/records/<str:entity>/<uuid:record_id>/",
+        LifecycleRecordDetailView.as_view(),
+        name="codex-record-detail",
+    ),
+    path(
+        "deals/<uuid:deal_id>/records/<str:entity>/<uuid:record_id>/history/",
+        LifecycleRecordHistoryView.as_view(),
+        name="codex-record-history",
+    ),
+    path(
+        "deals/<uuid:deal_id>/requests/<uuid:request_id>/versions/",
+        RequestVersionsView.as_view(),
+        name="codex-request-versions",
+    ),
     path(
         "write/deals/<uuid:deal_id>/preparation/preview/",
         PrepPreviewView.as_view(),
