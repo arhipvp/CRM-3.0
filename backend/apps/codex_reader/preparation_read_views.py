@@ -4,7 +4,12 @@ import uuid
 
 from apps.clients.models import Client
 from apps.deals.models import Bank, InsuranceCompany, InsuranceType
-from apps.insurance_requests.models import ClientPassport, DriverLicense, Platform
+from apps.insurance_requests.models import (
+    ClientPassport,
+    DriverLicense,
+    LeasingCompany,
+    Platform,
+)
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from rest_framework.response import Response
@@ -69,12 +74,13 @@ class PreparationReferencesView(CodexReadView):
             "insurance_types": InsuranceType,
             "banks": Bank,
             "platforms": Platform,
+            "leasing_companies": LeasingCompany,
         }
         kind = request.query_params.get("kind")
         if kind not in models:
             return Response({"detail": "Unsupported reference kind."}, status=400)
         queryset = models[kind].objects.all()
-        if kind == "platforms":
+        if kind in {"platforms", "leasing_companies"}:
             queryset = queryset.filter(is_current=True)
         query = request.query_params.get("q", "").strip()
         if len(query) > 200:

@@ -25,6 +25,8 @@ const lookups: RequestLookups = {
     { id: 'life', name: 'Жизнь', createdAt: '', updatedAt: '' },
   ],
   platforms: [{ id: 'platform', name: 'RESO Office' }],
+  banks: [{ id: 'bank', name: 'Сбер', createdAt: '', updatedAt: '' }],
+  leasingCompanies: [{ id: 'leasing', name: 'Лизинг Тест' }],
 };
 
 beforeEach(() => {
@@ -32,6 +34,120 @@ beforeEach(() => {
 });
 
 describe('Insurance data forms', () => {
+  const cascoInitial = {
+    id: 'request',
+    title: 'КАСКО',
+    insurance_type: 'casco',
+    vehicle: 'car',
+    targets: [{ insurance_company: 'company', platform: 'platform' }],
+    ownership_type: 'credit',
+    vehicle_bank: 'bank',
+    official_dealer: false,
+  };
+
+  it('edits ownership and clears organizations when switching to owned', async () => {
+    render(
+      <InsuranceRequestForm
+        dealId="deal"
+        initial={cascoInitial}
+        lookups={lookups}
+        onSaved={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByLabelText('Банк автокредита')).toHaveValue('bank');
+    fireEvent.change(screen.getByLabelText('Владение автомобилем'), {
+      target: { value: 'leasing' },
+    });
+    fireEvent.change(screen.getByLabelText('Лизинговая компания'), {
+      target: { value: 'leasing' },
+    });
+    fireEvent.change(screen.getByLabelText('Владение автомобилем'), { target: { value: 'owned' } });
+    expect(screen.queryByLabelText('Банк автокредита')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Лизинговая компания')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Сохранить заявку'));
+    await waitFor(() =>
+      expect(saveInsuranceData).toHaveBeenCalledWith(
+        'requests',
+        expect.objectContaining({
+          ownership_type: 'owned',
+          vehicle_bank: null,
+          leasing_company: null,
+        }),
+        'request',
+      ),
+    );
+  });
+
+  it('allows a credit request without a bank and explains missing data', async () => {
+    render(
+      <InsuranceRequestForm
+        dealId="deal"
+        initial={{ ...cascoInitial, vehicle_bank: null }}
+        lookups={lookups}
+        onSaved={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Банк не указан/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Сохранить заявку'));
+    await waitFor(() =>
+      expect(saveInsuranceData).toHaveBeenCalledWith(
+        'requests',
+        expect.objectContaining({ ownership_type: 'credit', vehicle_bank: null }),
+        'request',
+      ),
+    );
+  });
+
+  it('lets an authorized user create and select a leasing company', async () => {
+    vi.mocked(saveInsuranceData).mockResolvedValueOnce({ id: 'new-leasing', name: 'Новый лизинг' });
+    render(
+      <InsuranceRequestForm
+        dealId="deal"
+        initial={{ ...cascoInitial, ownership_type: 'leasing', vehicle_bank: null }}
+        lookups={lookups}
+        canManageLeasingCompanies
+        onSaved={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+      />,
+    );
+    fireEvent.change(screen.getByLabelText('Название новой лизинговой компании'), {
+      target: { value: 'Новый лизинг' },
+    });
+    fireEvent.click(screen.getByText('Создать лизинговую компанию'));
+    await waitFor(() =>
+      expect(screen.getByLabelText('Лизинговая компания')).toHaveValue('new-leasing'),
+    );
+    expect(saveInsuranceData).toHaveBeenCalledWith('leasing-companies', { name: 'Новый лизинг' });
+    fireEvent.click(screen.getByText('Сохранить заявку'));
+    await waitFor(() =>
+      expect(saveInsuranceData).toHaveBeenCalledWith(
+        'requests',
+        expect.objectContaining({
+          ownership_type: 'leasing',
+          leasing_company: 'new-leasing',
+          vehicle_bank: null,
+        }),
+        'request',
+      ),
+    );
+  });
+
+  it('hides catalog creation from users without permission', () => {
+    render(
+      <InsuranceRequestForm
+        dealId="deal"
+        initial={{ ...cascoInitial, ownership_type: 'leasing' }}
+        lookups={lookups}
+        onSaved={vi.fn().mockResolvedValue(undefined)}
+        onCancel={vi.fn()}
+      />,
+    );
+    expect(screen.queryByText('Создать лизинговую компанию')).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'Лизинг Тест' })).toBeInTheDocument();
+  });
+
   it('keeps the driving experience date and multiple labeled scans', async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(
@@ -140,6 +256,9 @@ describe('Insurance data forms', () => {
           deductibles: [],
           official_dealer: null,
           drivers: [],
+          ownership_type: 'unknown',
+          vehicle_bank: null,
+          leasing_company: null,
         }),
         undefined,
       ),

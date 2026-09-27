@@ -207,6 +207,14 @@ class VariantViewSet(RecordViewSet):
     http_method_names = ["get", "patch", "head", "options"]
 
 
+class LeasingCompanyViewSet(RecordViewSet):
+    serializer_class = serializers.LeasingCompanySerializer
+
+    def authorize(self, instance):
+        if not EditProtectedMixin()._is_admin(self.request.user):
+            raise PermissionDenied("Нет права изменять справочник лизинговых компаний.")
+
+
 def record_viewset(serializer, deal_path=None):
     return type(
         serializer.Meta.model.__name__ + "ViewSet",

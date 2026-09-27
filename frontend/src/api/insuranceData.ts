@@ -17,6 +17,7 @@ export type DataResource =
   | 'mortgages'
   | 'mortgage-balances'
   | 'platforms'
+  | 'leasing-companies'
   | 'requests'
   | 'variants';
 

@@ -166,13 +166,14 @@ def baseline(deal, operations):
                 )
             values.append(data)
         result[entity] = values
-    for model in (Bank, InsuranceCompany, InsuranceType):
+    for model in (Bank, InsuranceCompany, InsuranceType, domain.LeasingCompany):
         result[model._meta.label_lower] = [
             {
                 "id": str(instance.pk),
                 "name": instance.name,
                 "deleted_at": instance.deleted_at,
                 "updated_at": instance.updated_at,
+                "is_current": getattr(instance, "is_current", None),
             }
             for instance in model.objects.with_deleted()
             .select_for_update()
@@ -375,7 +376,16 @@ def run_operations(deal, operations, namespace):
                 if old == new:
                     continue
                 kind = "replace"
-                if old is None or old == "" or old == []:
+                if (
+                    old is None
+                    or old == ""
+                    or old == []
+                    or (
+                        entity == "request"
+                        and field == "ownership_type"
+                        and old == "unknown"
+                    )
+                ):
                     kind = "fill"
                 if (
                     field == "source_links"

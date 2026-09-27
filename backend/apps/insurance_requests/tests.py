@@ -1,5 +1,5 @@
 from apps.clients.models import Client
-from apps.deals.models import Deal, InsuranceCompany, InsuranceType
+from apps.deals.models import Bank, Deal, InsuranceCompany, InsuranceType
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 from rest_framework.test import APIClient
@@ -7,6 +7,8 @@ from rest_framework.test import APIClient
 from .models import (
     ClientPassport,
     DealParticipant,
+    InsuranceRequest,
+    LeasingCompany,
     Mortgage,
     MortgageBalance,
     Platform,
@@ -48,6 +50,124 @@ class InsuranceDataTests(TestCase):
             "official_dealer": True,
             "vehicle_value_mode": "maximum",
         }
+
+    def test_ownership_versions_missing_and_legacy_snapshots(self):
+        from .services import request_passport
+
+        created = self.api.post(
+            self.prefix + "requests/", self.payload(), format="json"
+        )
+        self.assertEqual(created.status_code, 201, created.data)
+        instance = InsuranceRequest.objects.get(pk=created.data["id"])
+        self.assertIn("ownership_type", created.data["missing_fields"])
+        version = instance.versions.first()
+        for key in (
+            "ownership_type",
+            "vehicle_bank",
+            "leasing_company",
+            "vehicle_bank_name",
+            "leasing_company_name",
+        ):
+            version.snapshot.pop(key)
+        version.save()
+        legacy = dict(version.snapshot)
+        self.assertFalse(request_passport(instance)["sources_changed"])
+        url = self.prefix + f"requests/{instance.pk}/"
+        unchanged = self.api.patch(url, {"notes": ""}, format="json")
+        self.assertEqual(unchanged.data["version"], 1)
+        credit = self.api.patch(url, {"ownership_type": "credit"}, format="json")
+        self.assertEqual(credit.status_code, 200, credit.data)
+        self.assertIn("vehicle_bank", credit.data["missing_fields"])
+        bank = Bank.objects.create(name="Test bank")
+        response = self.api.patch(url, {"vehicle_bank": str(bank.pk)}, format="json")
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data["vehicle_bank_name"], bank.name)
+        self.assertNotIn("vehicle_bank", response.data["missing_fields"])
+        self.assertEqual(
+            str(self.api.post(url + "copy/").data["vehicle_bank"]), str(bank.pk)
+        )
+        version.refresh_from_db()
+        self.assertEqual(version.snapshot, legacy)
+        self.assertEqual(
+            self.api.patch(url, {"ownership_type": "owned"}, format="json").status_code,
+            400,
+        )
+        company = LeasingCompany.objects.create(name="Test leasing")
+        response = self.api.patch(
+            url,
+            {
+                "ownership_type": "leasing",
+                "vehicle_bank": None,
+                "leasing_company": str(company.pk),
+            },
+            format="json",
+        )
+        self.assertEqual(response.status_code, 200, response.data)
+        instance.refresh_from_db()
+        self.assertEqual(
+            instance.versions.first().snapshot["leasing_company_name"], company.name
+        )
+        company.is_current = False
+        company.save()
+        payload = {
+            **self.payload(),
+            "ownership_type": "leasing",
+            "leasing_company": str(company.pk),
+        }
+        self.assertEqual(
+            self.api.post(
+                self.prefix + "requests/", payload, format="json"
+            ).status_code,
+            400,
+        )
+        company.delete()
+        self.assertEqual(
+            self.api.post(
+                self.prefix + "requests/", payload, format="json"
+            ).status_code,
+            400,
+        )
+
+    def test_leasing_catalog_permissions_uniqueness_and_restore(self):
+        url = self.prefix + "leasing-companies/"
+        self.assertEqual(
+            self.api.post(url, {"name": "Lease"}, format="json").status_code, 403
+        )
+        self.user.is_staff = True
+        self.user.save()
+        created = self.api.post(url, {"name": "Lease"}, format="json")
+        self.assertEqual(created.status_code, 201, created.data)
+        detail = url + created.data["id"] + "/"
+        self.assertEqual(self.api.delete(detail).status_code, 204)
+        self.assertEqual(
+            self.api.post(url, {"name": "lease"}, format="json").status_code, 400
+        )
+        self.assertEqual(self.api.post(detail + "restore/").status_code, 200)
+        self.assertEqual(
+            self.api.patch(detail, {"is_current": False}, format="json").status_code,
+            200,
+        )
+
+    def test_ownership_rejected_for_non_casco(self):
+        self.kind.name = "ОСАГО"
+        self.kind.save()
+        payload = self.payload()
+        for key in ("deductibles", "official_dealer", "vehicle_value_mode"):
+            payload.pop(key)
+        payload["ownership_type"] = "owned"
+        self.assertEqual(
+            self.api.post(
+                self.prefix + "requests/", payload, format="json"
+            ).status_code,
+            400,
+        )
+        payload["ownership_type"] = "unknown"
+        self.assertEqual(
+            self.api.post(
+                self.prefix + "requests/", payload, format="json"
+            ).status_code,
+            201,
+        )
 
     def test_matrix_version_close_copy_and_snapshot(self):
         response = self.api.post(

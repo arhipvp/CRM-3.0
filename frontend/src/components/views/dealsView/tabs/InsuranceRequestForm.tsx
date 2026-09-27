@@ -11,7 +11,7 @@ import {
   saveInsuranceData,
   type DataRecord,
 } from '../../../../api/insuranceData';
-import type { InsuranceCompany, InsuranceType } from '../../../../types';
+import type { Bank, InsuranceCompany, InsuranceType } from '../../../../types';
 
 export interface RequestLookups {
   people: DataRecord[];
@@ -20,6 +20,8 @@ export interface RequestLookups {
   companies: InsuranceCompany[];
   types: InsuranceType[];
   platforms: DataRecord[];
+  banks?: Bank[];
+  leasingCompanies?: DataRecord[];
 }
 type Target = { insurance_company: string; platform: string };
 
@@ -29,12 +31,14 @@ export function InsuranceRequestForm({
   lookups,
   onSaved,
   onCancel,
+  canManageLeasingCompanies = false,
 }: {
   dealId: string;
   initial?: DataRecord;
   lookups: RequestLookups;
   onSaved: () => Promise<void>;
   onCancel: () => void;
+  canManageLeasingCompanies?: boolean;
 }) {
   const [value, setValue] = useState<Record<string, unknown>>(() => ({
     title: '',
@@ -54,6 +58,9 @@ export function InsuranceRequestForm({
     vehicle_value_mode: 'maximum',
     vehicle_value: '',
     mortgage_balance: '',
+    ownership_type: 'unknown',
+    vehicle_bank: '',
+    leasing_company: '',
     ...initial,
   }));
   const [objectType, setObjectType] = useState(initial?.mortgage ? 'mortgage' : 'vehicle');
@@ -65,6 +72,8 @@ export function InsuranceRequestForm({
   );
   const [platforms, setPlatforms] = useState(lookups.platforms);
   const [platformName, setPlatformName] = useState('');
+  const [leasingCompanies, setLeasingCompanies] = useState(lookups.leasingCompanies || []);
+  const [leasingName, setLeasingName] = useState('');
   const [balances, setBalances] = useState<DataRecord[]>([]);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -135,6 +144,11 @@ export function InsuranceRequestForm({
             vehicle_value_mode: casco ? value.vehicle_value_mode : '',
             vehicle_value:
               casco && value.vehicle_value_mode === 'fixed' ? value.vehicle_value : null,
+            ownership_type: casco ? value.ownership_type || 'unknown' : 'unknown',
+            vehicle_bank:
+              casco && value.ownership_type === 'credit' ? value.vehicle_bank || null : null,
+            leasing_company:
+              casco && value.ownership_type === 'leasing' ? value.leasing_company || null : null,
             mortgage_balance: objectType === 'mortgage' ? value.mortgage_balance || null : null,
           };
           await saveInsuranceData('requests', payload, initial?.id);
@@ -294,6 +308,126 @@ export function InsuranceRequestForm({
         )}
         {casco && (
           <>
+            <FormField label="Владение автомобилем" htmlFor="request-ownership">
+              <select
+                id="request-ownership"
+                className="field field-input"
+                value={str('ownership_type') || 'unknown'}
+                onChange={(e) =>
+                  setValue((old) => ({
+                    ...old,
+                    ownership_type: e.target.value,
+                    vehicle_bank: '',
+                    leasing_company: '',
+                  }))
+                }
+              >
+                <option value="unknown">Пока не уточнено</option>
+                <option value="owned">Собственность, без кредита и лизинга</option>
+                <option value="credit">Кредит</option>
+                <option value="leasing">Лизинг</option>
+              </select>
+            </FormField>
+            {value.ownership_type === 'credit' && (
+              <FormField label="Банк автокредита" htmlFor="request-vehicle-bank">
+                <select
+                  id="request-vehicle-bank"
+                  className="field field-input"
+                  value={str('vehicle_bank')}
+                  onChange={(e) => change('vehicle_bank', e.target.value)}
+                >
+                  <option value="">Пока не выбран</option>
+                  {(lookups.banks || []).map((bank) => (
+                    <option key={bank.id} value={bank.id}>
+                      {bank.name}
+                    </option>
+                  ))}
+                  {value.vehicle_bank &&
+                  !(lookups.banks || []).some((bank) => bank.id === value.vehicle_bank) ? (
+                    <option value={str('vehicle_bank')}>
+                      {str('vehicle_bank_name') || 'Ранее выбранный банк'}
+                    </option>
+                  ) : null}
+                </select>
+                {!value.vehicle_bank && (
+                  <p className="text-sm text-amber-700">
+                    Банк не указан. Можно сохранить заявку и уточнить его перед расчётом.
+                  </p>
+                )}
+              </FormField>
+            )}
+            {value.ownership_type === 'leasing' && (
+              <div className="space-y-2">
+                <FormField label="Лизинговая компания" htmlFor="request-leasing-company">
+                  <select
+                    id="request-leasing-company"
+                    className="field field-input"
+                    value={str('leasing_company')}
+                    onChange={(e) => change('leasing_company', e.target.value)}
+                  >
+                    <option value="">Пока не выбрана</option>
+                    {leasingCompanies
+                      .filter(
+                        (company) =>
+                          isSelectableRecord(company) || company.id === value.leasing_company,
+                      )
+                      .map((company) => (
+                        <option key={company.id} value={company.id}>
+                          {recordLabel(company)}
+                        </option>
+                      ))}
+                    {value.leasing_company &&
+                    !leasingCompanies.some((company) => company.id === value.leasing_company) ? (
+                      <option value={str('leasing_company')}>
+                        {str('leasing_company_name') || 'Ранее выбранная компания'}
+                      </option>
+                    ) : null}
+                  </select>
+                </FormField>
+                {!value.leasing_company && (
+                  <p className="text-sm text-amber-700">
+                    Лизинговая компания не указана. Можно сохранить заявку и уточнить её перед
+                    расчётом.
+                  </p>
+                )}
+                {canManageLeasingCompanies && (
+                  <div className="flex flex-wrap gap-2">
+                    <input
+                      className="field field-input"
+                      aria-label="Название новой лизинговой компании"
+                      value={leasingName}
+                      onChange={(e) => setLeasingName(e.target.value)}
+                    />
+                    <Button
+                      size="sm"
+                      disabled={!leasingName.trim() || saving}
+                      onClick={async () => {
+                        setSaving(true);
+                        setError('');
+                        try {
+                          const company = await saveInsuranceData('leasing-companies', {
+                            name: leasingName.trim(),
+                          });
+                          setLeasingCompanies((old) => [...old, company]);
+                          change('leasing_company', company.id);
+                          setLeasingName('');
+                        } catch (err) {
+                          setError(
+                            err instanceof Error
+                              ? err.message
+                              : 'Не удалось создать лизинговую компанию.',
+                          );
+                        } finally {
+                          setSaving(false);
+                        }
+                      }}
+                    >
+                      Создать лизинговую компанию
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
             <FormField label="Франшизы, ₽ (через ;)" htmlFor="request-deductibles" required>
               <input
                 id="request-deductibles"

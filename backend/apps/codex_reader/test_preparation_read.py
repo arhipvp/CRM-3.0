@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from apps.clients.models import Client
 from apps.deals.models import Bank, InsuranceCompany, InsuranceType
-from apps.insurance_requests.models import ClientPassport, Platform
+from apps.insurance_requests.models import ClientPassport, LeasingCompany, Platform
 from rest_framework.test import APITestCase
 
 from .models import CodexReadKey, CodexWriteKey
@@ -44,11 +44,12 @@ class PreparationReadTests(APITestCase):
             ("insurance_types", InsuranceType),
             ("banks", Bank),
             ("platforms", Platform),
+            ("leasing_companies", LeasingCompany),
         ):
             kept = model.objects.create(name="Тест")
             deleted = model.objects.create(name="Тест удалён")
             deleted.delete()
-            if model is Platform:
+            if model in {Platform, LeasingCompany}:
                 model.objects.create(name="Тест старый", is_current=False)
             response = self.client.get(
                 "/api/v1/codex/references/", {"kind": kind, "q": "Тест"}

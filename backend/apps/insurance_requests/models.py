@@ -191,6 +191,10 @@ class Platform(CurrentRecord):
     name = models.CharField(max_length=255, unique=True)
 
 
+class LeasingCompany(CurrentRecord):
+    name = models.CharField(max_length=255, unique=True)
+
+
 class InsuranceRequest(CurrentRecord):
     deal = models.ForeignKey(
         "deals.Deal", on_delete=models.CASCADE, related_name="insurance_requests"
@@ -248,6 +252,26 @@ class InsuranceRequest(CurrentRecord):
     )
     vehicle_value = models.DecimalField(
         max_digits=16, decimal_places=2, null=True, blank=True
+    )
+    ownership_type = models.CharField(
+        max_length=10,
+        default="unknown",
+        choices=[
+            ("unknown", "Не указан"),
+            ("owned", "Без кредита и лизинга"),
+            ("credit", "Кредит"),
+            ("leasing", "Лизинг"),
+        ],
+    )
+    vehicle_bank = models.ForeignKey(
+        "deals.Bank",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="vehicle_requests",
+    )
+    leasing_company = models.ForeignKey(
+        LeasingCompany, on_delete=models.PROTECT, null=True, blank=True
     )
     mortgage_balance = models.ForeignKey(
         MortgageBalance, on_delete=models.PROTECT, null=True, blank=True

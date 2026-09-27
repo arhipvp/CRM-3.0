@@ -135,6 +135,74 @@ class PreparationTests(TestCase):
         self.assertEqual(self.apply(ops, preview.data, key=idem).status_code, 200)
         self.assertEqual(self.apply(ops, preview.data).status_code, 409)
 
+    def test_request_ownership_preparation_and_dictionary_boundaries(self):
+        from apps.insurance_requests.models import LeasingCompany
+        from apps.insurance_requests.serializers import InsuranceRequestSerializer
+
+        company = InsuranceCompany.objects.create(name="CASCO company")
+        kind = InsuranceType.objects.create(name="КАСКО")
+        platform = Platform.objects.create(name="CASCO office")
+        vehicle = Vehicle.objects.create(deal=self.deal, title="Car")
+        serializer = InsuranceRequestSerializer(
+            data={
+                "title": "Request",
+                "deal": str(self.deal.pk),
+                "insurance_type": str(kind.pk),
+                "vehicle": str(vehicle.pk),
+                "targets": [
+                    {"insurance_company": str(company.pk), "platform": str(platform.pk)}
+                ],
+                "deductibles": ["0"],
+                "official_dealer": True,
+                "vehicle_value_mode": "maximum",
+            }
+        )
+        serializer.is_valid(raise_exception=True)
+        application = serializer.save()
+        ops = [
+            {
+                "ref": "request",
+                "entity": "request",
+                "id": str(application.pk),
+                "source": "User",
+                "data": {"ownership_type": "owned"},
+            }
+        ]
+        preview = self.preview(ops)
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(preview.data["confirmations"], [])
+        idem = uuid.uuid4()
+        self.assertEqual(self.apply(ops, preview.data, key=idem).status_code, 201)
+        self.assertEqual(self.apply(ops, preview.data, key=idem).status_code, 200)
+        application.refresh_from_db()
+        self.assertEqual(application.version, 2)
+        leasing = LeasingCompany.objects.create(name="Lease")
+        ops[0]["data"] = {
+            "ownership_type": "leasing",
+            "leasing_company": str(leasing.pk),
+        }
+        preview = self.preview(ops)
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertEqual(
+            self.apply(ops, preview.data, confirmations=[]).status_code, 400
+        )
+        leasing.name = "Changed"
+        leasing.save()
+        self.assertEqual(self.apply(ops, preview.data).status_code, 409)
+        preview = self.preview(ops)
+        self.assertEqual(self.apply(ops, preview.data).status_code, 201)
+        application.refresh_from_db()
+        self.assertEqual(application.leasing_company_id, leasing.pk)
+        forbidden = [
+            {
+                "ref": "company",
+                "entity": "leasing_company",
+                "source": "User",
+                "data": {"name": "New"},
+            }
+        ]
+        self.assertEqual(self.preview(forbidden).status_code, 400)
+
     def test_document_activation_and_readonly_rejection(self):
         old = ClientPassport.objects.create(client=self.person, number="1")
         ops = [

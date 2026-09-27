@@ -154,6 +154,23 @@ MortgageBalanceSerializer = record_serializer(models.MortgageBalance)
 PlatformSerializer = record_serializer(models.Platform)
 
 
+class LeasingCompanySerializer(RecordSerializer):
+    class Meta(RecordSerializer.Meta):
+        model = models.LeasingCompany
+
+    def validate_name(self, value):
+        existing = models.LeasingCompany.objects.with_deleted().filter(
+            name__iexact=value
+        )
+        if self.instance:
+            existing = existing.exclude(pk=self.instance.pk)
+        if existing.exists():
+            raise serializers.ValidationError(
+                "Компания уже существует, включая удалённые записи."
+            )
+        return value
+
+
 class RequestVariantSerializer(RecordSerializer):
     class Meta(RecordSerializer.Meta):
         model = models.RequestVariant
@@ -188,6 +205,12 @@ class RequestVariantSerializer(RecordSerializer):
 
 
 class InsuranceRequestSerializer(RecordSerializer):
+    vehicle_bank_name = serializers.CharField(
+        source="vehicle_bank.name", read_only=True, default=""
+    )
+    leasing_company_name = serializers.CharField(
+        source="leasing_company.name", read_only=True, default=""
+    )
     variants = RequestVariantSerializer(many=True, read_only=True)
     missing_fields = serializers.SerializerMethodField()
     sources_changed = serializers.SerializerMethodField()
@@ -232,10 +255,12 @@ class InsuranceRequestSerializer(RecordSerializer):
         ]
 
     def get_sources_changed(self, obj):
-        from .services import request_snapshot
+        from .services import request_snapshot, snapshots_equal
 
         latest = obj.versions.first()
-        return latest is None or latest.snapshot != request_snapshot(obj)
+        return latest is None or not snapshots_equal(
+            latest.snapshot, request_snapshot(obj)
+        )
 
     class Meta(RecordSerializer.Meta):
         model = models.InsuranceRequest
@@ -256,6 +281,13 @@ class InsuranceRequestSerializer(RecordSerializer):
         missing = [name for name in fields if not getattr(obj, name)]
         if obj.vehicle_id and not obj.unlimited_drivers and not obj.drivers.exists():
             missing.append("drivers")
+        if "каско" in obj.insurance_type.name.casefold():
+            if obj.ownership_type == "unknown":
+                missing.append("ownership_type")
+            if obj.ownership_type == "credit" and not obj.vehicle_bank_id:
+                missing.append("vehicle_bank")
+            if obj.ownership_type == "leasing" and not obj.leasing_company_id:
+                missing.append("leasing_company")
         return missing
 
     def validate(self, attrs):
@@ -344,6 +376,21 @@ class InsuranceRequestSerializer(RecordSerializer):
             normalized.append(item)
         attrs["targets"] = normalized
         casco = "каско" in value("insurance_type").name.casefold()
+        ownership = value("ownership_type", "unknown")
+        if not casco and (
+            ownership != "unknown" or value("vehicle_bank") or value("leasing_company")
+        ):
+            raise serializers.ValidationError(
+                "Тип собственности доступен только для КАСКО."
+            )
+        if value("vehicle_bank") and ownership != "credit":
+            raise serializers.ValidationError(
+                {"vehicle_bank": "Банк допустим только при кредите."}
+            )
+        if value("leasing_company") and ownership != "leasing":
+            raise serializers.ValidationError(
+                {"leasing_company": "Компания допустима только при лизинге."}
+            )
         type_name = value("insurance_type").name.casefold()
         if "осаго" in type_name and not vehicle:
             raise serializers.ValidationError("ОСАГО требует автомобиль.")

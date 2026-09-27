@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '../../../common/Button';
 import { InlineAlert } from '../../../common/InlineAlert';
-import { fetchInsuranceCompanies, fetchInsuranceTypes } from '../../../../api/catalogs';
+import { fetchBanks, fetchInsuranceCompanies, fetchInsuranceTypes } from '../../../../api/catalogs';
 import {
   insuranceDataAction,
   listInsuranceData,
@@ -28,7 +28,26 @@ const fieldLabels: Record<string, string> = {
   mortgage_balance: 'остаток задолженности',
   drivers: 'водители',
   insured_person: 'застрахованное лицо',
+  ownership_type: 'владение автомобилем',
+  vehicle_bank: 'банк автокредита',
+  leasing_company: 'лизинговая компания',
 };
+
+function OwnershipDetails({ data }: { data: Record<string, unknown> }) {
+  const type = String(data.ownership_type || 'unknown');
+  return (
+    <p className="text-sm">
+      Владение автомобилем:{' '}
+      {type === 'owned'
+        ? 'собственность, без кредита и лизинга'
+        : type === 'credit'
+          ? `кредит · Банк: ${String(data.vehicle_bank_name || (data.vehicle_bank ? 'Ранее выбранный банк' : 'не указан'))}`
+          : type === 'leasing'
+            ? `лизинг · Компания: ${String(data.leasing_company_name || (data.leasing_company ? 'Ранее выбранная компания' : 'не указана'))}`
+            : 'пока не уточнено'}
+    </p>
+  );
+}
 
 function VariantEditor({
   variant,
@@ -269,6 +288,7 @@ function SnapshotDetails({ snapshot }: { snapshot: Record<string, unknown> }) {
             : `${String(snapshot.vehicle_value)} ₽`}
         </p>
       )}
+      {snapshot.official_dealer != null && <OwnershipDetails data={snapshot} />}
       {snapshot.mortgage_amount != null && (
         <p>
           Остаток долга: {String(snapshot.mortgage_amount)} ₽ на{' '}
@@ -321,7 +341,13 @@ function RequestHistory({ id }: { id: string }) {
   );
 }
 
-export function InsuranceRequestsTab({ dealId }: { dealId: string }) {
+export function InsuranceRequestsTab({
+  dealId,
+  canManageLeasingCompanies = false,
+}: {
+  dealId: string;
+  canManageLeasingCompanies?: boolean;
+}) {
   const [rows, setRows] = useState<DataRecord[]>([]);
   const [lookups, setLookups] = useState<RequestLookups | null>(null);
   const [filter, setFilter] = useState('current');
@@ -333,18 +359,38 @@ export function InsuranceRequestsTab({ dealId }: { dealId: string }) {
   const [linking, setLinking] = useState<string | null>(null);
   const reload = useCallback(async () => {
     try {
-      const [requests, people, vehicles, mortgages, companies, types, platforms] =
-        await Promise.all([
-          listInsuranceData('requests', { deal: dealId, include_deleted: true }),
-          listInsuranceData('participants', { deal: dealId }),
-          listInsuranceData('vehicles', { deal: dealId }),
-          listInsuranceData('mortgages', { deal: dealId }),
-          fetchInsuranceCompanies(),
-          fetchInsuranceTypes(),
-          listInsuranceData('platforms'),
-        ]);
+      const [
+        requests,
+        people,
+        vehicles,
+        mortgages,
+        companies,
+        types,
+        platforms,
+        banks,
+        leasingCompanies,
+      ] = await Promise.all([
+        listInsuranceData('requests', { deal: dealId, include_deleted: true }),
+        listInsuranceData('participants', { deal: dealId }),
+        listInsuranceData('vehicles', { deal: dealId }),
+        listInsuranceData('mortgages', { deal: dealId }),
+        fetchInsuranceCompanies(),
+        fetchInsuranceTypes(),
+        listInsuranceData('platforms'),
+        fetchBanks(),
+        listInsuranceData('leasing-companies'),
+      ]);
       setRows(requests);
-      setLookups({ people, vehicles, mortgages, companies, types, platforms });
+      setLookups({
+        people,
+        vehicles,
+        mortgages,
+        companies,
+        types,
+        platforms,
+        banks,
+        leasingCompanies,
+      });
       setError('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Не удалось загрузить заявки.');
@@ -405,6 +451,7 @@ export function InsuranceRequestsTab({ dealId }: { dealId: string }) {
           dealId={dealId}
           initial={editing === 'new' ? undefined : editing}
           lookups={lookups}
+          canManageLeasingCompanies={canManageLeasingCompanies}
           onCancel={() => setEditing(null)}
           onSaved={async () => {
             setEditing(null);
@@ -504,6 +551,7 @@ export function InsuranceRequestsTab({ dealId }: { dealId: string }) {
                     : `${String(row.vehicle_value)} ₽`}
                 </p>
               )}
+              {row.official_dealer != null && <OwnershipDetails data={row} />}
               {Boolean(row.mortgage) && (
                 <p className="text-sm">
                   Остаток долга: {String(row.mortgage_amount || 'не указан')} ₽ на{' '}

@@ -16,8 +16,29 @@ def record_data(instance):
     return json.loads(json.dumps(data, cls=DjangoJSONEncoder))
 
 
+def snapshots_equal(left, right):
+    """Compare additive schema defaults without rewriting historical snapshots."""
+
+    def normalized(snapshot):
+        result = dict(snapshot)
+        result.setdefault("ownership_type", "unknown")
+        result.setdefault("vehicle_bank", None)
+        result.setdefault("leasing_company", None)
+        result.setdefault("vehicle_bank_name", "")
+        result.setdefault("leasing_company_name", "")
+        return result
+
+    return normalized(left) == normalized(right)
+
+
 def request_snapshot(instance):
     data = record_data(instance)
+    data["vehicle_bank_name"] = (
+        instance.vehicle_bank.name if instance.vehicle_bank else ""
+    )
+    data["leasing_company_name"] = (
+        instance.leasing_company.name if instance.leasing_company else ""
+    )
     for field in ("is_current", "deleted_at"):
         data.pop(field, None)
     data["drivers"] = [str(pk) for pk in instance.drivers.values_list("pk", flat=True)]
@@ -93,7 +114,7 @@ def save_request(serializer, attrs, instance=None):
     old = dict(previous.snapshot) if previous else None
     if old:
         old.pop("version", None)
-    if old != comparable:
+    if old is None or not snapshots_equal(old, comparable):
         instance.version += 1
         instance.save(update_fields=["version", "updated_at"])
         snapshot["version"] = instance.version
@@ -122,7 +143,9 @@ def request_passport(instance, version=None):
         "version": selected.number,
         "snapshot": selected.snapshot,
         "variants": [record_data(v) for v in selected.variants.all()],
-        "sources_changed": selected.snapshot != request_snapshot(instance),
+        "sources_changed": not snapshots_equal(
+            selected.snapshot, request_snapshot(instance)
+        ),
     }
 
 

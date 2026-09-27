@@ -22,7 +22,15 @@ from .views import MAX_PASSPORT_BYTES, CodexReadView, _deal, _model_data
 
 
 def _data(record):
-    return _model_data(record, max_text=None)
+    data = _model_data(record, max_text=None)
+    if isinstance(record, InsuranceRequest):
+        data["vehicle_bank_name"] = (
+            record.vehicle_bank.name if record.vehicle_bank else ""
+        )
+        data["leasing_company_name"] = (
+            record.leasing_company.name if record.leasing_company else ""
+        )
+    return data
 
 
 def _bounded(payload):
@@ -112,14 +120,14 @@ class RequestPassportView(CodexReadView):
             version = get_object_or_404(versions, pk=version_id)
         else:
             version = get_object_or_404(versions, number=application.version)
-        from apps.insurance_requests.services import request_snapshot
+        from apps.insurance_requests.services import request_snapshot, snapshots_equal
 
         live = request_snapshot(application)
         saved = dict(version.snapshot)
         for field in ("is_current", "version"):
             live.pop(field, None)
             saved.pop(field, None)
-        sources_changed = live != saved
+        sources_changed = not snapshots_equal(live, saved)
         variants = version.variants.filter(deleted_at__isnull=True).select_related(
             "insurance_company", "platform"
         )

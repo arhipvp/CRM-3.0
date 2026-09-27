@@ -103,6 +103,12 @@ export const DealDetailsPanelTabContent: React.FC<DealDetailsPanelTabContentProp
           <InsuranceRequestsTab
             key={calculationTabProps.selectedDeal.id}
             dealId={calculationTabProps.selectedDeal.id}
+            canManageLeasingCompanies={Boolean(
+              chatTabProps.currentUser?.isStaff ||
+              chatTabProps.currentUser?.roles?.some(
+                (role) => role === 'Admin' || role === 'Администратор',
+              ),
+            )}
           />
         </Suspense>
       ) : null;

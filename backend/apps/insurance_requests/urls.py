@@ -23,4 +23,7 @@ for name, serializer, path in [
     )
 router.register("requests", views.InsuranceRequestViewSet, basename="insurance-request")
 router.register("variants", views.VariantViewSet, basename="request-variant")
+router.register(
+    "leasing-companies", views.LeasingCompanyViewSet, basename="leasing-company"
+)
 urlpatterns = router.urls
