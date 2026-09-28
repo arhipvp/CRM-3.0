@@ -7,6 +7,7 @@ from .lifecycle_read_views import (
     RequestVersionsView,
 )
 from .lifecycle_views import LifecycleApplyView, LifecyclePreviewView
+from .mailbox_views import DealMailboxAddressView, DealMailboxEnsureView
 from .preparation_read_views import (
     ClientPreparationDetailView,
     ClientSearchView,
@@ -26,6 +27,11 @@ from .views import (
 from .write_views import CodexNoteCreateView, CodexOffersCreateView
 
 urlpatterns = [
+    path(
+        "write/deals/<uuid:deal_id>/mailbox/ensure/",
+        DealMailboxEnsureView.as_view(),
+        name="codex-mailbox-ensure",
+    ),
     path(
         "write/deals/<uuid:deal_id>/lifecycle/preview/",
         LifecyclePreviewView.as_view(),
@@ -95,6 +101,11 @@ urlpatterns = [
     ),
     path("deals/", DealListView.as_view(), name="codex-deals"),
     path("deals/<uuid:deal_id>/", DealDetailView.as_view(), name="codex-deal"),
+    path(
+        "deals/<uuid:deal_id>/mailbox/address/",
+        DealMailboxAddressView.as_view(),
+        name="codex-mailbox-address",
+    ),
     path(
         "deals/<uuid:deal_id>/passport/",
         DealPassportView.as_view(),
