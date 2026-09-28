@@ -42,7 +42,7 @@ class DealMailboxEnsureView(CodexWriteView):
             # Serialize Codex requests for the same deal before checking Mailcow.
             deal = (
                 Deal.objects.select_for_update()
-                .select_related("client", "seller", "executor")
+                .select_related("client")
                 .filter(pk=deal_id)
                 .first()
             )
