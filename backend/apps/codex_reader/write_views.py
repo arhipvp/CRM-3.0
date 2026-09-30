@@ -51,6 +51,7 @@ class OfferInput(StrictSerializer):
         required=False,
     )
     status = serializers.ChoiceField(choices=("preliminary", "refined"))
+    kbm_117 = serializers.BooleanField(required=False)
     official_dealer = serializers.BooleanField(required=False)
     deductible = serializers.DecimalField(
         max_digits=12,
@@ -80,6 +81,8 @@ class OfferInput(StrictSerializer):
                 missing["deductible"] = "Required for KASKO."
             if missing:
                 raise serializers.ValidationError(missing)
+        if attrs.get("kbm_117") and attrs["insurance_type"].casefold() != "осаго":
+            raise serializers.ValidationError({"kbm_117": "Only valid for OSAGO."})
         return attrs
 
 
@@ -241,6 +244,8 @@ class CodexOffersCreateView(CodexWriteView):
                 f"Период: {data['period_start']:%d.%m.%Y}–{data['period_end']:%d.%m.%Y}\n"
                 f"Статус: {'уточнённый' if offer['status'] == 'refined' else 'предварительный'}"
             )
+            if offer.get("kbm_117"):
+                comments += "\nВНИМАНИЕ: У ОДНОГО ИЗ ВОДИТЕЛЕЙ КБМ 1,17"
             quote = Quote(
                 deal=deal,
                 insurance_company=company,

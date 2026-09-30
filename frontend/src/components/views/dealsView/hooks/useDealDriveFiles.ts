@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { useNotification } from '../../../../contexts/NotificationContext';
 import type { Deal, DriveFile, PolicyRecognitionResult } from '../../../../types';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 import {
@@ -90,6 +91,28 @@ const isRecognizablePolicyFile = (file: Pick<DriveFile, 'mimeType' | 'name'>): b
 const isRecognizableUploadFile = (file: File): boolean =>
   isRecognizablePolicyFile({ mimeType: file.type, name: file.name });
 
+const formatRecognitionFailure = (results: PolicyRecognitionResult[]): string | null => {
+  const failed = results.filter((result) => result.status === 'error');
+  if (!failed.length) return null;
+
+  const names = failed.map((result) => `«${result.fileName?.trim() || result.fileId}»`).join(', ');
+  const fileLabel = failed.length === 1 ? `Файл ${names}` : `Файлы ${names}`;
+  const hasInvalidContent = failed.every((result) =>
+    /Не удалось (подготовить PDF|подготовить изображение|извлечь текст из PDF)/.test(
+      result.message ?? result.error?.message ?? '',
+    ),
+  );
+  if (hasInvalidContent) {
+    return `${fileLabel} ${failed.length === 1 ? 'не может' : 'не могут'} быть распознан${failed.length === 1 ? '' : 'ы'}. Проверьте содержимое.`;
+  }
+  if (failed.length > 1) {
+    return `${fileLabel} не удалось распознать. Подробности во вкладке «Файлы».`;
+  }
+
+  const detail = failed[0].error?.message ?? failed[0].message;
+  return `${fileLabel}: ${detail || 'Не удалось распознать документ.'}`;
+};
+
 const DRIVE_PREVIEW_CACHE_MAX_BYTES = 100 * 1024 * 1024;
 const DRIVE_PREVIEW_CACHE_MAX_FILE_BYTES = 15 * 1024 * 1024;
 
@@ -162,6 +185,7 @@ export const useDealDriveFiles = ({
   onRefreshPolicies,
   onPolicyDraftReady,
 }: UseDealDriveFilesParams) => {
+  const { addNotification } = useNotification();
   const [rootFiles, setRootFiles] = useState<DriveFile[]>([]);
   const [childrenByParentId, setChildrenByParentId] = useState<Record<string, DriveFile[]>>({});
   const [expandedFolderIds, setExpandedFolderIds] = useState<Set<string>>(new Set());
@@ -489,6 +513,10 @@ export const useDealDriveFiles = ({
     ) => {
       setRecognitionResults(results);
       setSelectedDriveFileIds([]);
+      const failureMessage = formatRecognitionFailure(results);
+      if (failureMessage) {
+        addNotification(failureMessage, 'error', 7000);
+      }
       const parsedFileIds = results
         .filter((result) => result.status === 'parsed' && result.fileId)
         .map((result) => result.fileId!);
@@ -507,7 +535,7 @@ export const useDealDriveFiles = ({
         await onRefreshPolicies();
       }
     },
-    [onPolicyDraftReady, onRefreshPolicies],
+    [addNotification, onPolicyDraftReady, onRefreshPolicies],
   );
 
   const handleRecognizePolicies = useCallback(async () => {

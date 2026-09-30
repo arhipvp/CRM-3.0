@@ -90,6 +90,32 @@ class CodexWriteApiTests(APITestCase):
         self.assertEqual(Note.objects.count(), 1)
         self.assertEqual(CodexWriteRequest.objects.count(), 1)
 
+    def test_osago_kbm_warning_is_saved_in_quote_comment(self):
+        offer = {
+            **self.payload["offers"][0],
+            "insurance_type": "ОСАГО",
+            "sum_insured": None,
+            "kbm_117": True,
+        }
+        response = self.post(self.offers_url, {**self.payload, "offers": [offer]})
+        self.assertEqual(response.status_code, 201, response.data)
+        quote = Quote.objects.get(pk=response.data["quote_ids"][0])
+        self.assertIn("ВНИМАНИЕ: У ОДНОГО ИЗ ВОДИТЕЛЕЙ КБМ 1,17", quote.comments)
+
+        _, read_token = CodexReadKey.issue("reader")
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {read_token}")
+        read_response = self.client.get(
+            f"/api/v1/codex/deals/{self.deal.id}/sections/quotes/"
+        )
+        self.assertEqual(read_response.status_code, 200)
+        self.assertIn("КБМ 1,17", read_response.data["results"][0]["comments"])
+
+    def test_kbm_warning_rejected_for_other_insurance_types(self):
+        offer = {**self.payload["offers"][0], "kbm_117": True}
+        response = self.post(self.offers_url, {**self.payload, "offers": [offer]})
+        self.assertEqual(response.status_code, 400, response.data)
+        self.assertEqual(Quote.objects.count(), 0)
+
     def test_kasko_fields_are_saved_and_read_back(self):
         offer = {
             **self.payload["offers"][0],

@@ -3,6 +3,7 @@ import { act, render, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import { resetDrivePreviewBlobCacheForTests, useDealDriveFiles } from '../hooks/useDealDriveFiles';
+import { NotificationContext } from '../../../../contexts/NotificationContext';
 import type { Deal } from '../../../../types';
 
 vi.mock('../../../../api', () => ({
@@ -27,6 +28,7 @@ const fetchDealDriveFilesMock = vi.mocked(fetchDealDriveFiles);
 const recognizeDealPoliciesMock = vi.mocked(recognizeDealPolicies);
 const trashDealDriveFilesMock = vi.mocked(trashDealDriveFiles);
 const uploadDealDriveFileMock = vi.mocked(uploadDealDriveFile);
+const addNotificationMock = vi.fn();
 
 const createDeal = (overrides: Partial<Deal> = {}): Deal => ({
   id: 'deal-1',
@@ -75,11 +77,22 @@ const renderDriveHook = (
     return null;
   };
 
-  const utils = render(<Wrapper deal={deal} />);
+  const wrap = (currentDeal: Deal | null) => (
+    <NotificationContext.Provider
+      value={{
+        notifications: [],
+        addNotification: addNotificationMock,
+        removeNotification: vi.fn(),
+      }}
+    >
+      <Wrapper deal={currentDeal} />
+    </NotificationContext.Provider>
+  );
+  const utils = render(wrap(deal));
   return {
     ...utils,
     resultRef,
-    rerenderDeal: (nextDeal: Deal | null) => utils.rerender(<Wrapper deal={nextDeal} />),
+    rerenderDeal: (nextDeal: Deal | null) => utils.rerender(wrap(nextDeal)),
   };
 };
 
@@ -234,6 +247,44 @@ describe('useDealDriveFiles', () => {
         'Выберите хотя бы один файл для распознавания.',
       );
     });
+  });
+
+  it('shows a toast for an unreadable PDF selected from Drive', async () => {
+    const deal = createDeal();
+    const file = {
+      id: 'file-1',
+      name: 'policy.pdf',
+      mimeType: 'application/pdf',
+      isFolder: false,
+    };
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [file], folderId: null });
+    recognizeDealPoliciesMock.mockResolvedValueOnce({
+      results: [
+        {
+          fileId: file.id,
+          fileName: file.name,
+          status: 'error',
+          message: 'Не удалось подготовить PDF для vision-распознавания: policy.pdf.',
+          error: { code: 'recognition_error', message: 'Ошибка PDF', retryable: false },
+        },
+      ],
+    });
+    const { resultRef } = renderDriveHook(deal);
+
+    await act(async () => {
+      await resultRef.current?.loadDriveFiles();
+    });
+    act(() => resultRef.current?.toggleDriveFileSelection(file.id));
+    await act(async () => {
+      await resultRef.current?.handleRecognizePolicies();
+    });
+
+    expect(addNotificationMock).toHaveBeenCalledWith(
+      'Файл «policy.pdf» не может быть распознан. Проверьте содержимое.',
+      'error',
+      7000,
+    );
+    expect(resultRef.current?.recognitionResults[0].status).toBe('error');
   });
 
   it('recognizes selected documents and JPG/JPEG/PNG images and notifies about parsed drafts', async () => {
@@ -395,6 +446,54 @@ describe('useDealDriveFiles', () => {
       parsedResult.fileName,
       parsedResult.fileId,
       uploadedFiles.map((file) => file.id),
+    );
+    expect(addNotificationMock).not.toHaveBeenCalled();
+  });
+
+  it('shows one toast for upload errors while preserving a parsed draft', async () => {
+    const deal = createDeal();
+    const uploadedFiles = [
+      { id: 'file-1', name: 'valid.pdf', mimeType: 'application/pdf', isFolder: false },
+      { id: 'file-2', name: 'broken.pdf', mimeType: 'application/pdf', isFolder: false },
+    ];
+    uploadDealDriveFileMock
+      .mockResolvedValueOnce(uploadedFiles[0])
+      .mockResolvedValueOnce(uploadedFiles[1]);
+    fetchDealDriveFilesMock.mockResolvedValue({ files: [], folderId: null });
+    recognizeDealPoliciesMock.mockResolvedValueOnce({
+      results: [
+        { fileId: 'file-1', fileName: 'valid.pdf', status: 'parsed', data: { policy: {} } },
+        {
+          fileId: 'file-2',
+          fileName: 'broken.pdf',
+          status: 'error',
+          message: 'Не удалось подготовить PDF для vision-распознавания: broken.pdf.',
+          error: { code: 'recognition_error', message: 'Ошибка PDF', retryable: false },
+        },
+      ],
+    });
+    const onPolicyDraftReady = vi.fn();
+    const { resultRef } = renderDriveHook(deal, { onPolicyDraftReady });
+
+    await act(async () => {
+      await resultRef.current?.handleUploadAndRecognizePolicyFiles([
+        new File(['valid'], 'valid.pdf', { type: 'application/pdf' }),
+        new File(['broken'], 'broken.pdf', { type: 'application/pdf' }),
+      ]);
+    });
+
+    expect(addNotificationMock).toHaveBeenCalledTimes(1);
+    expect(addNotificationMock).toHaveBeenCalledWith(
+      'Файл «broken.pdf» не может быть распознан. Проверьте содержимое.',
+      'error',
+      7000,
+    );
+    expect(onPolicyDraftReady).toHaveBeenCalledWith(
+      deal.id,
+      { policy: {} },
+      'valid.pdf',
+      'file-1',
+      ['file-1', 'file-2'],
     );
   });
 
