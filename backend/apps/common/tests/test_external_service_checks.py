@@ -47,6 +47,7 @@ class ExternalServiceChecksCommandTests(SimpleTestCase):
         AI_API_KEY="test-key",  # pragma: allowlist secret
         AI_BASE_URL="https://polza.ai/api/v1",
         AI_MODEL="demo-model",
+        POLICY_RECOGNITION_MODEL="demo-model",
         TELEGRAM_BOT_TOKEN="test-token",  # pragma: allowlist secret
         TELEGRAM_POLL_TIMEOUT=5,
         OPEN_NOTEBOOK_API_URL="https://notebook.example",
@@ -113,6 +114,7 @@ class ExternalServiceChecksCommandTests(SimpleTestCase):
         AI_API_KEY="test-key",  # pragma: allowlist secret
         AI_BASE_URL="https://polza.ai/api/v1",
         AI_MODEL="google/gemini-2.5-flash-lite",
+        POLICY_RECOGNITION_MODEL="google/gemini-2.5-pro",
     )
     @patch("apps.common.management.commands.check_external_services.openai.OpenAI")
     def test_ai_check_reports_error_when_configured_model_is_unavailable(
