@@ -22,6 +22,7 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         insurance_type: str = "ОСАГО",
         start_date: str = "2025-09-19",
         end_date: str = "2026-09-18",
+        amount: int = 3168,
     ) -> str:
         payload = {
             "client_name": "Тестовый клиент",
@@ -43,7 +44,7 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
             },
             "payments": [
                 {
-                    "amount": 3168,
+                    "amount": amount,
                     "payment_date": start_date,
                     "actual_payment_date": start_date,
                 }
@@ -77,6 +78,52 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         self.assertIn("Формальные замечания CRM", verification_message)
         self.assertIn("vehicle_vin", verification_message)
         self.assertEqual(transcript, "")
+
+    @patch("apps.policies.ai_service._chat")
+    def test_verification_cannot_replace_source_backed_dates_and_amount(
+        self, chat_mock
+    ) -> None:
+        chat_mock.side_effect = [
+            self._build_answer(
+                "", start_date="2026-10-23", end_date="2027-10-22", amount=67017
+            ),
+            self._build_answer(
+                "", start_date="2025-07-01", end_date="2026-06-30", amount=2000
+            ),
+        ]
+        source = (
+            "Срок действия: с 23.10.2026 по 22.10.2027. "
+            "Страховая премия 67 017,00 руб."
+        )
+
+        data, _, _ = recognize_policy_interactive(source)
+
+        self.assertEqual(data["policy"]["start_date"], "2026-10-23")
+        self.assertEqual(data["policy"]["end_date"], "2027-10-22")
+        self.assertEqual(data["payments"][0]["amount"], "67017")
+
+    @patch("apps.policies.ai_service._chat")
+    def test_verification_can_correct_values_when_source_supports_them(
+        self, chat_mock
+    ) -> None:
+        chat_mock.side_effect = [
+            self._build_answer(
+                "", start_date="2025-07-01", end_date="2026-06-30", amount=2000
+            ),
+            self._build_answer(
+                "", start_date="2026-10-23", end_date="2027-10-22", amount=67017
+            ),
+        ]
+        source = (
+            "Срок действия: с 23.10.2026 по 22.10.2027. "
+            "Страховая премия 67 017,00 руб."
+        )
+
+        data, _, _ = recognize_policy_interactive(source)
+
+        self.assertEqual(data["policy"]["start_date"], "2026-10-23")
+        self.assertEqual(data["policy"]["end_date"], "2027-10-22")
+        self.assertEqual(data["payments"][0]["amount"], "67017")
 
     @patch("apps.policies.ai_service.log_ai_diagnostic")
     @patch("apps.policies.ai_service._chat")
@@ -230,6 +277,8 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
 
         self.assertIn("ОСАГО: обязательное страхование", prompt)
         self.assertIn("ДГО/ДСАГО: добровольная дополнительная", prompt)
+        self.assertNotIn("2025-07-01", prompt)
+        self.assertNotIn('"amount": 2000', prompt)
         self.assertIn(
             "Первый элемент массива payments всегда должен иметь payment_date, "
             "равную start_date полиса",

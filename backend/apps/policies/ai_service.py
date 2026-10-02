@@ -51,37 +51,11 @@ WHITESPACE_RE = re.compile(r"\s+")
 CatalogEntry = str | dict[str, object]
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
-На основе переданного текста документов нужно сформировать один JSON строго по следующему шаблону:
-{
-  "client_name": "Тестовый клиент",
-  "policy": {
-    "policy_number": "TEST-002-ZXC",
-    "insurance_type": "КАСКО",
-    "insurance_company": "Ингосстрах",
-    "contractor": "",
-    "sales_channel": "",
-    "start_date": "2025-07-01",
-    "end_date": "2026-06-30",
-    "vehicle_brand": "Hyundai",
-    "vehicle_model": "Solaris",
-    "vehicle_vin": "Z94CB41ABFR123456",
-    "deductible": 0,
-    "official_dealer": "",
-    "gap": false,
-    "mortgage_bank": "",
-    "loan_agreement_number": "",
-    "note": "импортировано с помощью ИИ"
-  },
-  "payments": [
-    {
-      "amount": 2000,
-      "payment_date": "2025-07-01",
-      "actual_payment_date": "2025-07-05"
-    }
-  ]
-}
+На основе переданных документов сформируй один JSON по схеме функции.
+В JSON нужны client_name, объект policy и массив payments. Заполняй значения
+только из данного договора; не используй типовые или примерные даты и суммы.
 ОБЩИЕ ПРАВИЛА
-Только по переданному тексту. Никаких догадок или вымышленных данных.
+Только по переданным тексту и страницам документов. Никаких догадок или вымышленных данных.
 
 В запросе всегда один договор/полис → всегда один JSON.
 Текст может включать несколько документов (уведомление, заявление, полис и т.п.), но все они относятся к одному договору.
@@ -125,9 +99,13 @@ payments
 Если вообще нет дат платежей — считать, что первый платеж = start_date.
 Всегда указывай сумму в поле amount как число без пробелов и разделителей.
 Если в документе упоминается только общая страховая премия, используй её как единственный платеж и привязывай его к дате начала полиса.
+Не путай страховую премию или платеж со страховой суммой, лимитом покрытия,
+остатком кредита, франшизой и суммами по другим договорам.
 
 Формат дат
 Всегда в ISO-формате: YYYY-MM-DD.
+Для start_date и end_date бери срок действия именно этого полиса. Не подставляй
+дату оформления, рождения, начала кредита или предыдущего договора.
 Дата окончания полиса не может быть больше даты начала + 1 год. Если полис больше чем на 1 год, то ставь дату окончания полиса = дата начала действия + 1 год
 
 ОБРАБОТКА ТЕКСТА
@@ -171,7 +149,10 @@ def _build_prompt(
             "Ты получишь исходный текст/страницы, черновой JSON и список формальных "
             "замечаний от CRM. Сверь каждое поле с документом и верни один финальный "
             "JSON по той же схеме. Исправляй только поля, которые можно подтвердить "
-            "по документу. Если поле нельзя подтвердить, оставь пустую строку. "
+            "по документу. Особенно проверь start_date, end_date и суммы каждого "
+            "платежа: не заменяй подтверждённое значение без явного основания в "
+            "документе и не копируй значения из примеров или других договоров. "
+            "Если поле нельзя подтвердить, оставь пустую строку. "
             "Не добавляй пояснения вне JSON."
         )
     else:
@@ -1134,6 +1115,75 @@ def _normalize_amount(value: object) -> str:
     return "0"
 
 
+def _preserve_source_supported_values(
+    draft: dict, verified: dict, source_text: str
+) -> dict:
+    """Не принимать неподтверждённую замену дат и платежей при самопроверке текста."""
+
+    if not source_text.strip():
+        return verified
+
+    source_dates = {
+        _normalize_date(match.group())
+        for match in re.finditer(
+            r"(?<!\d)(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./-]\d{1,2}[./-]\d{4})(?!\d)",
+            source_text,
+        )
+    }
+    source_amounts: set[Decimal] = set()
+    for line in source_text.splitlines():
+        if not re.search(r"преми|взнос|плат[её]ж|к оплате|оплачено", line, re.I):
+            continue
+        without_dates = re.sub(
+            r"(?<!\d)(?:\d{4}-\d{2}-\d{2}|\d{1,2}[./-]\d{1,2}[./-]\d{4})(?!\d)",
+            " ",
+            line,
+        )
+        for match in re.finditer(
+            r"(?<![\w])(?:\d{1,3}(?:[ \u00a0]\d{3})+|\d+)(?:[,.]\d{1,2})?(?![\w])",
+            without_dates,
+        ):
+            source_amounts.add(Decimal(_normalize_amount(match.group())))
+
+    reconciled: list[str] = []
+    draft_policy = draft.get("policy")
+    verified_policy = verified.get("policy")
+    if isinstance(draft_policy, dict) and isinstance(verified_policy, dict):
+        for field in ("start_date", "end_date"):
+            old = _normalize_date(draft_policy.get(field))
+            new = _normalize_date(verified_policy.get(field))
+            if old and old != new and old in source_dates and new not in source_dates:
+                verified_policy[field] = draft_policy[field]
+                reconciled.append(f"policy.{field}")
+
+    draft_payments = draft.get("payments")
+    verified_payments = verified.get("payments")
+    if (
+        isinstance(draft_payments, list)
+        and isinstance(verified_payments, list)
+        and len(draft_payments) == len(verified_payments)
+    ):
+        for index, (old_payment, new_payment) in enumerate(
+            zip(draft_payments, verified_payments)
+        ):
+            if not isinstance(old_payment, dict) or not isinstance(new_payment, dict):
+                continue
+            old = Decimal(_normalize_amount(old_payment.get("amount")))
+            new = Decimal(_normalize_amount(new_payment.get("amount")))
+            if (
+                old > 0
+                and old != new
+                and old in source_amounts
+                and new not in source_amounts
+            ):
+                new_payment["amount"] = old_payment["amount"]
+                reconciled.append(f"payments.{index}.amount")
+
+    if reconciled:
+        log_ai_diagnostic("policy.source_values_preserved", fields=reconciled)
+    return verified
+
+
 def _normalize_boolean(value: object, *, default: bool) -> bool:
     """Нормализовать булево значение из ответа ИИ."""
 
@@ -1386,6 +1436,9 @@ def _build_verification_message(
         f"{draft_json}\n\n"
         "Исходный текст документа:\n"
         f"{source}\n\n"
+        "Сначала сверь даты начала и окончания действия и каждую сумму платежа "
+        "с исходным документом. Страховая сумма и лимиты покрытия не являются "
+        "страховой премией. Сохрани подтверждённые значения черновика.\n\n"
         "Верни только финальный JSON по схеме. Не объясняй изменения вне JSON."
     )
 
@@ -1689,6 +1742,7 @@ def recognize_policy_interactive(
 
         formal_issues = _collect_formal_issues(draft_data)
         verify_message = _build_verification_message(text, draft_data, formal_issues)
+        verification_images = _verification_visual_content(messages)
         verify_messages = [
             {
                 "role": "system",
@@ -1704,9 +1758,9 @@ def recognize_policy_interactive(
                 "content": (
                     [
                         {"type": "text", "text": verify_message},
-                        *_verification_visual_content(messages),
+                        *verification_images,
                     ]
-                    if _verification_visual_content(messages)
+                    if verification_images
                     else verify_message
                 ),
             },
@@ -1725,6 +1779,8 @@ def recognize_policy_interactive(
 
         try:
             data = _parse_policy_answer(verify_answer, validate_payload=False)
+            if not verification_images:
+                data = _preserve_source_supported_values(draft_data, data, text)
             data = _reconcile_policy_vin(data, text)
             _validate_policy_payload(data)
         except json.JSONDecodeError as exc:
