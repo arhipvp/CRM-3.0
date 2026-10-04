@@ -11,8 +11,8 @@ from unittest.mock import patch
 
 from scripts.sync_prod_image_tag import sync_image_tag
 
-OLD_TAG = "b6abc58251bc215fae25dc78904e2d7230e93571"
-NEW_TAG = "72462e76f15a0171c83add0f214c41d406e79668"
+OLD_TAG = "a" * 40
+NEW_TAG = "b" * 40
 
 
 class SyncImageTagTests(unittest.TestCase):
