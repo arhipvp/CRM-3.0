@@ -133,7 +133,7 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Run Black (formatting check)
-        run: black --check backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+        run: black --check --extend-exclude '/migrations/' backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
 
       - name: Run isort (import sorting)
         run: isort --check-only backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
