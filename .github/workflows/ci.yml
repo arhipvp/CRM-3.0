@@ -133,13 +133,13 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Run Black (formatting check)
-        run: black --check backend/
+        run: black --check backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
 
       - name: Run isort (import sorting)
-        run: isort --check-only backend/
+        run: isort --check-only backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
 
       - name: Run Ruff (linting)
-        run: ruff check backend/
+        run: ruff check backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
 
   backend-tests-smoke:
     name: Backend Tests (Smoke SQLite)
@@ -165,6 +165,9 @@ jobs:
         run: |
           cd backend
           python -X utf8 manage.py test tests.test_encoding tests.test_test_settings_profile
+
+      - name: Test production image tag synchronization
+        run: python -X utf8 -m unittest scripts.test_sync_prod_image_tag
 
   backend-tests-core:
     name: Backend Tests (Core)

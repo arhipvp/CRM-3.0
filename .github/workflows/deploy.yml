@@ -240,6 +240,52 @@ jobs:
             exit 1
           fi
 
+          echo "Waiting for backend health"
+          backend_healthy=false
+          for attempt in $(seq 1 60); do
+            if [ "$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' crm3-backend 2>/dev/null || true)" = "healthy" ]; then
+              backend_healthy=true
+              break
+            fi
+            sleep 3
+          done
+          if [ "${backend_healthy}" != "true" ]; then
+            echo "ERROR: backend did not become healthy."
+            exit 1
+          fi
+
+          echo "Checking HTTP health through nginx"
+          http_healthy=false
+          for attempt in $(seq 1 30); do
+            if curl -fsS --max-time 5 http://127.0.0.1:8000/health/ >/dev/null 2>&1; then
+              http_healthy=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${http_healthy}" != "true" ]; then
+            echo "ERROR: /health/ did not respond through nginx."
+            exit 1
+          fi
+
+          echo "Checking deployed CRM image tags"
+          for service in backend telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend; do
+            expected_image="crm30-backend:${COMMIT_SHA}"
+            if [ "${service}" = "frontend" ]; then
+              expected_image="crm30-frontend:${COMMIT_SHA}"
+            fi
+            container_id="$(docker compose -f docker-compose.prod.yml --env-file .env.production ps -q "${service}")"
+            if [ -z "${container_id}" ]; then
+              echo "ERROR: ${service} has no container."
+              exit 1
+            fi
+            actual_image="$(docker inspect -f '{{.Config.Image}}' "${container_id}")"
+            if [ "${actual_image}" != "${expected_image}" ]; then
+              echo "ERROR: ${service} uses ${actual_image}; expected ${expected_image}."
+              exit 1
+            fi
+          done
+
           echo "Resolved images:"
           docker compose -f docker-compose.prod.yml --env-file .env.production config | awk '/^[[:space:]]*image:/{print $0}'
 
@@ -248,8 +294,46 @@ jobs:
           docker exec crm3-frontend sh -lc 'ls -1 /usr/share/nginx/html/assets 2>/dev/null | head -n 20 || true'
           docker exec crm3-frontend sh -lc 'head -n 25 /usr/share/nginx/html/index.html 2>/dev/null || true'
 
+          echo "Persisting the successfully deployed IMAGE_TAG"
+          unset IMAGE_TAG
+          python3 - <<'PY'
+          import json
+          import os
+          import subprocess
+          from pathlib import Path
+
+          from scripts.sync_prod_image_tag import sync_image_tag
+
+          commit_sha = os.environ["COMMIT_SHA"]
+          def verify_compose():
+              result = subprocess.run(
+                  ["docker", "compose", "-f", "docker-compose.prod.yml", "--env-file", ".env.production", "config", "--format", "json"],
+                  capture_output=True,
+                  text=True,
+                  check=True,
+              )
+              services = json.loads(result.stdout)["services"]
+              for service in ("backend", "telegram_bot", "external_job_worker", "ai_answer_worker", "ai_index_worker", "frontend"):
+                  image_name = "crm30-frontend" if service == "frontend" else "crm30-backend"
+                  expected = f"{image_name}:{commit_sha}"
+                  actual = services[service]["image"]
+                  if actual != expected:
+                      raise RuntimeError(f"Compose IMAGE_TAG mismatch for {service}: {actual} != {expected}")
+
+          backup = sync_image_tag(
+              Path(".env.production"),
+              commit_sha,
+              Path.cwd().parent / "crm3-image-tag-backups",
+              verify=verify_compose,
+          )
+          if backup is not None:
+              print(f"Previous IMAGE_TAG line saved at {backup}")
+          print("Compose resolves all CRM services to the deployed commit without IMAGE_TAG override")
+          PY
+
+          # Cleanup must not turn a healthy, committed release into a failed deploy.
           echo "Pruning unused images"
-          docker image prune -f
+          docker image prune -f || echo "WARNING: image prune failed"
 
           echo "MARK: end"
           EOF
