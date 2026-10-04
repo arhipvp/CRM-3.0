@@ -13,12 +13,10 @@ from apps.deals.models import Bank, InsuranceCompany, InsuranceType
 from ..ai_service import (
     PolicyRecognitionError,
     extract_text_from_bytes,
-    is_extracted_policy_text_poor,
     is_image_filename,
     is_pdf_filename,
     is_policy_image_filename,
-    is_policy_recognition_result_poor,
-    is_policy_text_likely_tabular,
+    policy_file_requires_vision,
     policy_vision_fallback_enabled,
     recognize_policy_from_pdf_images,
     recognize_policy_from_text,
@@ -189,35 +187,34 @@ def _append_recognition_results(
     if not combined_text:
         combined_text = downloaded_files[0]["text"]
 
-    can_use_vision = policy_vision_fallback_enabled() and any(
-        is_pdf_filename(str(file_data["name"]))
-        or is_policy_image_filename(str(file_data["name"]))
-        for file_data in downloaded_files
-    )
-    text_is_poor = any(
-        is_policy_image_filename(str(file_data["name"]))
-        or (
-            is_pdf_filename(str(file_data["name"]))
-            and (
-                is_extracted_policy_text_poor(str(file_data.get("text") or ""))
-                or is_policy_text_likely_tabular(str(file_data.get("text") or ""))
-            )
+    needs_vision = any(
+        policy_file_requires_vision(
+            str(file_data["name"]), str(file_data.get("text") or "")
         )
         for file_data in downloaded_files
+    )
+    has_text = any(
+        str(file_data.get("text") or "").strip() for file_data in downloaded_files
     )
     log_ai_diagnostic(
         "policy.batch_mode_selected",
         files=downloaded_files,
         combined_text=combined_text,
-        can_use_vision=can_use_vision,
-        text_is_poor=text_is_poor,
-        mode="vision" if text_is_poor and can_use_vision else "text",
+        can_use_vision=policy_vision_fallback_enabled() and needs_vision,
+        text_is_poor=needs_vision,
+        mode=(
+            "mixed"
+            if needs_vision and has_text
+            else "vision" if needs_vision else "text"
+        ),
     )
-    attempted_vision = False
     used_vision = False
     try:
-        if text_is_poor and can_use_vision:
-            attempted_vision = True
+        if needs_vision:
+            if not policy_vision_fallback_enabled():
+                raise PolicyRecognitionError(
+                    "Vision-распознавание полисов отключено в настройках."
+                )
             data, _ = recognize_policy_from_pdf_images(
                 downloaded_files,
                 extra_companies=company_names,
@@ -232,47 +229,24 @@ def _append_recognition_results(
                 extra_types=type_names,
                 extra_banks=bank_names,
             )
-            if is_policy_recognition_result_poor(data) and can_use_vision:
-                attempted_vision = True
-                data, _ = recognize_policy_from_pdf_images(
-                    downloaded_files,
-                    extra_companies=company_names,
-                    extra_types=type_names,
-                    extra_banks=bank_names,
-                )
-                used_vision = True
     except PolicyRecognitionError as exc:
-        if can_use_vision and not attempted_vision:
-            try:
-                attempted_vision = True
-                data, _ = recognize_policy_from_pdf_images(
-                    downloaded_files,
-                    extra_companies=company_names,
-                    extra_types=type_names,
-                    extra_banks=bank_names,
-                )
-                used_vision = True
-            except PolicyRecognitionError as vision_exc:
-                _append_recognition_error_results(
-                    results,
-                    downloaded_files,
-                    message=f"{exc}; vision fallback: {vision_exc}",
-                    error=vision_exc,
-                )
-                return
-        else:
-            _append_recognition_error_results(
-                results,
-                downloaded_files,
-                message=str(exc),
-                error=exc,
-            )
-            return
+        _append_recognition_error_results(
+            results,
+            downloaded_files,
+            message=str(exc),
+            error=exc,
+        )
+        return
 
     primary_file_id = downloaded_files[0]["id"]
     for file_data in downloaded_files:
         is_primary = file_data["id"] == primary_file_id
-        if is_primary and used_vision:
+        if is_primary and used_vision and has_text:
+            message = (
+                "Распознано по тексту и изображениям "
+                f"(1 запрос на {len(downloaded_files)} файлов)."
+            )
+        elif is_primary and used_vision:
             message = (
                 "Распознано через Vision ИИ "
                 f"(1 запрос на {len(downloaded_files)} файлов)."

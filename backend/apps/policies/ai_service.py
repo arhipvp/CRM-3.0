@@ -351,7 +351,7 @@ POLICY_FUNCTION = {
 }
 
 VISION_USER_PROMPT = (
-    "Распознай страховой полис по изображениям страниц. "
+    "Распознай страховой полис по тексту документов и изображениям. "
     "Если передано несколько файлов, считай их частями одного договора/полиса. "
     "Верни JSON строго по схеме."
 )
@@ -407,6 +407,14 @@ def is_policy_image_filename(filename: str) -> bool:
     return Path(filename or "").suffix.lower() in SUPPORTED_POLICY_IMAGE_EXTENSIONS
 
 
+def policy_file_requires_vision(filename: str, text: str) -> bool:
+    """Использовать Vision для изображений и PDF без пригодного текста."""
+
+    return is_policy_image_filename(filename) or (
+        is_pdf_filename(filename) and is_extracted_policy_text_poor(text)
+    )
+
+
 def is_image_filename(filename: str) -> bool:
     """Проверить, является ли файл изображением по расширению."""
 
@@ -440,22 +448,6 @@ def is_extracted_policy_text_poor(text: str) -> bool:
         return True
 
     return False
-
-
-def is_policy_text_likely_tabular(text: str) -> bool:
-    """Оценить, похож ли текстовый слой PDF на склеенную таблицу."""
-
-    if not isinstance(text, str):
-        return False
-    lowered = text.lower()
-    table_terms = (
-        "марка,модель",
-        "идентификационный номер",
-        "государственный регистрационный знак",
-        "годвыпуска",
-        "мощность двигателя",
-    )
-    return sum(1 for term in table_terms if term in lowered) >= 2
 
 
 def is_policy_recognition_result_poor(data: dict) -> bool:
@@ -812,18 +804,40 @@ def _build_vision_messages(
     visual_inputs = 0
     user_content: list[dict] = [{"type": "text", "text": VISION_USER_PROMPT}]
     source_hint_parts: list[str] = []
+    visual_files = [
+        file_data
+        for file_data in files
+        if policy_file_requires_vision(
+            str(file_data.get("name") or ""), str(file_data.get("text") or "")
+        )
+    ]
+    if len(visual_files) > max_pages:
+        raise PolicyRecognitionError(
+            f"Лимит визуальных входов для одного распознавания: {max_pages}. "
+            "Выберите меньше файлов и повторите попытку.",
+            code="vision_input_limit",
+        )
 
+    visual_file_index = 0
     for file_data in files:
         filename = str(file_data.get("name") or "")
         content = file_data.get("content")
         source_text = str(file_data.get("text") or "")
         if source_text:
             source_hint_parts.append(f"Файл {filename}:\n{source_text}")
-        if not isinstance(content, bytes):
+            if not is_pdf_filename(filename) or not is_extracted_policy_text_poor(
+                source_text
+            ):
+                user_content.append(
+                    {"type": "text", "text": f"Файл {filename}:\n{source_text}"}
+                )
+        if not policy_file_requires_vision(filename, source_text):
             continue
-        remaining_pages = max_pages - visual_inputs
-        if remaining_pages <= 0:
-            break
+        if not isinstance(content, bytes):
+            raise PolicyRecognitionError(f"Не удалось прочитать файл {filename}.")
+        remaining_pages = (
+            max_pages - visual_inputs - (len(visual_files) - visual_file_index - 1)
+        )
         if is_pdf_filename(filename):
             images = _render_pdf_pages_for_vision(
                 content,
@@ -833,9 +847,11 @@ def _build_vision_messages(
         elif is_policy_image_filename(filename):
             images = [_prepare_image_for_vision(content, filename)]
         else:
-            continue
+            raise PolicyRecognitionError(f"Неподдерживаемый файл {filename}.")
         if not images:
-            continue
+            raise PolicyRecognitionError(
+                f"Не удалось подготовить визуальное содержимое файла {filename}."
+            )
         user_content.append({"type": "text", "text": f"Файл: {filename}"})
         for image_bytes in images:
             user_content.append(
@@ -847,8 +863,7 @@ def _build_vision_messages(
                 }
             )
         visual_inputs += len(images)
-        if visual_inputs >= max_pages:
-            break
+        visual_file_index += 1
 
     if visual_inputs == 0:
         raise PolicyRecognitionError(
@@ -1503,6 +1518,7 @@ def _chat_request(
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     policy_model: bool = True,
+    use_tools: bool = True,
 ) -> str:
     api_key, base_url, model = _resolve_ai_client_config(policy_model=policy_model)
     started_at = time.monotonic()
@@ -1516,14 +1532,17 @@ def _chat_request(
 
     tools = [{"type": "function", "function": POLICY_FUNCTION}]
     tool_choice = {"type": "function", "function": {"name": POLICY_FUNCTION["name"]}}
+    request_kwargs = {"model": model, "messages": messages, "temperature": 0}
+    if use_tools:
+        request_kwargs.update({"tools": tools, "tool_choice": tool_choice})
     log_ai_diagnostic(
         "policy.request",
         model=model,
         base_url=base_url,
         streaming=bool(progress_cb),
         messages=messages,
-        tools=tools,
-        tool_choice=tool_choice,
+        tools=tools if use_tools else [],
+        tool_choice=tool_choice if use_tools else None,
     )
 
     def _check_cancel() -> None:
@@ -1533,12 +1552,8 @@ def _chat_request(
 
     if progress_cb:
         stream = client.chat.completions.create(
-            model=model,
-            messages=messages,
-            temperature=0,
+            **request_kwargs,
             stream=True,
-            tools=tools,
-            tool_choice=tool_choice,
         )
         parts: List[str] = []
         content_parts: List[str] = []
@@ -1587,11 +1602,7 @@ def _chat_request(
         return result
 
     resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0,
-        tools=tools,
-        tool_choice=tool_choice,
+        **request_kwargs,
     )
     message = resp.choices[0].message
     tool_calls = getattr(message, "tool_calls", None)
@@ -1631,6 +1642,7 @@ def _chat(
     progress_cb: Callable[[str, str], None] | None = None,
     cancel_cb: Callable[[], bool] | None = None,
     policy_model: bool = True,
+    use_tools: bool = True,
 ) -> str:
     """Выполнить запрос к AI и записать безопасный результат ошибки."""
 
@@ -1641,6 +1653,7 @@ def _chat(
             progress_cb=progress_cb,
             cancel_cb=cancel_cb,
             policy_model=policy_model,
+            use_tools=use_tools,
         )
     except Exception as exc:
         model = getattr(settings, "AI_MODEL", "") or "google/gemini-2.5-flash-lite"
@@ -1773,6 +1786,7 @@ def recognize_policy_interactive(
             progress_cb=progress_cb,
             cancel_cb=cancel_cb,
             policy_model=use_policy_model,
+            use_tools=False,
         )
         messages.extend(verify_messages)
         messages.append({"role": "assistant", "content": verify_answer})
@@ -1838,7 +1852,7 @@ def recognize_policy_from_pdf_images(
     extra_types: List[CatalogEntry] | None = None,
     extra_banks: List[CatalogEntry] | None = None,
 ) -> Tuple[dict, str]:
-    """Распознать полис по PDF-страницам и изображениям."""
+    """Распознать полис по тексту и визуальным входам в одном запросе."""
 
     log_ai_diagnostic("policy.vision_input", files=files)
 
@@ -1909,22 +1923,18 @@ def recognize_policy_from_bytes(
         and isinstance(content, bytes)
     )
 
-    text_needs_vision = is_policy_text_likely_tabular(text)
-
     if text_error is None and not is_extracted_policy_text_poor(text):
-        try:
-            data, transcript = recognize_policy_from_text(
-                text,
-                extra_companies=extra_companies,
-                extra_types=extra_types,
-                extra_banks=extra_banks,
+        data, transcript = recognize_policy_from_text(
+            text,
+            extra_companies=extra_companies,
+            extra_types=extra_types,
+            extra_banks=extra_banks,
+        )
+        if is_pdf_filename(filename) and is_policy_recognition_result_poor(data):
+            raise PolicyRecognitionError(
+                "Недостаточно данных для распознавания полиса в текстовом PDF."
             )
-            if (
-                not text_needs_vision and not is_policy_recognition_result_poor(data)
-            ) or not can_use_vision:
-                return data, transcript
-        except PolicyRecognitionError as exc:
-            text_error = exc
+        return data, transcript
 
     if can_use_vision:
         try:
