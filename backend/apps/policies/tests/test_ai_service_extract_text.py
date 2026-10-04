@@ -136,7 +136,7 @@ class PolicyVisionFallbackTests(SimpleTestCase):
     @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
     @patch("apps.policies.ai_service.recognize_policy_from_text")
     @patch("apps.policies.ai_service.extract_text_from_bytes")
-    def test_vision_failure_never_returns_weak_text_result(
+    def test_weak_text_pdf_result_does_not_render_pdf(
         self,
         extract_mock: Mock,
         text_recognize_mock: Mock,
@@ -152,13 +152,13 @@ class PolicyVisionFallbackTests(SimpleTestCase):
             recognize_policy_from_bytes(b"%PDF", filename="policy.pdf")
 
         text_recognize_mock.assert_called_once()
-        vision_recognize_mock.assert_called_once()
+        vision_recognize_mock.assert_not_called()
 
     @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
     @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
     @patch("apps.policies.ai_service.recognize_policy_from_text")
     @patch("apps.policies.ai_service.extract_text_from_bytes")
-    def test_invalid_text_mode_uses_vision_fallback(
+    def test_invalid_text_pdf_result_does_not_render_pdf(
         self,
         extract_mock: Mock,
         text_recognize_mock: Mock,
@@ -168,23 +168,16 @@ class PolicyVisionFallbackTests(SimpleTestCase):
             "Полис ОСАГО номер SYS-1 страховая премия автомобиль договор"
         )
         text_recognize_mock.side_effect = PolicyRecognitionError("bad json")
-        expected = {"policy": {"policy_number": "SYS-1"}, "payments": []}
-        vision_recognize_mock.return_value = (expected, "vision transcript")
+        with self.assertRaisesRegex(PolicyRecognitionError, "bad json"):
+            recognize_policy_from_bytes(b"%PDF", filename="policy.pdf")
 
-        data, transcript = recognize_policy_from_bytes(
-            b"%PDF",
-            filename="policy.pdf",
-        )
-
-        self.assertEqual(data, expected)
-        self.assertEqual(transcript, "vision transcript")
-        vision_recognize_mock.assert_called_once()
+        vision_recognize_mock.assert_not_called()
 
     @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
     @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
     @patch("apps.policies.ai_service.recognize_policy_from_text")
     @patch("apps.policies.ai_service.extract_text_from_bytes")
-    def test_empty_text_mode_result_uses_vision_fallback(
+    def test_empty_text_pdf_result_does_not_render_pdf(
         self,
         extract_mock: Mock,
         text_recognize_mock: Mock,
@@ -213,17 +206,10 @@ class PolicyVisionFallbackTests(SimpleTestCase):
             },
             "text transcript",
         )
-        expected = {"policy": {"policy_number": "SYS-1"}, "payments": []}
-        vision_recognize_mock.return_value = (expected, "vision transcript")
+        with self.assertRaisesRegex(PolicyRecognitionError, "Недостаточно данных"):
+            recognize_policy_from_bytes(b"%PDF", filename="policy.pdf")
 
-        data, transcript = recognize_policy_from_bytes(
-            b"%PDF",
-            filename="policy.pdf",
-        )
-
-        self.assertEqual(data, expected)
-        self.assertEqual(transcript, "vision transcript")
-        vision_recognize_mock.assert_called_once()
+        vision_recognize_mock.assert_not_called()
 
     @override_settings(POLICY_RECOGNITION_VISION_FALLBACK_ENABLED=True)
     @patch("apps.policies.ai_service.recognize_policy_from_pdf_images")
@@ -449,12 +435,74 @@ class PolicyVisionFallbackTests(SimpleTestCase):
         pdf_content = document.tobytes()
         document.close()
 
+        with self.assertRaisesRegex(PolicyRecognitionError, "Лимит визуальных входов"):
+            _build_vision_messages(
+                [
+                    {"name": "first.png", "content": self._image_bytes()},
+                    {"name": "second.pdf", "content": pdf_content},
+                ]
+            )
+
+    @override_settings(POLICY_RECOGNITION_MAX_VISION_PAGES=6)
+    def test_text_pdf_last_page_and_jpeg_share_first_request(self):
+        document = pymupdf.open()
+        for page_number in range(17):
+            page = document.new_page()
+            text = "Policy premium 2637.13" if page_number == 16 else "Policy page"
+            page.insert_text((72, 72), text)
+        pdf_content = document.tobytes()
+        document.close()
+        extracted_text = extract_text_from_bytes(pdf_content, "policy.pdf")
+
+        with patch(
+            "apps.policies.ai_service._render_pdf_pages_for_vision"
+        ) as render_mock:
+            messages, source_text = _build_vision_messages(
+                [
+                    {
+                        "name": "policy.pdf",
+                        "content": pdf_content,
+                        "text": extracted_text,
+                    },
+                    {
+                        "name": "receipt.jpg",
+                        "content": self._image_bytes("JPEG"),
+                        "text": "",
+                    },
+                ]
+            )
+
+        render_mock.assert_not_called()
+        user_content = messages[1]["content"]
+        self.assertTrue(any("2637.13" in item.get("text", "") for item in user_content))
+        self.assertIn("2637.13", source_text)
+        self.assertEqual(sum(item["type"] == "image_url" for item in user_content), 1)
+        self.assertTrue(
+            any(item.get("text") == "Файл: receipt.jpg" for item in user_content)
+        )
+
+    @override_settings(POLICY_RECOGNITION_MAX_VISION_PAGES=2)
+    @patch("apps.policies.ai_service._detect_pdf_page_rotation", return_value=0)
+    def test_scanned_pdf_reserves_visual_slot_for_later_jpeg(self, _rotation_mock):
+        document = pymupdf.open()
+        for _ in range(3):
+            document.new_page()
+        pdf_content = document.tobytes()
+        document.close()
+
         messages, _ = _build_vision_messages(
             [
-                {"name": "first.png", "content": self._image_bytes()},
-                {"name": "second.pdf", "content": pdf_content},
+                {"name": "scan.pdf", "content": pdf_content, "text": ""},
+                {
+                    "name": "receipt.jpg",
+                    "content": self._image_bytes("JPEG"),
+                    "text": "",
+                },
             ]
         )
 
         user_content = messages[1]["content"]
-        self.assertEqual(sum(item["type"] == "image_url" for item in user_content), 1)
+        self.assertEqual(sum(item["type"] == "image_url" for item in user_content), 2)
+        self.assertTrue(
+            any(item.get("text") == "Файл: receipt.jpg" for item in user_content)
+        )
