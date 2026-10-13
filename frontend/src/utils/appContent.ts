@@ -38,11 +38,12 @@ export const matchSalesChannel = (
   if (!normalizedValue) {
     return undefined;
   }
+  const exactMatch = channels.find((channel) => channel.name.toLowerCase() === normalizedValue);
+  if (exactMatch) {
+    return exactMatch;
+  }
   return channels.find((channel) => {
     const channelName = channel.name.toLowerCase();
-    if (channelName === normalizedValue) {
-      return true;
-    }
     if (channelName.includes(normalizedValue) || normalizedValue.includes(channelName)) {
       return true;
     }
