@@ -11,7 +11,7 @@ from apps.policies.ai_service import (
     recognize_policy_from_pdf_images,
     recognize_policy_interactive,
 )
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, override_settings
 from PIL import Image
 
 
@@ -313,3 +313,81 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
             "равную start_date полиса",
             prompt,
         )
+
+    @override_settings(AI_POLICY_PROMPT="")
+    def test_sales_channel_rule_is_available_in_both_prompt_modes(self) -> None:
+        for mode in ("extract", "verify"):
+            with self.subTest(mode=mode):
+                prompt = _build_prompt(mode=mode)
+                self.assertIn(
+                    'policy.sales_channel = "Гриша. Ресо" только если страховщик — '
+                    "РЕСО-Гарантия и Музыченко указан среди агентов или "
+                    "представителей страховщика",
+                    prompt,
+                )
+                self.assertIn("независимо от регистра и наличия инициалов", prompt)
+                self.assertIn("МУЗЫЧЕНКО Г. В.", prompt)
+                self.assertIn("Г. В. Музыченко", prompt)
+                self.assertIn("тексте и на сканах", prompt)
+                self.assertIn("Музыченко указан только как страхователь", prompt)
+                self.assertIn("Для другого страховщика", prompt)
+                self.assertIn("если агент Музыченко не подтверждён", prompt)
+                self.assertIn('фамилии агентов "Перебоева" или "Лежнев"', prompt)
+
+    @override_settings(AI_POLICY_PROMPT="")
+    @patch("apps.policies.ai_service._chat")
+    def test_text_sales_channel_scenarios_receive_rule_in_both_ai_passes(
+        self, chat_mock
+    ) -> None:
+        # These mocked replies check transport and parsing, not AI accuracy.
+        for source, expected_channel in (
+            ("РЕСО-Гарантия. Агент: МУЗЫЧЕНКО Г. В.", "Гриша. Ресо"),
+            ("РЕСО-Гарантия. Страхователь: Музыченко Г. В.", ""),
+            ("Ингосстрах. Агент: Г. В. Музыченко.", ""),
+            ("РЕСО-Гарантия. Агент: Иванов И. И.", ""),
+        ):
+            with self.subTest(source=source):
+                answer = json.loads(self._build_answer(""))
+                answer["policy"]["sales_channel"] = expected_channel
+                raw_answer = json.dumps(answer, ensure_ascii=False)
+                chat_mock.reset_mock()
+                chat_mock.side_effect = [raw_answer, raw_answer]
+
+                data, _, _ = recognize_policy_interactive(source)
+
+                self.assertEqual(data["policy"]["sales_channel"], expected_channel)
+                self.assertEqual(chat_mock.call_count, 2)
+                for call in chat_mock.call_args_list:
+                    messages = call.args[0]
+                    self.assertIn(
+                        'policy.sales_channel = "Гриша. Ресо"', messages[0]["content"]
+                    )
+                    self.assertIn(source, messages[1]["content"])
+
+    @override_settings(AI_POLICY_PROMPT="")
+    @patch("apps.policies.ai_service._chat")
+    def test_vision_sales_channel_rule_reaches_extraction_and_verification(
+        self, chat_mock
+    ) -> None:
+        answer = json.loads(self._build_answer(""))
+        answer["policy"]["sales_channel"] = "Гриша. Ресо"
+        raw_answer = json.dumps(answer, ensure_ascii=False)
+        chat_mock.side_effect = [raw_answer, raw_answer]
+        image = Image.new("RGB", (20, 10), "white")
+        buffer = BytesIO()
+        image.save(buffer, format="JPEG")
+
+        data, _ = recognize_policy_from_pdf_images(
+            [{"name": "policy.jpg", "content": buffer.getvalue(), "text": ""}]
+        )
+
+        self.assertEqual(data["policy"]["sales_channel"], "Гриша. Ресо")
+        self.assertEqual(chat_mock.call_count, 2)
+        for call in chat_mock.call_args_list:
+            self.assertIn(
+                'policy.sales_channel = "Гриша. Ресо"',
+                call.args[0][0]["content"],
+            )
+            self.assertTrue(
+                any(item["type"] == "image_url" for item in call.args[0][1]["content"])
+            )
