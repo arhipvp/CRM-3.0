@@ -22,12 +22,25 @@ const channels: SalesChannel[] = [
     createdAt: '',
     updatedAt: '',
   },
+  {
+    id: '852b4b23-e04f-40db-99af-6d967534f617',
+    name: 'Гриша. Сбер',
+    createdAt: '',
+    updatedAt: '',
+  },
 ];
 
 describe('matchSalesChannel', () => {
   it('prefers the exact channel over earlier channels sharing a token', () => {
     expect(matchSalesChannel(channels, '  ГРИША. РЕСО  ')?.id).toBe(channels[1].id);
   });
+
+  it.each(['Гриша. Сбер', '  ГРИША. СБЕР  '])(
+    'selects the Sber UUID despite earlier Alfa and RESO channels for %s',
+    (value) => {
+      expect(matchSalesChannel(channels, value)?.id).toBe(channels[3].id);
+    },
+  );
 
   it.each(['', '   '])('returns no channel for an empty value %j', (value) => {
     expect(matchSalesChannel(channels, value)).toBeUndefined();

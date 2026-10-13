@@ -325,6 +325,17 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
                     "представителей страховщика",
                     prompt,
                 )
+                self.assertIn(
+                    'policy.sales_channel = "Гриша. Сбер" только если страховщик — '
+                    "СберСтрахование и Музыченко указан среди агентов или "
+                    "представителей страховщика",
+                    prompt,
+                )
+                self.assertIn(
+                    "Упоминание банка Сбер или Сбербанка в ипотечных реквизитах "
+                    "не подтверждает страховщика СберСтрахование",
+                    prompt,
+                )
                 self.assertIn("независимо от регистра и наличия инициалов", prompt)
                 self.assertIn("МУЗЫЧЕНКО Г. В.", prompt)
                 self.assertIn("Г. В. Музыченко", prompt)
@@ -341,6 +352,11 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
     ) -> None:
         # These mocked replies check transport and parsing, not AI accuracy.
         for source, expected_channel in (
+            ("СберСтрахование. Агент: МУЗЫЧЕНКО Г. В.", "Гриша. Сбер"),
+            ("СберСтрахование. Представитель: Г. В. Музыченко.", "Гриша. Сбер"),
+            ("СберСтрахование. Страхователь: Музыченко Г. В.", ""),
+            ("СберСтрахование. Агент: Иванов И. И.", ""),
+            ("Ингосстрах. Банк: Сбербанк. Агент: Музыченко Г. В.", ""),
             ("РЕСО-Гарантия. Агент: МУЗЫЧЕНКО Г. В.", "Гриша. Ресо"),
             ("РЕСО-Гарантия. Страхователь: Музыченко Г. В.", ""),
             ("Ингосстрах. Агент: Г. В. Музыченко.", ""),
@@ -361,6 +377,9 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
                     messages = call.args[0]
                     self.assertIn(
                         'policy.sales_channel = "Гриша. Ресо"', messages[0]["content"]
+                    )
+                    self.assertIn(
+                        'policy.sales_channel = "Гриша. Сбер"', messages[0]["content"]
                     )
                     self.assertIn(source, messages[1]["content"])
 
@@ -386,6 +405,10 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         for call in chat_mock.call_args_list:
             self.assertIn(
                 'policy.sales_channel = "Гриша. Ресо"',
+                call.args[0][0]["content"],
+            )
+            self.assertIn(
+                'policy.sales_channel = "Гриша. Сбер"',
                 call.args[0][0]["content"],
             )
             self.assertTrue(
