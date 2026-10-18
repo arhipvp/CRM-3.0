@@ -133,13 +133,25 @@ jobs:
           pip install -r backend/requirements.txt
 
       - name: Run Black (formatting check)
-        run: black --check --extend-exclude '/migrations/' backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+        run: >-
+          black --check --extend-exclude '/migrations/' backend/
+          scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+          scripts/check_ci_quality_gate.py scripts/test_ci_quality_gate.py
+          scripts/check_production_compose.py scripts/test_production_compose.py
 
       - name: Run isort (import sorting)
-        run: isort --check-only backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+        run: >-
+          isort --check-only backend/
+          scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+          scripts/check_ci_quality_gate.py scripts/test_ci_quality_gate.py
+          scripts/check_production_compose.py scripts/test_production_compose.py
 
       - name: Run Ruff (linting)
-        run: ruff check backend/ scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+        run: >-
+          ruff check backend/
+          scripts/sync_prod_image_tag.py scripts/test_sync_prod_image_tag.py
+          scripts/check_ci_quality_gate.py scripts/test_ci_quality_gate.py
+          scripts/check_production_compose.py scripts/test_production_compose.py
 
   backend-tests-smoke:
     name: Backend Tests (Smoke SQLite)
@@ -166,8 +178,17 @@ jobs:
           cd backend
           python -X utf8 manage.py test tests.test_encoding tests.test_test_settings_profile
 
-      - name: Test production image tag synchronization
-        run: python -X utf8 -m unittest scripts.test_sync_prod_image_tag
+      - name: Test CI and production deployment safeguards
+        run: >-
+          python -X utf8 -m unittest scripts.test_sync_prod_image_tag
+          scripts.test_ci_quality_gate scripts.test_production_compose
+
+      - name: Validate production database configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker compose -f docker-compose.prod.yml --env-file .env.production.example config --format json |
+            python -X utf8 scripts/check_production_compose.py
 
   backend-tests-core:
     name: Backend Tests (Core)
@@ -533,6 +554,7 @@ jobs:
         docker-changes,
         secret-scan,
         backend-lint,
+        backend-tests-smoke,
         backend-tests-core,
         backend-tests-domain,
         backend-tests-finance,
@@ -545,57 +567,15 @@ jobs:
     if: always()
 
     steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+
       - name: Check workflow status
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          if [ "${{ needs.backend-lint.result }}" = "failure" ]; then
-            echo "Backend lint failed"
-            exit 1
-          fi
-          if [ "${{ needs.secret-scan.result }}" = "failure" ]; then
-            echo "Secret scan failed"
-            exit 1
-          fi
-          if [ "${{ needs.backend-tests-smoke.result }}" = "failure" ]; then
-            echo "Backend smoke tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.backend-tests-core.result }}" = "failure" ] || [ "${{ needs.backend-tests-domain.result }}" = "failure" ] || [ "${{ needs.backend-tests-finance.result }}" = "failure" ]; then
-            echo "Backend shard tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.backend-coverage-merge.result }}" = "failure" ]; then
-            echo "Backend coverage merge failed"
-            exit 1
-          fi
-          if [ "${{ needs.frontend-quality.result }}" = "failure" ]; then
-            echo "Frontend quality checks failed"
-            exit 1
-          fi
-          if [ "${{ needs.frontend-tests.result }}" = "failure" ]; then
-            echo "Frontend tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.frontend-build.result }}" = "failure" ]; then
-            echo "Frontend build failed"
-            exit 1
-          fi
-
-          docker_required=false
-          if [ "${{ github.event_name }}" = "push" ] || [ "${{ needs.docker-changes.outputs.docker_relevant }}" = "true" ]; then
-            docker_required=true
-          fi
-
-          if [ "${docker_required}" = "true" ] && [ "${{ needs.docker-build.result }}" != "success" ]; then
-            echo "Docker build failed or was skipped unexpectedly"
-            exit 1
-          fi
-
-          if [ "${docker_required}" = "false" ] && [ "${{ needs.docker-build.result }}" = "failure" ]; then
-            echo "Docker build failed"
-            exit 1
-          fi
-
-          echo "All quality checks passed!"
+        env:
+          CI_NEEDS_JSON: ${{ toJSON(needs) }}
+          CI_EVENT_NAME: ${{ github.event_name }}
+        run: python -X utf8 scripts/check_ci_quality_gate.py
