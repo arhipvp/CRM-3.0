@@ -36,6 +36,11 @@ class ToolSpec:
     previewer: Handler | None = None
     meta: dict | None = None
     replay_guard: Callable[[dict, Any, dict], None] | None = None
+    # Runs only after the domain result and mutation checkpoint commit together.
+    # A pending external phase can be resumed with the exact original request ID.
+    after_commit: Callable[[dict, Any, dict], dict] | None = None
+    # Consume the exact server-side preparation whose fingerprint was checked.
+    prepared_handler: Callable[[dict, Any, dict], dict] | None = None
 
     def requires_preview(self, arguments, principal):
         return self.risky(arguments, principal) if callable(self.risky) else self.risky

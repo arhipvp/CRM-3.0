@@ -581,16 +581,9 @@ def _core_specs():
             risky=action == "save_calculation",
             scopes=WRITE | {"crm.files"},
         )
-    _action(
-        specs,
-        "crm_create_policy_draft",
-        PolicyViewSet,
-        "draft_create",
-        detail=False,
-        body=serializer_schema(PolicyDraftSerializer),
-        serializer=PolicyDraftSerializer,
-        risky=True,
-    )
+    from .policy_import import get_policy_import_spec
+
+    specs.append(get_policy_import_spec())
     _action(
         specs,
         "crm_update_policy_draft",
@@ -1199,6 +1192,12 @@ def list_tools(principal=None):
         if principal is not None and not spec.scopes.issubset(principal.scopes):
             continue
         description = spec.description
+        if "payments" in spec.name or "financial_records" in spec.name:
+            description += " A payment is the insurance premium: actual_date alone marks it paid. Financial income/expense records are agent commission and costs; their date is the separate settlement date. paid_balance sums dated financial records and is not the premium's paid status. Never create income equal to the premium just to mark it paid."
+        if spec.name == "crm_create_policies":
+            description += " For document imports or creating payments and commission/expense placeholders, use crm_create_policy_draft instead; this tool only creates the policy card."
+        if spec.name == "crm_recognize_policy":
+            description += " Recognition does not save a policy or move documents. Pass the returned fileId values as data.source_file_ids to crm_create_policy_draft to save the policy and move its originals together."
         if spec.mutating:
             description += " Sensitive replacements, financial changes, deletions and moves require crm_preview_change then crm_apply_change with the user's confirmation."
         security = [{"type": "oauth2", "scopes": sorted(spec.scopes)}]
