@@ -14,6 +14,7 @@ from django.contrib.auth import get_user_model
 from django.core import signing
 from django.core.files.base import ContentFile
 from django.http import Http404
+from django.test import Client as DjangoClient
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 from rest_framework.exceptions import AuthenticationFailed, NotFound, ValidationError
 
@@ -328,12 +329,10 @@ class FileOwnerPermissionTests(TestCase):
         self.assertEqual(payload["file_id"], f"l_{self.document.pk}")
         self.assertEqual(payload["token_id"], 7)
         self.assertEqual(payload["user_id"], self.user.pk)
-        response = files.file_download_view(RequestFactory().get("/"), ticket)
-        try:
-            self.assertEqual(
-                b"".join(response.streaming_content), "Проверка UTF-8".encode("utf-8")
-            )
-            self.assertEqual(response["Cache-Control"], "private, no-store")
-            self.assertEqual(response["X-Content-Type-Options"], "nosniff")
-        finally:
-            response.close()
+        response = DjangoClient().get(f"/mcp-files/{ticket}/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            b"".join(response.streaming_content), "Проверка UTF-8".encode("utf-8")
+        )
+        self.assertEqual(response["Cache-Control"], "private, no-store")
+        self.assertEqual(response["X-Content-Type-Options"], "nosniff")
