@@ -21,6 +21,7 @@ from apps.documents.views import (
     KnowledgeAskView,
 )
 from apps.finances.views import FinanceSummaryView
+from apps.mcp_connector.views import mcp_file_download
 from apps.notifications.views import (
     DriveCallbackView,
     DriveReconnectView,
@@ -42,8 +43,23 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.http import JsonResponse
 from django.urls import include, path
+from oauth2_provider.views import (
+    OAuthProtectedResourceMetadataView,
+    OAuthServerMetadataView,
+)
 
 urlpatterns = [
+    path("oauth/", include("apps.mcp_connector.oauth_urls")),
+    path(".well-known/oauth-authorization-server", OAuthServerMetadataView.as_view()),
+    path(
+        ".well-known/oauth-protected-resource",
+        OAuthProtectedResourceMetadataView.as_view(),
+    ),
+    path(
+        ".well-known/oauth-protected-resource/mcp",
+        OAuthProtectedResourceMetadataView.as_view(),
+    ),
+    path("mcp-files/<str:ticket>/", mcp_file_download, name="mcp-file-download"),
     path("admin/", admin_site.urls),
     path("health/", lambda request: JsonResponse({"status": "ok"})),
     path("api/v1/auth/login/", login_view, name="login"),

@@ -197,7 +197,7 @@ jobs:
           # Qdrant is a pinned public runtime image, unlike the local CRM images
           # built below. It must be present before compose runs with --pull=never.
           docker pull qdrant/qdrant:v1.12.4
-          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant backend telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend nginx
+          docker compose -f docker-compose.prod.yml --env-file .env.production up --pull=never --build -d --force-recreate qdrant backend mcp telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend nginx
 
           # The retired FastAPI container is no longer in Compose. Keep its
           # named data volume for rollback, but do not leave its process running.
@@ -254,6 +254,20 @@ jobs:
             exit 1
           fi
 
+          echo "Waiting for MCP health"
+          mcp_healthy=false
+          for attempt in $(seq 1 30); do
+            if [ "$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' crm3-mcp 2>/dev/null || true)" = "healthy" ]; then
+              mcp_healthy=true
+              break
+            fi
+            sleep 2
+          done
+          if [ "${mcp_healthy}" != "true" ]; then
+            echo "ERROR: MCP did not become healthy."
+            exit 1
+          fi
+
           echo "Checking HTTP health through nginx"
           http_healthy=false
           for attempt in $(seq 1 30); do
@@ -269,7 +283,7 @@ jobs:
           fi
 
           echo "Checking deployed CRM image tags"
-          for service in backend telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend; do
+          for service in backend mcp telegram_bot external_job_worker ai_answer_worker ai_index_worker frontend; do
             expected_image="crm30-backend:${COMMIT_SHA}"
             if [ "${service}" = "frontend" ]; then
               expected_image="crm30-frontend:${COMMIT_SHA}"
@@ -313,7 +327,7 @@ jobs:
                   check=True,
               )
               services = json.loads(result.stdout)["services"]
-              for service in ("backend", "telegram_bot", "external_job_worker", "ai_answer_worker", "ai_index_worker", "frontend"):
+              for service in ("backend", "mcp", "telegram_bot", "external_job_worker", "ai_answer_worker", "ai_index_worker", "frontend"):
                   image_name = "crm30-frontend" if service == "frontend" else "crm30-backend"
                   expected = f"{image_name}:{commit_sha}"
                   actual = services[service]["image"]

@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import pytest
 from django.conf import settings
 from django.db import connections
 from django.db.migrations.executor import MigrationExecutor
@@ -17,6 +18,12 @@ from django.test import override_settings
 
 
 class RemoveClientCurrentMigrationTests(unittest.TestCase):
+    @pytest.fixture(autouse=True)
+    def allow_isolated_migration_database(self, django_db_blocker):
+        # This test owns a temporary database, created after test collection.
+        with django_db_blocker.unblock():
+            yield
+
     def test_removing_flag_preserves_people_documents_roles_and_snapshot(self):
         alias = "client_current_migration_probe"
         migration = ("clients", "0017_remove_client_is_current")
