@@ -7,6 +7,8 @@ from typing import Any, Callable
 
 from rest_framework import serializers
 
+from .descriptions import serializer_field_description
+
 Handler = Callable[[dict, Any], Any]
 RESERVED_WRITE_FIELDS = {
     "owner",
@@ -55,7 +57,7 @@ def object_schema(properties=None, required=()):
     }
 
 
-def _field_schema(field):
+def _field_schema(field, *, serializer=None):
     if isinstance(field, serializers.ManyRelatedField):
         result = {"type": "array", "items": _field_schema(field.child_relation)}
     elif isinstance(field, (serializers.ListSerializer, serializers.ListField)):
@@ -91,12 +93,39 @@ def _field_schema(field):
         result = {"type": "string"}
     if isinstance(field, serializers.ChoiceField):
         result = {"enum": list(field.choices)}
+    for field_type, value_format in (
+        (serializers.DateTimeField, "date-time"),
+        (serializers.DateField, "date"),
+        (serializers.UUIDField, "uuid"),
+        (serializers.EmailField, "email"),
+        (serializers.URLField, "uri"),
+    ):
+        if isinstance(field, field_type):
+            result["format"] = value_format
+            break
     if getattr(field, "max_length", None) and result.get("type") == "string":
         result["maxLength"] = field.max_length
-    if getattr(field, "help_text", None):
-        result["description"] = str(field.help_text)
     if field.allow_null:
         result = {"anyOf": [result, {"type": "null"}]}
+    if serializer is not None:
+        description = serializer_field_description(serializer, field.field_name, field)
+        if isinstance(field, serializers.DecimalField):
+            description += " Pass a decimal string with a dot, for example '1250.00'."
+        elif isinstance(field, serializers.DateTimeField):
+            description += " Use ISO 8601 date-time with timezone, for example '2026-10-26T10:00:00+03:00'."
+        elif isinstance(field, serializers.DateField):
+            description += " Use YYYY-MM-DD, for example '2026-10-26'."
+        if isinstance(field, serializers.ChoiceField):
+            description += (
+                " Values: "
+                + "; ".join(
+                    f"{value} = {label}" for value, label in field.choices.items()
+                )
+                + "."
+            )
+        if field.allow_null:
+            description += " null is accepted; it is distinct from omitting the field."
+        result["description"] = description
     return result
 
 
@@ -110,6 +139,9 @@ def serializer_schema(serializer_class, *, partial=False):
         if not field.read_only and name not in RESERVED_WRITE_FIELDS
     }
     return object_schema(
-        {name: _field_schema(field) for name, field in fields.items()},
+        {
+            name: _field_schema(field, serializer=serializer)
+            for name, field in fields.items()
+        },
         [name for name, field in fields.items() if field.required and not partial],
     )
