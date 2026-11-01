@@ -66,27 +66,25 @@ class RecognizePolicyAiVerificationTests(SimpleTestCase):
         return_value=("test-key", "https://example.test", "test-model"),
     )
     @patch("apps.policies.ai_service.openai.OpenAI")
-    def test_verification_requests_json_without_forced_tool_call(
+    def test_both_passes_request_json_without_forced_tool_call(
         self, client_class, _config_mock, _diagnostics_mock
     ) -> None:
         answer = self._build_answer("")
-        first_message = SimpleNamespace(
-            tool_calls=[SimpleNamespace(function=SimpleNamespace(arguments=answer))],
-            content="",
-        )
-        verified_message = SimpleNamespace(tool_calls=[], content=answer)
+        plain_message = SimpleNamespace(tool_calls=[], content=answer)
+        response = SimpleNamespace(choices=[SimpleNamespace(message=plain_message)])
         client_class.return_value.chat.completions.create.side_effect = [
-            SimpleNamespace(choices=[SimpleNamespace(message=first_message)]),
-            SimpleNamespace(choices=[SimpleNamespace(message=verified_message)]),
+            response,
+            response,
         ]
 
         recognize_policy_interactive("Полис № SYS2884597919")
 
         calls = client_class.return_value.chat.completions.create.call_args_list
-        self.assertIn("tools", calls[0].kwargs)
-        self.assertIn("tool_choice", calls[0].kwargs)
-        self.assertNotIn("tools", calls[1].kwargs)
-        self.assertNotIn("tool_choice", calls[1].kwargs)
+        self.assertEqual(len(calls), 2)
+        for call in calls:
+            self.assertNotIn("tools", call.kwargs)
+            self.assertNotIn("tool_choice", call.kwargs)
+        self.assertIn('"client_name"', calls[0].kwargs["messages"][0]["content"])
 
     @patch("apps.policies.ai_service._chat")
     def test_second_ai_pass_corrects_formal_vin_issue(self, chat_mock) -> None:
