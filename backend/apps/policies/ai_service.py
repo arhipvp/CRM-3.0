@@ -51,7 +51,7 @@ WHITESPACE_RE = re.compile(r"\s+")
 CatalogEntry = str | dict[str, object]
 
 DEFAULT_PROMPT = """Ты — ассистент, отвечающий за импорт данных из страховых полисов в CRM.
-На основе переданных документов сформируй один JSON по схеме функции.
+На основе переданных документов сформируй один JSON по указанной схеме.
 В JSON нужны client_name, объект policy и массив payments. Заполняй значения
 только из данного договора; не используй типовые или примерные даты и суммы.
 ОБЩИЕ ПРАВИЛА
@@ -162,10 +162,13 @@ def _build_prompt(
             "Не добавляй пояснения вне JSON."
         )
     else:
+        schema = json.dumps(POLICY_SCHEMA, ensure_ascii=False, separators=(",", ":"))
         prompt += (
             "\n\nРЕЖИМ ИЗВЛЕЧЕНИЯ\n"
             "Сначала извлеки черновой JSON. После этого CRM может отправить его "
-            "на отдельную ИИ-самопроверку вместе с формальными замечаниями."
+            "на отдельную ИИ-самопроверку вместе с формальными замечаниями. "
+            "Верни только JSON по этой схеме: "
+            f"{schema}"
         )
     if extra_companies:
         companies_line = _format_catalog_entries(extra_companies)
@@ -1744,6 +1747,7 @@ def recognize_policy_interactive(
             progress_cb=progress_cb,
             cancel_cb=cancel_cb,
             policy_model=use_policy_model,
+            use_tools=False,
         )
         messages.append({"role": "assistant", "content": answer})
         try:

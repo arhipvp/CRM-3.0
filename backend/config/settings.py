@@ -74,6 +74,8 @@ if DEBUG and not CSRF_TRUSTED_ORIGINS:
 
 # Nginx terminates TLS and passes the original scheme to Django.
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+SESSION_COOKIE_SECURE = not DEBUG
+CSRF_COOKIE_SECURE = not DEBUG
 
 
 # Application definition
@@ -89,6 +91,7 @@ INSTALLED_APPS = [
     "rest_framework",
     "rest_framework.authtoken",
     "rest_framework_simplejwt",
+    "oauth2_provider",
     "django_filters",
     "import_export",
     "apps.common",
@@ -106,6 +109,7 @@ INSTALLED_APPS = [
     "apps.ai_assistant",
     "apps.codex_reader",
     "apps.insurance_requests",
+    "apps.mcp_connector",
 ]
 
 MIDDLEWARE = [
@@ -291,6 +295,51 @@ TELEGRAM_LINK_CODE_TTL_MINUTES = int(
     config("TELEGRAM_LINK_CODE_TTL_MINUTES", default="10")
 )
 CRM_PUBLIC_URL = config("CRM_PUBLIC_URL", default="")
+
+# Remote MCP is a separate resource server; ordinary CRM JWT authentication stays separate.
+from apps.mcp_connector.contracts import SCOPES as MCP_SCOPES
+
+MCP_PUBLIC_URL = config("MCP_PUBLIC_URL", default="https://zoom78.com/mcp").rstrip("/")
+MCP_OAUTH_ISSUER = config("MCP_OAUTH_ISSUER", default="https://zoom78.com").rstrip("/")
+MCP_PUBLIC_BASE_URL = MCP_OAUTH_ISSUER
+MCP_FILE_DOWNLOAD_HOSTS = tuple(
+    host.strip().lower()
+    for host in config("MCP_FILE_DOWNLOAD_HOSTS", default="oaiusercontent.com").split(
+        ","
+    )
+    if host.strip()
+)
+MCP_MAX_REQUEST_BYTES = 1024 * 1024
+LOGIN_URL = "/oauth/login/"
+OAUTH2_PROVIDER = {
+    "SCOPES": MCP_SCOPES,
+    "DEFAULT_SCOPES": ["crm.read"],
+    "OAUTH2_VALIDATOR_CLASS": "apps.mcp_connector.auth.McpOAuthValidator",
+    "OIDC_ISS_ENDPOINT": MCP_OAUTH_ISSUER,
+    "OAUTH2_PROTECTED_RESOURCE_IDENTIFIER": MCP_PUBLIC_URL,
+    "OAUTH2_PROTECTED_RESOURCE_AUTHORIZATION_SERVERS": [MCP_OAUTH_ISSUER],
+    "OAUTH2_PROTECTED_RESOURCE_NAME": "CRM 3.0",
+    "OAUTH2_GRANT_TYPES_SUPPORTED": ["authorization_code", "refresh_token"],
+    "OAUTH2_RESPONSE_TYPES_SUPPORTED": ["code"],
+    "OAUTH2_TOKEN_ENDPOINT_AUTH_METHODS_SUPPORTED": [
+        "client_secret_basic",
+        "client_secret_post",
+    ],
+    "PKCE_REQUIRED": True,
+    "ACCESS_TOKEN_EXPIRE_SECONDS": 3600,
+    "REFRESH_TOKEN_EXPIRE_SECONDS": 30 * 24 * 3600,
+    "ROTATE_REFRESH_TOKEN": True,
+    "REFRESH_TOKEN_REUSE_PROTECTION": True,
+    "ALLOWED_REDIRECT_URI_SCHEMES": ["https"],
+    "COMPLIANT_BCP_RFC9700_IMPLICIT_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PASSWORD_GRANT": True,
+    "COMPLIANT_BCP_RFC9700_PKCE_METHOD": True,
+    "COMPLIANT_BCP_RFC9700_ACCESS_TOKEN_TRANSPORT": True,
+    "COMPLIANT_BCP_RFC9700_AUTHZ_RESPONSE_ISS": True,
+    "COMPLIANT_BCP_RFC9700_TOKEN_STORAGE": True,
+    "DCR_ENABLED": False,
+    "CIMD_ENABLED": False,
+}
 
 MAILCOW_API_URL = config("MAILCOW_API_URL", default="")
 MAILCOW_API_KEY = config("MAILCOW_API_KEY", default="")

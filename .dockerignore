@@ -22,6 +22,17 @@ media
 .env
 .env.local
 
+# Runtime configuration and local data must also be excluded below backend/.
+# Bare patterns above only match the build-context root.
+**/.env
+**/.env.*
+**/*.db
+**/*.sqlite3
+**/media
+**/staticfiles
+**/__pycache__
+**/*.pyc
+
 # Local virtual envs under backend
 backend/.venv
 

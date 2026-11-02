@@ -937,6 +937,37 @@ def list_drive_folder_contents(folder_id: str) -> list[DriveFileInfo]:
     return results
 
 
+def get_drive_file_metadata(file_id: str) -> dict:
+    """Read identity, parents and content revision without creating Drive objects."""
+    if not file_id:
+        raise DriveOperationError("File ID must be provided.")
+    try:
+        item = _run_with_drive_service(
+            "get_drive_file_metadata",
+            lambda service: service.files()
+            .get(
+                fileId=file_id,
+                fields="id,name,mimeType,size,modifiedTime,version,md5Checksum,parents,trashed",
+                supportsAllDrives=True,
+            )
+            .execute(),
+        )
+    except Exception as exc:
+        raise DriveOperationError("Unable to read Drive file metadata.") from exc
+    return {
+        "id": item["id"],
+        "name": item["name"],
+        "mime_type": item.get("mimeType", ""),
+        "size": int(item["size"]) if item.get("size") is not None else None,
+        "modified_at": item.get("modifiedTime"),
+        "version": item.get("version"),
+        "checksum": item.get("md5Checksum"),
+        "parents": item.get("parents") or [],
+        "trashed": bool(item.get("trashed")),
+        "is_folder": item.get("mimeType") == FOLDER_MIME_TYPE,
+    }
+
+
 def build_drive_file_tree_map(root_folder_id: str) -> dict[str, DriveFileInfo]:
     """Return a map of all files and folders in a Drive folder tree by ID."""
 
@@ -1062,7 +1093,11 @@ def move_drive_file_to_folder(file_id: str, target_folder_id: str) -> None:
 
 
 def move_drive_item_between_folders(
-    file_id: str, source_folder_id: str, target_folder_id: str
+    file_id: str,
+    source_folder_id: str,
+    target_folder_id: str,
+    *,
+    expected_metadata: Optional[dict] = None,
 ) -> None:
     """Move one Drive file or folder from a known source folder into target."""
 
@@ -1076,10 +1111,41 @@ def move_drive_item_between_folders(
         def _move(service):
             metadata = (
                 service.files()
-                .get(fileId=file_id, fields="parents", supportsAllDrives=True)
+                .get(
+                    fileId=file_id,
+                    fields="parents,name,size,mimeType,md5Checksum,modifiedTime,version,trashed",
+                    supportsAllDrives=True,
+                )
                 .execute()
             )
             parents = metadata.get("parents") or []
+            if expected_metadata is not None:
+                current = {
+                    "name": metadata.get("name"),
+                    "size": (
+                        int(metadata["size"])
+                        if metadata.get("size") is not None
+                        else None
+                    ),
+                    "mime_type": metadata.get("mimeType", ""),
+                    "checksum": metadata.get("md5Checksum"),
+                    "modified_at": metadata.get("modifiedTime"),
+                    "version": metadata.get("version"),
+                }
+                already_there = parents == [target_folder_id]
+                keys = (
+                    ("name", "size", "mime_type", "checksum")
+                    if already_there
+                    else tuple(current)
+                )
+                if (
+                    metadata.get("trashed")
+                    or any(current[key] != expected_metadata[key] for key in keys)
+                    or (not already_there and parents != [source_folder_id])
+                ):
+                    raise DriveOperationError("Source file changed before the move.")
+                if already_there:
+                    return True
             if target_folder_id in parents and source_folder_id not in parents:
                 return True
 

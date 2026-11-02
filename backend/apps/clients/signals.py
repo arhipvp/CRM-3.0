@@ -4,6 +4,7 @@ import logging
 
 from apps.common.audit_helpers import serialize_model_fields, store_old_values
 from apps.common.drive import DriveError, ensure_client_folder
+from apps.common.drive_sync import folder_sync_deferred
 from apps.users.models import AuditLog
 from django.db import DatabaseError
 from django.db.models.signals import post_delete, post_save, pre_save
@@ -84,12 +85,13 @@ def log_client_change(sender, instance, created, **kwargs):
     if hasattr(instance, "_old_value"):
         delattr(instance, "_old_value")
 
-    try:
-        ensure_client_folder(instance)
-    except DriveError:
-        logger.exception(
-            "Failed to sync Google Drive folder for client %s", instance.pk
-        )
+    if not folder_sync_deferred():
+        try:
+            ensure_client_folder(instance)
+        except DriveError:
+            logger.exception(
+                "Failed to sync Google Drive folder for client %s", instance.pk
+            )
 
 
 @receiver(post_delete, sender=Client)

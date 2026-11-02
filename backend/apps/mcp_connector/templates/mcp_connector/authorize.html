@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Доступ ChatGPT к CRM</title></head>
+<body>
+<main>
+{% if not error %}
+  <h1>Разрешить {{ application.name }} доступ к CRM?</h1>
+  <p>Учётная запись: {{ request.user.username }}. Действуют ваши права в CRM.</p>
+  <ul>{% for scope in scopes_descriptions %}<li>{{ scope }}</li>{% endfor %}</ul>
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}{% if field.is_hidden %}{{ field }}{% endif %}{% endfor %}
+    {{ form.errors }}{{ form.non_field_errors }}
+    <button type="submit">Отмена</button>
+    <button type="submit" name="allow" value="true">Разрешить доступ</button>
+  </form>
+{% else %}
+  <h1>Не удалось разрешить доступ</h1><p>{{ error.description }}</p>
+{% endif %}
+</main>
+</body>
+</html>
