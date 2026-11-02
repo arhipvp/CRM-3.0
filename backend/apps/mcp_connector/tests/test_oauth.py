@@ -211,7 +211,7 @@ class McpOAuthTests(TestCase):
         self.assertEqual(client.get("/oauth/login/").status_code, 200)
         data = {
             "username": self.user.username,
-            "password": "test-login-password",
+            "password": "test-login-password",  # pragma: allowlist secret
             "next": "https://untrusted.example/",
         }
         self.assertEqual(client.post("/oauth/login/", data).status_code, 403)
@@ -245,7 +245,7 @@ class McpOAuthTests(TestCase):
 
     def test_authorization_code_is_single_use_and_requires_client_secret(self):
         code = self.authorize()
-        response = self.exchange(code, client_secret="incorrect-test-secret")
+        response = self.exchange(code, client_secret="incorrect-test-secret")  # pragma: allowlist secret
         self.assertEqual(response.status_code, 401)
         self.assertEqual(self.exchange(code).status_code, 200)
         self.assertEqual(self.exchange(code).status_code, 400)

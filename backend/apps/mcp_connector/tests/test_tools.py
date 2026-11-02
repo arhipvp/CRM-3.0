@@ -30,7 +30,7 @@ class McpFixture(TestCase):
             username="mcp-owner", password="test"  # pragma: allowlist secret
         )
         self.other = get_user_model().objects.create_user(
-            username="mcp-other", password="test"
+            username="mcp-other", password="test"  # pragma: allowlist secret
         )
         self.grant = McpAccessGrant.objects.create(user=self.user)
         self.principal = Principal(self.user, "chatgpt-test", frozenset(SCOPES))
