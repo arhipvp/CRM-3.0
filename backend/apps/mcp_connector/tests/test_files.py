@@ -25,7 +25,7 @@ class FileDownloadSafetyTests(SimpleTestCase):
             "http://files.oaiusercontent.com/document",
             "https://files.oaiusercontent.com.evil.example/document",
             "https://127.0.0.1/document",
-            "https://user:password@files.oaiusercontent.com/document",
+            "https://user:password@files.oaiusercontent.com/document",  # pragma: allowlist secret
             "https://files.oaiusercontent.com:8443/document",
             "https://files.oaiusercontent.com:bad/document",
         ):

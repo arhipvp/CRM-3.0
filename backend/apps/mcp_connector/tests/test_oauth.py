@@ -29,10 +29,10 @@ from rest_framework.exceptions import AuthenticationFailed, PermissionDenied
 class McpOAuthTests(TestCase):
     def setUp(self):
         self.user = get_user_model().objects.create_user(
-            username="Vova", password="test-login-password"
+            username="Vova", password="test-login-password"  # pragma: allowlist secret
         )
         self.access = McpAccessGrant.objects.create(user=self.user)
-        self.secret = "oauth-client-test-secret"
+        self.secret = "oauth-client-test-secret"  # pragma: allowlist secret
         model = get_application_model()
         self.application = model.objects.create(
             name="ChatGPT test",

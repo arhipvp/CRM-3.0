@@ -27,7 +27,7 @@ class McpFixture(TestCase):
             mocker.start()
             self.addCleanup(mocker.stop)
         self.user = get_user_model().objects.create_user(
-            username="mcp-owner", password="test"
+            username="mcp-owner", password="test"  # pragma: allowlist secret
         )
         self.other = get_user_model().objects.create_user(
             username="mcp-other", password="test"
