@@ -518,6 +518,7 @@ export interface FinancialRecord {
   statementId?: string | null;
   paymentDescription?: string;
   paymentAmount?: string;
+  paymentKind?: 'premium' | 'pkv';
   paymentActualDate?: string | null;
   paymentScheduledDate?: string | null;
   dealId?: string | null;
@@ -547,6 +548,7 @@ export interface FinancialRecord {
 
 export interface Payment {
   id: string;
+  kind?: 'premium' | 'pkv';
   dealId?: string;
   dealTitle?: string;
   dealClientName?: string;

@@ -221,7 +221,7 @@ const hasPaymentBeenPaid = (payment: Payment) => Boolean((payment.actualDate ?? 
 const hasRecordBeenPaid = (record: FinancialRecord) => Boolean((record.date ?? '').trim());
 
 export const hasUnpaidPayment = (payment: Payment) =>
-  !isPaymentDeleted(payment) && !hasPaymentBeenPaid(payment);
+  payment.kind !== 'pkv' && !isPaymentDeleted(payment) && !hasPaymentBeenPaid(payment);
 
 export const getPaymentFinancialRecords = (
   payment: Payment,

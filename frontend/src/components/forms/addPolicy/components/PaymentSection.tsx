@@ -51,6 +51,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
   onToggleExpand,
   showExpandToggle = false,
 }) => {
+  const isPkv = payment.kind === 'pkv';
   const issuesByField = issues.reduce<Record<string, PaymentIssue[]>>((acc, issue) => {
     acc[issue.field] = [...(acc[issue.field] ?? []), issue];
     return acc;
@@ -86,14 +87,18 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
         <div className="space-y-2">
           <div>
             <p className="text-sm font-semibold text-slate-900">
-              Платёж #{paymentNumber ?? paymentIndex + 1}
+              {isPkv ? 'ПКВ' : `Платёж #${paymentNumber ?? paymentIndex + 1}`}
             </p>
-            <p className="text-xs text-slate-500">Отдельный шаг графика</p>
+            <p className="text-xs text-slate-500">
+              {isPkv
+                ? 'Дополнительные начисления; премия не увеличивается'
+                : 'Отдельный шаг графика'}
+            </p>
           </div>
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium">
             <StatusBadge tone="primary">План: {payment.scheduledDate || 'не указана'}</StatusBadge>
             <StatusBadge tone="neutral" className="border-cyan-200 bg-cyan-50 text-cyan-800">
-              Факт: {payment.actualDate || 'не указан'}
+              {isPkv ? 'Оплата премии не требуется' : `Факт: ${payment.actualDate || 'не указан'}`}
             </StatusBadge>
           </div>
         </div>
@@ -134,6 +139,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
               <input
                 type="number"
                 value={payment.amount}
+                readOnly={isPkv}
                 onChange={(e) => onFieldChange(paymentIndex, 'amount', e.target.value)}
                 data-payment-field="amount"
                 className={`field field-input bg-white ring-2 ring-emerald-100/80 ${getFieldClassName(
@@ -187,6 +193,7 @@ export const PaymentSection: React.FC<PaymentSectionProps> = ({
               </div>
               <DateInput
                 value={payment.actualDate || ''}
+                disabled={isPkv}
                 onChange={(e) => onFieldChange(paymentIndex, 'actualDate', e.target.value)}
                 data-payment-field="actual-date"
                 className={`field field-input border-sky-300 bg-white ring-2 ring-sky-100/80 ${getFieldClassName(

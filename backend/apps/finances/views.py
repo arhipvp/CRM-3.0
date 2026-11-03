@@ -963,6 +963,8 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 if payment_amount is not None
                 else "—"
             )
+            if payment and payment.kind == Payment.Kind.PKV:
+                payment_cell = f"ПКВ: {format_money(payment_amount)}\nПлан: {format_date(payment_scheduled)}"
 
             paid_records = getattr(payment, "paid_records", []) if payment else []
             saldo_value = (

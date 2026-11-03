@@ -128,6 +128,7 @@ const buildPaymentDraft = (entry: Record<string, unknown>): PaymentDraft => {
       {
         ...createEmptyRecord(),
         amount: '1',
+        autoDefault: true,
         date: '',
       },
     ],

@@ -84,9 +84,9 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
     }
 
     if (filters.paidStatus === 'paid') {
-      result = result.filter((payment) => Boolean(payment.actualDate));
+      result = result.filter((payment) => payment.kind !== 'pkv' && Boolean(payment.actualDate));
     } else if (filters.paidStatus === 'pending') {
-      result = result.filter((payment) => !payment.actualDate);
+      result = result.filter((payment) => payment.kind !== 'pkv' && !payment.actualDate);
     }
 
     const ordering = (filters.ordering as string) || '-scheduledDate';
@@ -152,7 +152,9 @@ export const PaymentsView: React.FC<PaymentsViewProps> = ({ payments, onMarkPaid
                   </td>
                   <td className={`${TABLE_CELL_CLASS_LG} text-right`}>
                     <div className={TABLE_ACTIONS_CLASS_ROW}>
-                      {!payment.actualDate ? (
+                      {payment.kind === 'pkv' ? (
+                        <span className="text-slate-500">ПКВ — оплата премии не требуется</span>
+                      ) : !payment.actualDate ? (
                         <Button
                           type="button"
                           onClick={() => onMarkPaid(payment.id)}

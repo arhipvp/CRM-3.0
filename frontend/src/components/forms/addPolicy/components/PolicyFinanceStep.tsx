@@ -247,7 +247,9 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                 >
                   <div className="min-w-0 space-y-2">
                     <p className="text-sm font-semibold text-slate-900">
-                      {payment.description || `Платёж #${displayIndex + 1}`}
+                      {payment.kind === 'pkv'
+                        ? 'ПКВ — дополнительные начисления'
+                        : payment.description || `Платёж #${displayIndex + 1}`}
                     </p>
                     <div className="flex flex-wrap gap-2 text-[11px] font-medium">
                       <span
@@ -265,14 +267,16 @@ export const PolicyFinanceStep: React.FC<PolicyFinanceStepProps> = ({
                       <span
                         data-testid="policy-finance-payment-actual-chip"
                         className={`rounded-full ${
-                          payment.actualDate
+                          payment.kind === 'pkv' || payment.actualDate
                             ? 'border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-cyan-800 shadow-sm'
                             : 'border border-rose-200 bg-rose-100 px-3 py-1.5 text-rose-700 shadow-sm'
                         }`}
                       >
-                        {payment.actualDate
-                          ? `Оплачен ${formatDate(payment.actualDate)}`
-                          : 'Не оплачен'}
+                        {payment.kind === 'pkv'
+                          ? 'Оплата премии не требуется'
+                          : payment.actualDate
+                            ? `Оплачен ${formatDate(payment.actualDate)}`
+                            : 'Не оплачен'}
                       </span>
                     </div>
                   </div>

@@ -2,9 +2,11 @@ import re
 
 from apps.clients.models import Client
 from apps.deals.models import Bank, Deal, InsuranceCompany, InsuranceType, SalesChannel
+from apps.finances.models import Payment
 from apps.insurance_requests.models import InsuranceRequest
 from rest_framework import serializers
 
+from .finance_rules import payment_errors
 from .models import Policy, PolicyIssuanceExecution
 from .status import resolve_computed_status
 
@@ -295,6 +297,7 @@ class PolicyDraftFinancialRecordSerializer(serializers.Serializer):
 
 class PolicyDraftPaymentSerializer(serializers.Serializer):
     id = serializers.UUIDField(required=False)
+    kind = serializers.ChoiceField(choices=Payment.Kind.choices, required=False)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
     description = serializers.CharField(required=False, allow_blank=True, default="")
     scheduled_date = serializers.DateField(required=False, allow_null=True)
@@ -306,10 +309,24 @@ class PolicyDraftPaymentSerializer(serializers.Serializer):
         many=True, required=False, default=list
     )
 
-    def validate_amount(self, value):
-        if value <= 0:
-            raise serializers.ValidationError("Amount must be greater than zero.")
-        return value
+    def validate(self, attrs):
+        # Existing drafts may omit kind; resolve it against the owned payment
+        # in the atomic graph service rather than guessing from its amount.
+        if attrs["amount"] < 0:
+            raise serializers.ValidationError({"amount": "Amount cannot be negative."})
+        if (
+            attrs.get("kind", "premium") == "premium"
+            and attrs["amount"] == 0
+            and not attrs.get("id")
+        ):
+            raise serializers.ValidationError(
+                {"amount": "Amount must be greater than zero."}
+            )
+        if attrs.get("kind") == "pkv" and attrs["amount"] != 0:
+            raise serializers.ValidationError(
+                {"amount": "Сумма платежа ПКВ должна быть равна нулю."}
+            )
+        return attrs
 
 
 class PolicyDraftSerializer(serializers.Serializer):
@@ -378,6 +395,29 @@ class PolicyDraftSerializer(serializers.Serializer):
         return PolicySerializer().validate_loan_agreement_number(value)
 
     def validate(self, attrs):
+        for payment in attrs.get("payments", []):
+            if payment.get("id"):
+                continue
+            errors = payment_errors(
+                kind=payment.get("kind", Payment.Kind.PREMIUM),
+                amount=payment["amount"],
+                actual_date=payment.get("actual_date"),
+                channel=attrs.get("sales_channel"),
+                insurance_type=attrs.get("insurance_type"),
+                new_pkv=True,
+            )
+            if errors:
+                raise serializers.ValidationError({"payments": errors})
+        if (
+            sum(
+                payment.get("kind") == Payment.Kind.PKV
+                for payment in attrs.get("payments", [])
+            )
+            > 1
+        ):
+            raise serializers.ValidationError(
+                {"payments": "У полиса может быть только один платёж ПКВ."}
+            )
         start_date = attrs.get("start_date")
         end_date = attrs.get("end_date")
         if start_date and end_date and end_date < start_date:

@@ -7,7 +7,8 @@ export const POLICY_STATUS_TONE_CLASS: Record<'red' | 'orange' | 'green', string
   green: 'bg-emerald-100 text-emerald-700',
 };
 
-export const POLICY_LEDGER_STATE_CLASS: Record<'paid' | 'unpaid', string> = {
+export const POLICY_LEDGER_STATE_CLASS: Record<'paid' | 'unpaid' | 'not_applicable', string> = {
+  not_applicable: 'bg-slate-50 text-slate-700 border border-slate-200',
   paid: 'bg-emerald-50 text-emerald-800 border border-emerald-100',
   unpaid: 'bg-rose-50 text-rose-800 border border-rose-100',
 };
@@ -58,14 +59,14 @@ export const sortFinancialRecordsForLedger = (records: FinancialRecord[]) =>
     return left.id.localeCompare(right.id);
   });
 
-export const getPaymentLedgerState = (payment: Payment): 'paid' | 'unpaid' =>
-  payment.actualDate ? 'paid' : 'unpaid';
+export const getPaymentLedgerState = (payment: Payment): 'paid' | 'unpaid' | 'not_applicable' =>
+  payment.kind === 'pkv' ? 'not_applicable' : payment.actualDate ? 'paid' : 'unpaid';
 
 export const getRecordLedgerState = (record: FinancialRecord): 'paid' | 'unpaid' =>
   record.date ? 'paid' : 'unpaid';
 
 export const formatPaymentLedgerLine = (payment: Payment) => {
-  const dateText = payment.scheduledDate ? formatDate(payment.scheduledDate) : 'без плановой даты';
+  const dateText = `${payment.kind === 'pkv' ? 'ПКВ · ' : ''}${payment.scheduledDate ? formatDate(payment.scheduledDate) : 'без плановой даты'}`;
   const amountText = formatCurrency(payment.amount);
   return {
     dateText,
@@ -96,7 +97,7 @@ export type PolicyLedgerRecordRow = {
 
 export type PolicyLedgerPaymentRow = {
   payment: Payment;
-  state: 'paid' | 'unpaid';
+  state: 'paid' | 'unpaid' | 'not_applicable';
   line: ReturnType<typeof formatPaymentLedgerLine>;
   records: PolicyLedgerRecordRow[];
 };

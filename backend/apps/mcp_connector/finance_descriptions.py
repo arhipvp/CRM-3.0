@@ -1,15 +1,18 @@
 """Business meaning published to MCP clients; these strings grant no permissions."""
 
 PREMIUM_MEANING = (
-    "A Payment is one insurance-premium installment in RUB, not agent income. "
+    "A Payment with kind=premium is one insurance-premium installment in RUB, not agent income. "
     "Its actual_date alone determines whether the premium is paid. "
+    "kind=pkv is one additional zero-RUB payment for Grisha. Sber + OSAGO commission/costs; "
+    "it has no premium actual_date and does not create premium debt. Omitted kind defaults "
+    "to premium on creation and preserves the existing kind on update. "
     "paid_balance is the signed sum of dated commission/cost records, not the "
     "premium paid amount, amount outstanding, or premium payment status. "
     "Never add income equal to the premium merely to mark the premium paid."
 )
 RECORD_MEANING = (
     "FinancialRecord represents agent commission/income or costs/expenses linked "
-    "to a premium Payment. Its date means settlement of this commission or cost; "
+    "to a premium or PKV Payment. Its date means settlement of this commission or cost; "
     "null means unsettled. It does not mark the insurance premium paid. "
     "Returned amounts are signed RUB: income positive, expense negative; "
     "record_type is returned as the display label."
@@ -281,6 +284,7 @@ _POLICY_FIELDS = {
 
 FINANCE_FIELD_DESCRIPTIONS: dict[str, dict[str, str]] = {
     "PaymentSerializer": {
+        "kind": "premium (default) or pkv. Immutable after creation; pkv requires Grisha. Sber + OSAGO and one active PKV per policy.",
         "policy": (
             "ID of the existing CRM policy for this premium installment; "
             "required by business validation. Obtain it from crm_get_policies "
@@ -292,16 +296,16 @@ FINANCE_FIELD_DESCRIPTIONS: dict[str, dict[str, str]] = {
         ),
         "amount": (
             "Insurance-premium installment in RUB as a positive decimal string, "
-            "for example 51500.00. Not the agent's commission/income or expense."
+            "for example 51500.00. For kind=pkv exactly 0.00 is required. Not the agent's commission/income or expense."
         ),
         "scheduled_date": (
             "Planned due date of this insurance-premium installment, YYYY-MM-DD. "
-            "A due date does not prove actual payment."
+            "For PKV it is the editable financial planning date, not premium debt. A due date does not prove actual payment."
         ),
         "actual_date": (
             "Confirmed actual payment date of this insurance-premium installment, "
             "YYYY-MM-DD. A non-null value alone marks the premium paid; null "
-            "means unpaid. It does not settle commission or expenses."
+            "means unpaid for premium. Must be null for PKV. It does not settle commission or expenses."
         ),
         "description": "Short description of this insurance-premium installment.",
         "paid_balance": (
@@ -358,34 +362,35 @@ FINANCE_FIELD_DESCRIPTIONS: dict[str, dict[str, str]] = {
         ),
     },
     "PolicyDraftPaymentSerializer": {
+        "kind": "premium (default on new entries) or pkv. Omit on existing entries to retain their kind. PKV is one additional zero-RUB payment for Grisha. Sber + OSAGO; the kind cannot change after creation.",
         "id": (
             "Existing Payment UUID, only when retaining/editing this installment "
             "in crm_update_policy_draft. Omit for new installments."
         ),
         "amount": (
             "Insurance-premium installment in RUB as a positive decimal string, "
-            "for example 51500.00. Not agent commission or expense."
+            "for example 51500.00; for kind=pkv exactly 0.00. Not agent commission or expense."
         ),
         "description": "Short description of this insurance-premium installment.",
         "scheduled_date": (
-            "Planned premium due date, YYYY-MM-DD; not proof of actual payment."
+            "Planned premium due date, YYYY-MM-DD; for PKV the financial planning date. Not proof of actual payment."
         ),
         "actual_date": (
             "Confirmed premium payment date, YYYY-MM-DD; a non-null value "
             "alone marks this premium installment paid. Omit/null if unpaid. "
-            "Does not settle the nested commission or expense records."
+            "Must be null for PKV. Does not settle the nested commission or expense records."
         ),
         "incomes": (
             "Separate agent commission/income records for this installment, "
             "not premium receipts. On NEW policy import missing/empty creates "
-            "one unsettled 1 RUB commission template. A nonempty list is "
+            "one unsettled 1 RUB commission template, except source Chuzhoy polis (Чужой полис), which gets no automatic records. A nonempty list is "
             "preserved. On EDIT include all income records to keep; "
             "missing/empty removes existing ones subject to safeguards."
         ),
         "expenses": (
             "Separate agent costs for this installment. On NEW policy import "
             "missing/empty creates unsettled 1 RUB templates for the counterparty "
-            "and deal executor when present. A nonempty list is preserved. "
+            "and deal executor when present, except source Chuzhoy polis (Чужой полис). PKV gets only executor expense with the PKV explanation, never counterparty expense. A nonempty list is preserved. "
             "On EDIT include all expenses to keep; missing/empty removes "
             "existing ones subject to safeguards."
         ),
@@ -410,7 +415,7 @@ FINANCE_FIELD_DESCRIPTIONS: dict[str, dict[str, str]] = {
         ),
         "payments": (
             "Insurance-premium installments with separate nested commission/cost "
-            "records. On CREATE omit existing IDs. On EDIT this replaces the "
+            "records, plus one zero-RUB PKV payment automatically on Grisha. Sber + OSAGO creation. On CREATE omit existing IDs. On EDIT this replaces the "
             "payment graph: include every installment and nested record to keep, "
             "with existing IDs; omitted entries may be deleted. Missing/empty "
             "payments is not a no-op."

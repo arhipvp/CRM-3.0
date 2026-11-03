@@ -10,6 +10,7 @@ const buildPaymentDraft = (payment: Payment, financialRecords: FinancialRecord[]
   const { incomes, expenses } = splitFinancialRecords(records);
   return {
     id: payment.id,
+    kind: payment.kind,
     amount: payment.amount,
     description: payment.description,
     scheduledDate: payment.scheduledDate ?? '',

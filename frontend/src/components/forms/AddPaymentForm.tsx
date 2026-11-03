@@ -1,14 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Payment, Policy } from '../../types';
 import { PaymentMetadata } from './addPayment/PaymentMetadata';
 import { PolicyField } from './addPayment/PolicyField';
 import { DealField } from './addPayment/DealField';
 import { DatesFields } from './addPayment/DatesFields';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import {
-  buildCommissionIncomeNote,
-  shouldAutofillCommissionNote,
-} from '../../utils/financialRecordNotes';
+import { buildCommissionIncomeNote } from '../../utils/financialRecordNotes';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -18,11 +15,13 @@ import { Button } from '../common/Button';
 import { EmptyState } from '../common/EmptyState';
 import { Panel } from '../common/layoutPrimitives';
 import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
+import { skipsAutomaticFinances } from './addPolicy/financeDefaults';
 import { buildDefaultPaymentExpenses } from './addPolicy/policyFormState';
 import { createEmptyRecord, createPaymentWithDefaultIncome } from './addPolicy/types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 
 export interface AddPaymentFormValues {
+  kind?: 'premium' | 'pkv';
   policyId?: string;
   dealId?: string | null;
   amount: string;
@@ -54,6 +53,7 @@ export function AddPaymentForm({
   fixedPolicyId,
 }: AddPaymentFormProps) {
   const [formData, setFormData] = useState<AddPaymentFormValues>({
+    kind: payment?.kind,
     policyId: payment?.policyId || fixedPolicyId || '',
     dealId: payment?.dealId || dealId || '',
     amount: payment?.amount || '',
@@ -76,6 +76,7 @@ export function AddPaymentForm({
     if (payment) {
       return { incomes: [] as FinancialRecordDraft[], expenses: [] as FinancialRecordDraft[] };
     }
+    if (skipsAutomaticFinances(fixedPolicy?.salesChannelName)) return { incomes: [], expenses: [] };
     return {
       incomes: createPaymentWithDefaultIncome(
         buildCommissionIncomeNote(fixedPolicy?.salesChannelName),
@@ -100,6 +101,8 @@ export function AddPaymentForm({
     );
   }, [fixedPolicyId]);
 
+  const previousChannel = useRef(fixedPolicy?.salesChannelName);
+
   useEffect(() => {
     if (payment || !selectedPolicy) {
       return;
@@ -109,19 +112,23 @@ export function AddPaymentForm({
       setPolicyEndDate(selectedPolicy.endDate ?? '');
     }
     const commissionNote = buildCommissionIncomeNote(selectedPolicy.salesChannelName);
-    setRecords((prev) => ({
-      ...prev,
-      incomes: prev.incomes.map((income) =>
-        shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
-      ),
-    }));
-  }, [
-    payment,
-    policyEndDateTouched,
-    selectedPolicy?.endDate,
-    selectedPolicy?.id,
-    selectedPolicy?.salesChannelName,
-  ]);
+    const wasSkipped = skipsAutomaticFinances(previousChannel.current);
+    previousChannel.current = selectedPolicy.salesChannelName;
+    const skip = skipsAutomaticFinances(selectedPolicy.salesChannelName);
+    setRecords((prev) => {
+      const incomes = prev.incomes.flatMap((income) =>
+        !income.autoDefault ? [income] : skip ? [] : [{ ...income, note: commissionNote }],
+      );
+      const expenses = prev.expenses.filter((expense) => !skip || !expense.autoDefault);
+      if (wasSkipped && !skip) {
+        if (!incomes.length)
+          incomes.push(...createPaymentWithDefaultIncome(commissionNote).incomes);
+        if (!expenses.length)
+          expenses.push(...buildDefaultPaymentExpenses(selectedPolicy.counterparty));
+      }
+      return { incomes, expenses };
+    });
+  }, [payment, policyEndDateTouched, selectedPolicy]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -187,7 +194,7 @@ export function AddPaymentForm({
     setRecords((prev) => ({
       ...prev,
       [type]: prev[type].map((record, index) =>
-        index === recordIndex ? { ...record, [field]: value } : record,
+        index === recordIndex ? { ...record, [field]: value, autoDefault: false } : record,
       ),
     }));
   };
@@ -208,6 +215,11 @@ export function AddPaymentForm({
       <FormError message={error} />
 
       {payment && <PaymentMetadata payment={payment} />}
+      {payment?.kind === 'pkv' && (
+        <p className="text-sm text-slate-600">
+          ПКВ — дополнительные начисления. Оплата премии не требуется.
+        </p>
+      )}
 
       <PolicyField
         policyId={formData.policyId || ''}
@@ -249,6 +261,7 @@ export function AddPaymentForm({
           id="amount"
           name="amount"
           value={formData.amount}
+          readOnly={payment?.kind === 'pkv'}
           onChange={handleChange}
           placeholder="0.00"
           step="0.01"
@@ -276,6 +289,7 @@ export function AddPaymentForm({
         actualDate={formData.actualDate}
         onChange={handleChange}
         loading={loading}
+        isPkv={payment?.kind === 'pkv'}
       />
 
       {!payment && (

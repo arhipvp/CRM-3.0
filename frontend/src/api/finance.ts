@@ -83,6 +83,7 @@ export async function fetchPaymentsWithPagination(
 }
 
 export async function createPayment(data: {
+  kind?: 'premium' | 'pkv';
   dealId?: string;
   policyId?: string;
   amount: number;
@@ -118,6 +119,7 @@ export async function createPayment(data: {
     body: JSON.stringify({
       deal: data.dealId || null,
       policy: data.policyId || null,
+      kind: data.kind,
       amount: data.amount,
       description: data.description || '',
       scheduled_date: data.scheduledDate || null,
@@ -159,6 +161,7 @@ export async function deletePayment(id: string): Promise<void> {
 export async function updatePayment(
   id: string,
   data: Partial<{
+    kind: 'premium' | 'pkv';
     dealId: string;
     policyId: string;
     actualDate: string | null;
@@ -172,6 +175,7 @@ export async function updatePayment(
     body: JSON.stringify({
       deal: data.dealId,
       policy: data.policyId,
+      kind: data.kind,
       actual_date: data.actualDate,
       scheduled_date: data.scheduledDate,
       description: data.description,

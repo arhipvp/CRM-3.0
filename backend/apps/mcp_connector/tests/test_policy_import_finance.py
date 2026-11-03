@@ -419,3 +419,90 @@ class PolicyImportFinanceTests(McpFixture):
         self.assertFalse(Policy.objects.exists())
         self.assertFalse(Payment.objects.exists())
         self.assertFalse(FinancialRecord.objects.exists())
+
+    def test_external_policy_preview_and_apply_skip_only_automatic_records(self):
+        channel = SalesChannel.objects.create(name="  ЧУЖОЙ ПОЛИС  ")
+        payload = self.payload(
+            sales_channel=str(channel.pk),
+            counterparty="Контрагент",
+            payments=[
+                {"amount": "1000", "incomes": [], "expenses": []},
+                {
+                    "amount": "2000",
+                    "incomes": [{"amount": "50", "note": "Вручную"}],
+                    "expenses": [{"amount": "10", "note": "Вручную"}],
+                },
+            ],
+        )
+        preview, arguments = self.preview(payload)
+        payments = self.requested_payments(preview)
+        self.assertEqual(payments[0]["incomes"], [])
+        self.assertEqual(payments[0]["expenses"], [])
+        self.assertEqual(len(payments[1]["incomes"]), 1)
+        result = self.apply(preview, arguments)
+        records = FinancialRecord.objects.filter(
+            payment__policy_id=result["data"]["policy"]["id"]
+        )
+        self.assertEqual(
+            set(records.values_list("amount", flat=True)),
+            {Decimal("50"), Decimal("-10")},
+        )
+
+    def test_pkv_preview_apply_and_replay_agree_without_duplicating_payment(self):
+        channel = SalesChannel.objects.create(name="Гриша. Сбер")
+        insurance_type = InsuranceType.objects.create(name="ОСАГО")
+        payload = self.payload(
+            sales_channel=str(channel.pk),
+            insurance_type=str(insurance_type.pk),
+            counterparty="Контрагент",
+            payments=[{"amount": "1000", "scheduled_date": "2026-02-01"}],
+        )
+        preview, arguments = self.preview(payload)
+        payments = self.requested_payments(preview)
+        self.assertEqual(len(payments), 2)
+        pkv = next(payment for payment in payments if payment.get("kind") == "pkv")
+        self.assertEqual(Decimal(pkv["amount"]), 0)
+        self.assertEqual(pkv["scheduled_date"], "2026-02-01")
+        self.assertIsNone(pkv["actual_date"])
+        self.assertEqual(
+            [record["note"] for record in pkv["incomes"]], ["Доход от Гриша. Сбер. ПКВ"]
+        )
+        self.assertEqual(
+            [record["note"] for record in pkv["expenses"]],
+            ["Расход исполнителю Иван Исполнитель от ПКВ"],
+        )
+        request_id = uuid.uuid4()
+        result = self.apply(preview, arguments, request_id)
+        policy_id = result["data"]["policy"]["id"]
+        saved = Payment.objects.get(policy_id=policy_id, kind="pkv")
+        self.assertEqual(saved.financial_records.count(), 2)
+        self.assertEqual(saved.amount, 0)
+        again = self.apply(preview, arguments, request_id)
+        self.assertTrue(again["replayed"])
+        self.assertEqual(Payment.objects.filter(policy_id=policy_id).count(), 2)
+
+    def test_explicit_pkv_is_not_duplicated_or_replaced_by_import_defaults(self):
+        channel = SalesChannel.objects.create(name="Гриша. Сбер")
+        insurance_type = InsuranceType.objects.create(name="ОСАГО")
+        preview, arguments = self.preview(
+            self.payload(
+                sales_channel=str(channel.pk),
+                insurance_type=str(insurance_type.pk),
+                payments=[
+                    {"amount": "1000"},
+                    {
+                        "kind": "pkv",
+                        "amount": "0",
+                        "incomes": [{"amount": "75", "note": "Моя ПКВ"}],
+                        "expenses": [{"amount": "15", "note": "Мой расход"}],
+                    },
+                ],
+            )
+        )
+        self.assertEqual(len(self.requested_payments(preview)), 2)
+        result = self.apply(preview, arguments)
+        pkv = Payment.objects.get(policy_id=result["data"]["policy"]["id"], kind="pkv")
+        self.assertEqual(
+            set(pkv.financial_records.values_list("amount", flat=True)),
+            {Decimal("75"), Decimal("-15")},
+        )

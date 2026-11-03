@@ -14,6 +14,7 @@ interface UseCommissionsRowsArgs {
 
 const buildPaymentFallback = (record: FinancialRecord): Payment => ({
   id: record.paymentId,
+  kind: record.paymentKind,
   amount: record.paymentAmount ?? '0',
   description: record.paymentDescription,
   note: record.paymentDescription,

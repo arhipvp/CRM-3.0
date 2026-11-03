@@ -48,5 +48,5 @@ class PaymentFilterSet(django_filters.FilterSet):
 
     def filter_paid(self, queryset, _, value):
         if value:
-            return queryset.filter(actual_date__isnull=False)
-        return queryset.filter(actual_date__isnull=True)
+            return queryset.filter(kind=Payment.Kind.PREMIUM, actual_date__isnull=False)
+        return queryset.filter(kind=Payment.Kind.PREMIUM, actual_date__isnull=True)

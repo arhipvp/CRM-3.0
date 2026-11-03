@@ -23,6 +23,7 @@ STATUS_VALUES = PolicyComputedStatus()
 def with_computed_status_flags(queryset: QuerySet[Policy]) -> QuerySet[Policy]:
     unpaid_payment_exists = Payment.objects.filter(
         policy=OuterRef("pk"),
+        kind=Payment.Kind.PREMIUM,
         deleted_at__isnull=True,
         actual_date__isnull=True,
     )

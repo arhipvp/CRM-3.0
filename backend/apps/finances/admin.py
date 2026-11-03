@@ -1,5 +1,6 @@
 from apps.common.admin import SoftDeleteImportExportAdmin
 from django.contrib import admin
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from django.utils.html import format_html
 from import_export import resources
@@ -15,6 +16,7 @@ class PaymentResource(resources.ModelResource):
         fields = (
             "id",
             "policy",
+            "kind",
             "deal",
             "amount",
             "description",
@@ -27,6 +29,7 @@ class PaymentResource(resources.ModelResource):
         export_order = (
             "id",
             "policy",
+            "kind",
             "deal",
             "amount",
             "description",
@@ -129,6 +132,7 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
     list_display = (
         "id",
         "policy",
+        "kind",
         "amount_display",
         "scheduled_date",
         "actual_date",
@@ -136,6 +140,7 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
         "created_at",
     )
     list_filter = (
+        "kind",
         "scheduled_date",
         "actual_date",
         "created_at",
@@ -152,7 +157,7 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
     fieldsets = (
         (
             "Основная информация",
-            {"fields": ("id", "policy", "deal", "amount", "description")},
+            {"fields": ("id", "policy", "kind", "deal", "amount", "description")},
         ),
         ("Даты", {"fields": ("scheduled_date", "actual_date")}),
         ("Статус удаления", {"fields": ("deleted_at",)}),
@@ -180,12 +185,49 @@ class PaymentAdmin(SoftDeleteImportExportAdmin):
         """Action для записи даты фактической оплаты."""
         from datetime import date
 
-        updated = queryset.update(actual_date=date.today())
+        updated = queryset.filter(kind=Payment.Kind.PREMIUM).update(
+            actual_date=date.today()
+        )
         self.message_user(
             request, f"{updated} платежей получили актуальную дату оплаты"
         )
 
     mark_as_paid.short_description = "Отметить как оплачено"
+
+    @admin.action(description="Восстановить выбранные записи")
+    def restore_selected(self, request, queryset):
+        restored = skipped = 0
+        for payment in queryset.filter(deleted_at__isnull=False):
+            try:
+                with transaction.atomic():
+                    if (
+                        payment.kind == Payment.Kind.PKV
+                        and Payment.objects.filter(
+                            policy_id=payment.policy_id, kind=Payment.Kind.PKV
+                        )
+                        .exclude(pk=payment.pk)
+                        .exists()
+                    ):
+                        skipped += 1
+                        continue
+                    payment.restore()
+            except IntegrityError as error:
+                constraint = getattr(
+                    getattr(error.__cause__, "diag", None), "constraint_name", None
+                )
+                if (
+                    constraint != "payment_unique_active_pkv"
+                    and "UNIQUE constraint failed: finances_payment.policy_id"
+                    not in str(error)
+                ):
+                    raise
+                skipped += 1
+            else:
+                restored += 1
+        self.message_user(
+            request,
+            f"Восстановлено {restored} записей. Пропущено {skipped}: у полиса уже есть ПКВ.",
+        )
 
 
 @admin.register(Statement)

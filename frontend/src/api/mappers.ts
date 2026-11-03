@@ -450,6 +450,7 @@ export const mapFinancialRecord = (raw: Record<string, unknown>): FinancialRecor
   statementId: toNullableString(raw.statement ?? raw.statement_id ?? raw.statementId),
   paymentDescription: toOptionalString(raw.payment_description),
   paymentAmount: toOptionalString(raw.payment_amount),
+  paymentKind: raw.payment_kind === 'pkv' ? 'pkv' : 'premium',
   paymentActualDate:
     raw.payment_actual_date === undefined ? undefined : toNullableString(raw.payment_actual_date),
   paymentScheduledDate:
@@ -507,6 +508,7 @@ export const mapStatement = (raw: Record<string, unknown>): Statement => ({
 });
 
 export const mapPayment = (raw: Record<string, unknown>): Payment => ({
+  kind: raw.kind === 'pkv' ? 'pkv' : 'premium',
   id: toStringValue(raw.id),
   dealId: toOptionalString(raw.deal),
   dealTitle: toOptionalString(raw.deal_title),

@@ -4,6 +4,29 @@ import { describe, expect, it } from 'vitest';
 import { useCommissionsRows } from '../useCommissionsRows';
 
 describe('useCommissionsRows', () => {
+  it('preserves PKV kind when the parent payment is not loaded', () => {
+    const { result } = renderHook(() =>
+      useCommissionsRows({
+        statementRecords: [],
+        allRecords: [
+          {
+            id: 'pkv-income',
+            paymentId: 'pkv',
+            paymentKind: 'pkv',
+            paymentAmount: '0',
+            amount: '1000',
+            createdAt: '',
+            updatedAt: '',
+          },
+        ],
+        paymentsById: new Map(),
+        selectedStatementId: null,
+        viewMode: 'all',
+      }),
+    );
+    expect(result.current.filteredRows[0].payment.kind).toBe('pkv');
+  });
+
   it('builds all-record rows from enriched financial record payload even when payments are not loaded', () => {
     const { result } = renderHook(() =>
       useCommissionsRows({

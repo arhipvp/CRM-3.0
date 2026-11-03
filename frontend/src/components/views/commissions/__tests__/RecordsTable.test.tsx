@@ -115,6 +115,14 @@ const renderTable = ({
 };
 
 describe('RecordsTable', () => {
+  it('does not show PKV as an unpaid premium', () => {
+    const row = buildRow();
+    row.payment = { ...row.payment, kind: 'pkv', amount: '0' };
+    renderTable({ row });
+    expect(screen.getByText('ПКВ — оплата премии не требуется')).toBeInTheDocument();
+    expect(screen.queryByText(/Не оплачен/)).not.toBeInTheDocument();
+  });
+
   it('renders scheduled payment date and toggles scheduled date sorting', () => {
     const onToggleAllRecordsSort = vi.fn();
 

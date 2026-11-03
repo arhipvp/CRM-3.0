@@ -13,8 +13,13 @@ import { formatErrorMessage } from '../../../utils/formatErrorMessage';
 import {
   buildCommissionIncomeNote,
   resolveSalesChannelName,
-  shouldAutofillCommissionNote,
 } from '../../../utils/financialRecordNotes';
+import {
+  applyFinanceDefaults,
+  skipsAutomaticFinances,
+  needsPkvPayment,
+  PKV_INCOME_NOTE,
+} from './financeDefaults';
 import { buildPaymentIssuesByIndex, countPaymentIssues } from './paymentIssues';
 import { getFirstScheduledPaymentEntry, sortPaymentDraftEntries } from './paymentDraftOrdering';
 import {
@@ -136,17 +141,6 @@ export const useAddPolicyFormController = ({
     return candidates.slice(0, MAX_CLIENT_SUGGESTIONS);
   }, [clientCandidates, clientQuery]);
 
-  useEffect(() => {
-    setPayments((prev) =>
-      prev.map((payment) => ({
-        ...payment,
-        incomes: payment.incomes.map((income) =>
-          shouldAutofillCommissionNote(income.note) ? { ...income, note: commissionNote } : income,
-        ),
-      })),
-    );
-  }, [commissionNote]);
-
   const resolveClientFromQuery = () => {
     const query = clientQuery.trim().toLowerCase();
     if (!query) {
@@ -179,6 +173,11 @@ export const useAddPolicyFormController = ({
   const shouldShowMortgageFields = isMortgageTypeName(
     selectedInsuranceType?.name || initialInsuranceTypeName,
   );
+  const financeRuleError =
+    payments.some((payment) => payment.kind === 'pkv' && !payment.id) &&
+    !needsPkvPayment(salesChannelName, selectedInsuranceType?.name || initialInsuranceTypeName)
+      ? 'ПКВ доступно только для «Гриша. Сбер» и ОСАГО. Верните эти условия или перенесите начисления в обычный платёж и удалите ПКВ.'
+      : null;
   const [vehicleBrands, setVehicleBrands] = useState<string[]>([]);
   const [vehicleModels, setVehicleModels] = useState<string[]>([]);
   const [loadingOptions, setLoadingOptions] = useState(true);
@@ -271,8 +270,17 @@ export const useAddPolicyFormController = ({
         isEditing,
         defaultCounterparty,
         executorName,
+        salesChannelName: resolveSalesChannelName(salesChannels, initialValues?.salesChannelId),
+        insuranceTypeName: initialInsuranceTypeName,
       }),
-    [defaultCounterparty, executorName, initialValues, isEditing],
+    [
+      defaultCounterparty,
+      executorName,
+      initialValues,
+      isEditing,
+      salesChannels,
+      initialInsuranceTypeName,
+    ],
   );
   const initialFormState = useMemo(
     () =>
@@ -362,7 +370,12 @@ export const useAddPolicyFormController = ({
     };
   }, []);
 
+  const previousFinanceContext = useRef<Parameters<typeof applyFinanceDefaults>[1] | undefined>(
+    undefined,
+  );
+
   useEffect(() => {
+    previousFinanceContext.current = undefined;
     setNumber(initialFormState.number || '');
     setInsuranceCompanyId(initialFormState.insuranceCompanyId || '');
     setInsuranceTypeId(initialFormState.insuranceTypeId || '');
@@ -387,6 +400,27 @@ export const useAddPolicyFormController = ({
     setClientQuery(initialFormState.clientQuery || '');
     setCurrentStep(1);
   }, [initialFormState]);
+
+  useEffect(() => {
+    if (isEditing) return;
+    const context = {
+      channel: salesChannelName,
+      insuranceType: selectedInsuranceType?.name || initialInsuranceTypeName,
+      counterparty: defaultCounterparty,
+      executorName,
+    };
+    const previous = previousFinanceContext.current;
+    previousFinanceContext.current = context;
+    setPayments((prev) => applyFinanceDefaults(prev, context, previous));
+  }, [
+    isEditing,
+    salesChannelName,
+    selectedInsuranceType?.name,
+    initialInsuranceTypeName,
+    defaultCounterparty,
+    executorName,
+    initialFormState,
+  ]);
 
   useEffect(() => {
     if (initialValues) {
@@ -531,7 +565,7 @@ export const useAddPolicyFormController = ({
 
   const handleStartDateChange = (value: string) => {
     const previousStart = startDate;
-    const firstPaymentEntry = orderedPaymentEntries[0];
+    const firstPaymentEntry = orderedPaymentEntries.find((entry) => entry.payment.kind !== 'pkv');
     const previousScheduledDate = firstPaymentEntry?.payment.scheduledDate ?? '';
     const shouldUpdateFirstPayment =
       !previousScheduledDate || previousScheduledDate === previousStart;
@@ -544,7 +578,13 @@ export const useAddPolicyFormController = ({
         if (!prev.length || !prev[indexToUpdate]) {
           return prev;
         }
-        const updated = [...prev];
+        const updated = prev.map((payment) =>
+          payment.kind === 'pkv' &&
+          payment.autoScheduledDate &&
+          (!payment.scheduledDate || payment.scheduledDate === previousScheduledDate)
+            ? { ...payment, scheduledDate: value }
+            : payment,
+        );
         updated[indexToUpdate] = {
           ...updated[indexToUpdate],
           scheduledDate: value,
@@ -589,15 +629,21 @@ export const useAddPolicyFormController = ({
 
     setPayments((prev) =>
       prev.map((payment) => {
+        if (payment.kind === 'pkv' && normalizedNote.startsWith('Расход контрагенту '))
+          return payment;
+        const effectiveNote =
+          payment.kind === 'pkv' && normalizedNote.startsWith('Расход исполнителю ')
+            ? `${normalizedNote} от ПКВ`
+            : normalizedNote;
         const alreadyHasNote = payment.expenses.some(
-          (expense) => (expense.note ?? '').trim() === normalizedNote,
+          (expense) => (expense.note ?? '').trim() === effectiveNote,
         );
         if (alreadyHasNote) {
           return payment;
         }
         return {
           ...payment,
-          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: normalizedNote }],
+          expenses: [...payment.expenses, { ...createEmptyRecord('1'), note: effectiveNote }],
         };
       }),
     );
@@ -622,11 +668,15 @@ export const useAddPolicyFormController = ({
   const handleAddPayment = () => {
     setPayments((prev) => [
       ...prev,
-      createPaymentDraftWithDefaults({
-        incomeNote: commissionNote,
-        defaultCounterparty,
-        executorName,
-      }),
+      ...(skipsAutomaticFinances(salesChannelName)
+        ? [{ amount: '0', kind: 'premium' as const, incomes: [], expenses: [] }]
+        : [
+            createPaymentDraftWithDefaults({
+              incomeNote: commissionNote,
+              defaultCounterparty,
+              executorName,
+            }),
+          ]),
     ]);
   };
 
@@ -687,16 +737,28 @@ export const useAddPolicyFormController = ({
     field: keyof Omit<PaymentDraft, 'incomes' | 'expenses'>,
     value: string,
   ) => {
-    setPayments((prev) =>
-      prev.map((payment, idx) =>
-        idx === index
-          ? {
-              ...payment,
-              [field]: value,
-            }
-          : payment,
-      ),
-    );
+    setPayments((prev) => {
+      const previousPayment = prev[index];
+      return prev.map((payment, idx) => {
+        if (idx === index)
+          return {
+            ...payment,
+            [field]: value,
+            autoDefault: false,
+            autoScheduledDate: field === 'scheduledDate' ? false : payment.autoScheduledDate,
+          };
+        if (
+          field === 'scheduledDate' &&
+          previousPayment?.kind !== 'pkv' &&
+          payment.kind === 'pkv' &&
+          payment.autoScheduledDate &&
+          (!payment.scheduledDate || payment.scheduledDate === previousPayment?.scheduledDate)
+        ) {
+          return { ...payment, scheduledDate: value };
+        }
+        return payment;
+      });
+    });
   };
 
   const addRecord = (paymentIndex: number, type: 'incomes' | 'expenses') => {
@@ -705,11 +767,15 @@ export const useAddPolicyFormController = ({
         idx === paymentIndex
           ? {
               ...payment,
+              autoDefault: false,
               [type]: [
                 ...payment[type],
                 type === 'expenses'
                   ? createEmptyRecord('1')
-                  : createEmptyRecord('0', commissionNote),
+                  : createEmptyRecord(
+                      '0',
+                      payment.kind === 'pkv' ? PKV_INCOME_NOTE : commissionNote,
+                    ),
               ],
             }
           : payment,
@@ -732,6 +798,7 @@ export const useAddPolicyFormController = ({
             ? {
                 ...record,
                 [field]: value,
+                autoDefault: false,
               }
             : record,
         );
@@ -753,6 +820,7 @@ export const useAddPolicyFormController = ({
         idx === paymentIndex
           ? {
               ...payment,
+              autoDefault: false,
               [type]: payment[type].filter((_, recIdx) => recIdx !== recordIndex),
             }
           : payment,
@@ -771,6 +839,7 @@ export const useAddPolicyFormController = ({
       return;
     }
     finalSubmitIntent.current = false;
+    if (financeRuleError) return;
     if (!number.trim() || !insuranceCompanyId || !insuranceTypeId) {
       setError('Заполните номер полиса, страховую компанию и тип страхования.');
       return;
@@ -907,7 +976,7 @@ export const useAddPolicyFormController = ({
     vehicleModels,
     loadingOptions,
     optionsError,
-    error,
+    error: error || financeRuleError,
     isSubmitting,
     submitLabel,
     steps,

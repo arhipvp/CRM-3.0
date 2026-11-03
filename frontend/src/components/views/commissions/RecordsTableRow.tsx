@@ -199,7 +199,9 @@ export const RecordsTableRow = memo(function RecordsTableRow({
       </td>
       <td className={`${TABLE_CELL_CLASS_SM} min-w-0 text-right text-slate-700`}>
         <p className="text-sm font-semibold">{formatCurrencyRu(Number(payment.amount))}</p>
-        {isPaymentPaid ? (
+        {payment.kind === 'pkv' ? (
+          <p className="mt-1 text-[11px] text-slate-500">ПКВ — оплата премии не требуется</p>
+        ) : isPaymentPaid ? (
           <p className="mt-1 text-[11px] font-semibold text-emerald-700">
             Оплачен{paymentActualDate ? `: ${paymentActualDate}` : ''}
           </p>

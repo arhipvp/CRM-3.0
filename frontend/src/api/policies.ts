@@ -183,6 +183,7 @@ interface PolicyDraftFinancialRecordPayload {
 
 interface PolicyDraftPaymentPayload {
   id?: string;
+  kind?: 'premium' | 'pkv';
   amount: string | number;
   description?: string;
   scheduledDate?: string | null;
@@ -238,6 +239,7 @@ const mapDraftPayment = (payment: PolicyDraftPaymentPayload) => {
   const id = normalizeOptionalUuid(payment.id);
   return {
     ...(id ? { id } : {}),
+    kind: payment.kind,
     amount: payment.amount,
     description: payment.description || '',
     scheduled_date: payment.scheduledDate || null,

@@ -1,11 +1,12 @@
 import {
-  createEmptyRecord,
   createPaymentWithDefaultIncome,
   type FinancialRecordDraft,
   type PaymentDraft,
   type PolicyFormValues,
 } from './types';
 import { buildCommissionIncomeNote } from '../../../utils/financialRecordNotes';
+import { applyFinanceDefaults, buildDefaultPaymentExpenses } from './financeDefaults';
+export { buildDefaultPaymentExpenses } from './financeDefaults';
 
 interface PolicyFormSnapshotInput {
   number: string;
@@ -32,6 +33,7 @@ interface PolicyFormSnapshotInput {
 
 const normalizeRecord = (record: FinancialRecordDraft) => ({
   id: record.id ?? '',
+  autoDefault: record.autoDefault,
   amount: record.amount ?? '',
   date: record.date ?? '',
   description: record.description ?? '',
@@ -41,6 +43,9 @@ const normalizeRecord = (record: FinancialRecordDraft) => ({
 
 const normalizePayment = (payment: PaymentDraft) => ({
   id: payment.id ?? '',
+  kind: payment.kind ?? 'premium',
+  autoDefault: payment.autoDefault,
+  autoScheduledDate: payment.autoScheduledDate,
   amount: payment.amount ?? '',
   description: payment.description ?? '',
   scheduledDate: payment.scheduledDate ?? '',
@@ -73,31 +78,6 @@ export const buildPolicyFormSnapshot = (input: PolicyFormSnapshotInput) =>
     payments: input.payments.map(normalizePayment),
   });
 
-export const buildDefaultPaymentExpenses = (
-  defaultCounterparty?: string,
-  executorName?: string | null,
-): FinancialRecordDraft[] => {
-  const counterpartyName = defaultCounterparty?.trim();
-  const executor = executorName?.trim();
-  const expenses: FinancialRecordDraft[] = [];
-
-  if (counterpartyName) {
-    expenses.push({
-      ...createEmptyRecord('1'),
-      note: `Расход контрагенту ${counterpartyName}`,
-    });
-  }
-
-  if (executor) {
-    expenses.push({
-      ...createEmptyRecord('1'),
-      note: `Расход исполнителю ${executor}`,
-    });
-  }
-
-  return expenses;
-};
-
 export const normalizeCreateFormPayments = ({
   payments,
   defaultCounterparty,
@@ -124,8 +104,12 @@ export const buildInitialPolicyFormSnapshot = ({
   isEditing,
   defaultCounterparty,
   executorName,
+  salesChannelName,
+  insuranceTypeName,
 }: {
   initialValues?: PolicyFormValues;
+  salesChannelName?: string;
+  insuranceTypeName?: string;
   isEditing?: boolean;
   defaultCounterparty?: string;
   executorName?: string | null;
@@ -163,11 +147,19 @@ export const buildInitialPolicyFormSnapshot = ({
             incomes: payment.incomes ?? [],
             expenses: payment.expenses ?? [],
           }))
-        : normalizeCreateFormPayments({
-            payments: initialValues.payments ?? [],
-            defaultCounterparty,
-            executorName,
-          }),
+        : applyFinanceDefaults(
+            normalizeCreateFormPayments({
+              payments: initialValues.payments ?? [],
+              defaultCounterparty,
+              executorName,
+            }),
+            {
+              channel: salesChannelName,
+              insuranceType: insuranceTypeName,
+              counterparty: defaultCounterparty,
+              executorName,
+            },
+          ),
     });
   }
 

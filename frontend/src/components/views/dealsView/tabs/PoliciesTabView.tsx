@@ -487,17 +487,19 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {!firstLedgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <Button
-                                  type="button"
-                                  onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                >
-                                  Проставить оплату
-                                </Button>
-                              )}
+                              {firstLedgerRow.payment.kind !== 'pkv' &&
+                                !firstLedgerRow.payment.actualDate &&
+                                onMarkPaymentPaid && (
+                                  <Button
+                                    type="button"
+                                    onClick={() => openMarkPaidPrompt(firstLedgerRow.payment)}
+                                    variant="quiet"
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                  >
+                                    Проставить оплату
+                                  </Button>
+                                )}
                               <Button
                                 type="button"
                                 onClick={() =>
@@ -587,17 +589,19 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                               </span>
                             </div>
                             <div className="flex flex-wrap gap-1">
-                              {!ledgerRow.payment.actualDate && onMarkPaymentPaid && (
-                                <Button
-                                  type="button"
-                                  onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
-                                  variant="quiet"
-                                  size="sm"
-                                  className="h-7 px-2 text-[11px]"
-                                >
-                                  Проставить оплату
-                                </Button>
-                              )}
+                              {ledgerRow.payment.kind !== 'pkv' &&
+                                !ledgerRow.payment.actualDate &&
+                                onMarkPaymentPaid && (
+                                  <Button
+                                    type="button"
+                                    onClick={() => openMarkPaidPrompt(ledgerRow.payment)}
+                                    variant="quiet"
+                                    size="sm"
+                                    className="h-7 px-2 text-[11px]"
+                                  >
+                                    Проставить оплату
+                                  </Button>
+                                )}
                               <Button
                                 type="button"
                                 onClick={() =>

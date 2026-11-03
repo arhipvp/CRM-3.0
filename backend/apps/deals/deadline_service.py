@@ -42,6 +42,7 @@ def calculate_deal_deadline(deal_id) -> date | None:
         Payment.objects.with_deleted()
         .filter(
             Q(deal_id=deal_id) | Q(policy__deal_id=deal_id),
+            kind=Payment.Kind.PREMIUM,
             deleted_at__isnull=True,
             actual_date__isnull=True,
             scheduled_date__isnull=False,

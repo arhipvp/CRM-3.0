@@ -29,7 +29,7 @@ def build_finance_summary_payload(*, user) -> dict:
     net_total = incomes_total - expenses_total
 
     payments_queryset = Payment.objects.filter(
-        actual_date__isnull=True, deleted_at__isnull=True
+        kind=Payment.Kind.PREMIUM, actual_date__isnull=True, deleted_at__isnull=True
     )
     if not is_admin and user.is_authenticated:
         payments_queryset = payments_queryset.filter(

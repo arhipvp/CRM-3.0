@@ -46,6 +46,126 @@ const renderForm = (
   );
 
 describe('AddPolicyForm', () => {
+  const channels = [
+    { id: 'grisha', name: 'Гриша. Сбер', createdAt: '', updatedAt: '' },
+    { id: 'foreign', name: 'Чужой полис', createdAt: '', updatedAt: '' },
+  ];
+
+  it('suppresses foreign policy defaults and preserves manually entered income across source changes', async () => {
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '10000',
+          incomes: [{ amount: '0', note: 'Комиссионное вознаграждение', autoDefault: true }],
+          expenses: [{ amount: '1', note: 'Расход исполнителю Иван', autoDefault: true }],
+        },
+      ]),
+      { isEditing: false, salesChannels: channels, executorName: 'Иван' },
+    );
+    fireEvent.change(await screen.findByLabelText('Канал продаж'), {
+      target: { value: 'foreign' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(screen.queryByText('Доход #1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Расход #1')).not.toBeInTheDocument();
+    const card = screen.getByTestId('policy-finance-payment-card');
+    fireEvent.click(within(card).getByRole('button', { name: 'Добавить доход' }));
+    fireEvent.change(within(card).getByRole('spinbutton'), { target: { value: '200' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Полис' }));
+    fireEvent.change(screen.getByLabelText('Канал продаж'), { target: { value: 'grisha' } });
+    fireEvent.change(screen.getByLabelText('Канал продаж'), { target: { value: 'foreign' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(screen.getByDisplayValue('200')).toBeInTheDocument();
+    expect(screen.queryByText('Расход #1')).not.toBeInTheDocument();
+  });
+
+  it('creates one PKV and inherits the premium date until its own date is edited', async () => {
+    renderForm(
+      {
+        ...buildInitialValues([{ amount: '10000', incomes: [], expenses: [] }]),
+        salesChannelId: 'grisha',
+      },
+      {
+        isEditing: false,
+        salesChannels: channels,
+        initialInsuranceTypeName: 'ОСАГО',
+        executorName: 'Иван',
+      },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Платежи и сроки' }));
+    const cards = await screen.findAllByTestId('policy-payment-card');
+    expect(cards).toHaveLength(2);
+    const primaryDate = cards[0].querySelector(
+      '[data-payment-field="scheduled-date"]',
+    ) as HTMLInputElement;
+    fireEvent.change(primaryDate, { target: { value: '2026-12-01' } });
+    fireEvent.click(within(cards[1]).getByRole('button', { name: 'Развернуть' }));
+    const pkvDate = cards[1].querySelector(
+      '[data-payment-field="scheduled-date"]',
+    ) as HTMLInputElement;
+    expect(pkvDate.value).toBe('2026-12-01');
+    fireEvent.change(pkvDate, { target: { value: '2026-12-15' } });
+    fireEvent.click(within(cards[0]).getByRole('button', { name: 'Развернуть' }));
+    fireEvent.change(cards[0].querySelector('[data-payment-field="scheduled-date"]')!, {
+      target: { value: '2026-12-02' },
+    });
+    fireEvent.click(within(cards[1]).getByRole('button', { name: 'Развернуть' }));
+    expect(
+      (cards[1].querySelector('[data-payment-field="scheduled-date"]') as HTMLInputElement).value,
+    ).toBe('2026-12-15');
+    expect(cards[1].querySelector('[data-payment-field="amount"]')).toHaveAttribute('readonly');
+    expect(cards[1].querySelector('[data-payment-field="actual-date"]')).toBeDisabled();
+  });
+
+  it('preserves changed new PKV and explains invalid conditions before saving', async () => {
+    renderForm(
+      {
+        ...buildInitialValues([{ amount: '10000', incomes: [], expenses: [] }]),
+        salesChannelId: 'grisha',
+      },
+      {
+        isEditing: false,
+        salesChannels: channels,
+        initialInsuranceTypeName: 'ОСАГО',
+        executorName: 'Иван',
+      },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    const cards = await screen.findAllByTestId('policy-finance-payment-card');
+    fireEvent.click(within(cards[1]).getByRole('button', { name: 'Развернуть' }));
+    fireEvent.change(within(cards[1]).getAllByRole('spinbutton')[0], { target: { value: '1200' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Полис' }));
+    fireEvent.change(screen.getByLabelText('Канал продаж'), { target: { value: 'foreign' } });
+    expect(await screen.findByText(/ПКВ доступно только/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(screen.getByDisplayValue('1200')).toBeInTheDocument();
+  });
+
+  it('does not add PKV or change financial rows while editing an existing policy', async () => {
+    renderForm(
+      {
+        ...buildInitialValues([
+          {
+            id: 'payment-1',
+            amount: '10000',
+            incomes: [{ amount: '300', note: 'Сохранённый доход' }],
+            expenses: [],
+          },
+        ]),
+        salesChannelId: 'grisha',
+      },
+      {
+        salesChannels: channels,
+        initialInsuranceTypeName: 'ОСАГО',
+        executorName: 'Иван',
+      },
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findAllByTestId('policy-finance-payment-card')).toHaveLength(1);
+    expect(screen.getByDisplayValue('Сохранённый доход')).toBeInTheDocument();
+    expect(screen.queryByDisplayValue('Расход исполнителю Иван')).not.toBeInTheDocument();
+  });
+
   it('uses the deal referrer for recognized payments without losing or duplicating expenses', async () => {
     const expense = { amount: '250', note: 'Расход контрагенту Иванов' };
     renderForm(

@@ -265,6 +265,7 @@ def send_payment_due_reminders() -> None:
     today = timezone.localdate()
     closed_statuses = {Deal.DealStatus.WON, Deal.DealStatus.LOST}
     payments = Payment.objects.filter(
+        kind=Payment.Kind.PREMIUM,
         scheduled_date__isnull=False,
         actual_date__isnull=True,
     ).exclude(deal__status__in=closed_statuses)

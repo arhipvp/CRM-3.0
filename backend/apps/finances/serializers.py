@@ -1,4 +1,5 @@
-﻿from django.db import IntegrityError, transaction
+﻿from apps.policies.finance_rules import payment_errors
+from django.db import IntegrityError, transaction
 from django.db.models import Sum
 from rest_framework import serializers
 
@@ -217,6 +218,7 @@ class StatementSerializer(serializers.ModelSerializer):
 
 
 class FinancialRecordSerializer(serializers.ModelSerializer):
+    payment_kind = serializers.CharField(source="payment.kind", read_only=True)
     payment_description = serializers.CharField(
         source="payment.description", read_only=True
     )
@@ -418,7 +420,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         return data
 
     def validate(self, attrs):
-        amount = attrs.get("amount") or getattr(self.instance, "amount", None)
+        amount = attrs.get("amount", getattr(self.instance, "amount", None))
         policy = attrs.get("policy") or getattr(self.instance, "policy", None)
         input_deal = attrs.get("deal") if "deal" in attrs else None
         policy_end_date = attrs.get("policy_end_date")
@@ -435,8 +437,31 @@ class PaymentSerializer(serializers.ModelSerializer):
                 )
             elif policy.end_date and policy_end_date < policy.end_date:
                 errors["policy_end_date"] = "Дата окончания может быть только продлена."
-        if amount is not None and amount <= 0:
-            errors["amount"] = "Amount must be greater than zero."
+        kind = attrs.get("kind", getattr(self.instance, "kind", Payment.Kind.PREMIUM))
+        if self.instance is not None and kind != self.instance.kind:
+            errors["kind"] = "Вид сохранённого платежа нельзя изменить."
+        errors.update(
+            payment_errors(
+                kind=kind,
+                amount=amount,
+                actual_date=attrs.get(
+                    "actual_date", getattr(self.instance, "actual_date", None)
+                ),
+                channel=policy.sales_channel if policy else None,
+                insurance_type=policy.insurance_type if policy else None,
+                new_pkv=(
+                    self.instance is None
+                    or self.instance.kind != kind
+                    or self.instance.policy_id != getattr(policy, "pk", None)
+                ),
+            )
+        )
+        if kind == Payment.Kind.PKV and policy:
+            existing_pkv = Payment.objects.filter(policy=policy, kind=Payment.Kind.PKV)
+            if self.instance is not None:
+                existing_pkv = existing_pkv.exclude(pk=self.instance.pk)
+            if existing_pkv.exists():
+                errors["kind"] = "У полиса может быть только один платёж ПКВ."
         if errors:
             raise serializers.ValidationError(errors)
 

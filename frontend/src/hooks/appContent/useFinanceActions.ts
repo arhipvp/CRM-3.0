@@ -80,6 +80,7 @@ export const useFinanceActions = ({
       try {
         const created = await createPayment({
           policyId: values.policyId,
+          kind: values.kind,
           dealId: values.dealId ?? undefined,
           amount: parseFloat(values.amount),
           description: values.description,
@@ -155,6 +156,7 @@ export const useFinanceActions = ({
 
         const updated = await updatePayment(paymentId, {
           policyId: values.policyId,
+          kind: values.kind,
           dealId: values.dealId ?? undefined,
           amount: parseFloat(values.amount),
           description: values.description,

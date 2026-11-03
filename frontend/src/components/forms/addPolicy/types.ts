@@ -1,5 +1,6 @@
 export interface FinancialRecordDraft {
   id?: string;
+  autoDefault?: boolean;
   amount: string;
   date?: string;
   description?: string;
@@ -9,6 +10,9 @@ export interface FinancialRecordDraft {
 
 export interface PaymentDraft {
   id?: string;
+  kind?: 'premium' | 'pkv';
+  autoDefault?: boolean;
+  autoScheduledDate?: boolean;
   amount: string;
   description?: string;
   scheduledDate?: string;
@@ -49,6 +53,7 @@ export const createEmptyRecord = (amount = '0', note = ''): FinancialRecordDraft
 });
 
 export const createEmptyPayment = (): PaymentDraft => ({
+  kind: 'premium',
   amount: '0',
   description: '',
   scheduledDate: '',
@@ -59,5 +64,5 @@ export const createEmptyPayment = (): PaymentDraft => ({
 
 export const createPaymentWithDefaultIncome = (note?: string): PaymentDraft => ({
   ...createEmptyPayment(),
-  incomes: [createEmptyRecord('0', note ?? '')],
+  incomes: [{ ...createEmptyRecord('0', note ?? ''), autoDefault: true }],
 });

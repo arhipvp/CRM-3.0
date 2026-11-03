@@ -80,6 +80,34 @@ describe('movePolicy', () => {
 });
 
 describe('createPolicyDraft', () => {
+  it('round-trips a saved zero PKV kind through the draft API', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          policy: { id: DEAL_ID, number: 'PKV-POLICY' },
+          payments: [{ id: PAYMENT_ID, kind: 'pkv', amount: '0.00', actual_date: null }],
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await updatePolicyDraft(
+      DEAL_ID,
+      buildPolicyDraftPayload({
+        payments: [{ id: PAYMENT_ID, kind: 'pkv', amount: '0', incomes: [], expenses: [] }],
+      }),
+    );
+    expect(
+      (readDraftRequestBody(fetchMock).payments as Array<Record<string, unknown>>)[0],
+    ).toMatchObject({ id: PAYMENT_ID, kind: 'pkv', amount: '0' });
+    expect(result.payments[0]).toMatchObject({
+      id: PAYMENT_ID,
+      kind: 'pkv',
+      amount: '0.00',
+      actualDate: null,
+    });
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
     window.localStorage.clear();

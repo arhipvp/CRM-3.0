@@ -89,6 +89,7 @@ def _payment_events(deal: Deal) -> list[dict[str, Any]]:
     payments = (
         Payment.objects.filter(
             Q(deal=deal) | Q(policy__deal=deal),
+            kind=Payment.Kind.PREMIUM,
             deleted_at__isnull=True,
             actual_date__isnull=True,
             scheduled_date__isnull=False,

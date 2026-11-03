@@ -22,6 +22,17 @@ const policy: Policy = {
 };
 
 describe('AddPaymentForm', () => {
+  it('suppresses foreign defaults and restores them when another policy is selected', () => {
+    const foreign = { ...policy, id: 'foreign', salesChannelName: 'Чужой полис' };
+    render(<AddPaymentForm onSubmit={vi.fn()} onCancel={vi.fn()} policies={[foreign, policy]} />);
+    fireEvent.change(screen.getByLabelText('Полис *'), { target: { value: 'foreign' } });
+    expect(screen.queryByText('Доход #1')).not.toBeInTheDocument();
+    expect(screen.queryByText('Расход #1')).not.toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText('Полис *'), { target: { value: policy.id } });
+    expect(screen.getByDisplayValue('Комиссионное вознаграждение от Альфа')).toBeInTheDocument();
+    expect(screen.getByDisplayValue('Расход контрагенту Партнёр')).toBeInTheDocument();
+  });
+
   it('creates the same default financial drafts as the policy form and submits them', async () => {
     const onSubmit = vi.fn().mockResolvedValue(undefined);
     const { container } = render(

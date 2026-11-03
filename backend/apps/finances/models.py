@@ -10,6 +10,12 @@ from django.db import models
 class Payment(SoftDeleteModel):
     """Платёж в рамках полиса"""
 
+    class Kind(models.TextChoices):
+        PREMIUM = "premium", "Страховая премия"
+        PKV = "pkv", "ПКВ"
+
+    kind = models.CharField(max_length=20, choices=Kind.choices, default=Kind.PREMIUM)
+
     policy = models.ForeignKey(
         "policies.Policy",
         related_name="payments",
@@ -52,6 +58,40 @@ class Payment(SoftDeleteModel):
                 name="payment_desc_trgm_idx",
             )
         ]
+        constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(kind="pkv")
+                | models.Q(amount=0, actual_date__isnull=True),
+                name="payment_pkv_zero_no_premium_date",
+            ),
+            models.UniqueConstraint(
+                fields=["policy"],
+                condition=models.Q(kind="pkv", deleted_at__isnull=True),
+                name="payment_unique_active_pkv",
+            ),
+        ]
+
+    def clean(self):
+        from apps.policies.finance_rules import payment_errors
+
+        super().clean()
+        previous = (
+            type(self).objects.with_deleted().filter(pk=self.pk).first()
+            if not self._state.adding
+            else None
+        )
+        errors = payment_errors(
+            kind=self.kind,
+            amount=self.amount,
+            actual_date=self.actual_date,
+            channel=self.policy.sales_channel if self.policy_id else None,
+            insurance_type=self.policy.insurance_type if self.policy_id else None,
+            new_pkv=previous is None or previous.policy_id != self.policy_id,
+        )
+        if previous is not None and previous.kind != self.kind:
+            errors["kind"] = "Вид сохранённого платежа нельзя изменить."
+        if errors:
+            raise ValidationError(errors)
 
     @property
     def is_paid(self) -> bool:

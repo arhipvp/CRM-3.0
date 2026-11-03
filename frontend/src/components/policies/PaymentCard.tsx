@@ -175,8 +175,13 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
   const [isExpenseExpanded, setIsExpenseExpanded] = React.useState(false);
   const { incomes, expenses } = React.useMemo(() => resolveRecordGroups(payment), [payment]);
 
-  const paidText = payment.actualDate ? formatDate(payment.actualDate) : 'нет';
-  const paidTone = payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
+  const isPkv = payment.kind === 'pkv';
+  const paidText = isPkv
+    ? 'Не требуется (ПКВ)'
+    : payment.actualDate
+      ? formatDate(payment.actualDate)
+      : 'нет';
+  const paidTone = isPkv || payment.actualDate ? 'text-emerald-600' : 'text-rose-500';
   const compact = variant === 'table';
   const containerClassName = compact
     ? 'rounded-xl border border-slate-200 bg-white p-3'
@@ -256,7 +261,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
           </td>
           <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
             <p className="text-xs text-slate-700">
-              {payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
+              {isPkv
+                ? 'ПКВ — дополнительные начисления'
+                : payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
             </p>
           </td>
           <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
@@ -265,12 +272,12 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
             </p>
           </td>
           <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
-            <p
-              className={`text-xs font-semibold ${payment.actualDate ? 'text-emerald-600' : 'text-rose-500'}`}
-            >
-              {payment.actualDate
-                ? formatDate(payment.actualDate)
-                : POLICY_TEXT.paymentTable.noDate}
+            <p className={`text-xs font-semibold ${paidTone}`}>
+              {isPkv
+                ? paidText
+                : payment.actualDate
+                  ? formatDate(payment.actualDate)
+                  : POLICY_TEXT.paymentTable.noDate}
             </p>
           </td>
           <td className={NESTED_TABLE_CELL_CLASS_COMPACT}>
@@ -429,7 +436,9 @@ export const PaymentCard: React.FC<PaymentCardProps> = ({
               compact ? 'text-xs text-slate-500 truncate' : 'text-sm text-slate-500 truncate'
             }
           >
-            {payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
+            {isPkv
+              ? 'ПКВ — дополнительные начисления'
+              : payment.note || payment.description || POLICY_TEXT.paymentTable.emptyDescription}
           </p>
         </div>
         <div className={metaClassName}>

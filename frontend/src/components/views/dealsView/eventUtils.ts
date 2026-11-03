@@ -82,7 +82,7 @@ export const buildDealEvents = ({
   });
 
   payments.forEach((payment) => {
-    if (payment.actualDate) {
+    if (payment.kind === 'pkv' || payment.actualDate) {
       return;
     }
     const eventDate = payment.scheduledDate ?? payment.actualDate;

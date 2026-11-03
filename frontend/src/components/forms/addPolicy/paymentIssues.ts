@@ -76,6 +76,7 @@ export const buildPaymentIssuesByIndex = ({
   const scheduledDateCounts = new Map<string, number>();
 
   paymentEntries.forEach(({ payment }) => {
+    if (payment.kind === 'pkv') return;
     const scheduledDate = payment.scheduledDate?.trim();
     if (!scheduledDate) {
       return;
@@ -89,12 +90,20 @@ export const buildPaymentIssuesByIndex = ({
     const amount = parseNumericAmount(payment.amount ?? '');
     const scheduledDate = payment.scheduledDate?.trim() ?? '';
 
-    if (!Number.isFinite(amount) || amount <= 0) {
+    if (!Number.isFinite(amount) || (payment.kind === 'pkv' ? amount !== 0 : amount <= 0)) {
       issues.push({
         severity: 'error',
         field: 'amount',
-        message: 'Укажите сумму больше нуля.',
+        message:
+          payment.kind === 'pkv'
+            ? 'Сумма платежа ПКВ должна быть равна нулю.'
+            : 'Укажите сумму больше нуля.',
       });
+    }
+
+    if (payment.kind === 'pkv') {
+      issuesByIndex[sourceIndex] = issues;
+      return;
     }
 
     if (scheduledDate && isOutOfRange(scheduledDate, startDate, endDate)) {

@@ -131,8 +131,12 @@ def apply_financial_record_filters(queryset, params):
 
     payment_paid = _parse_nullable_bool(params.get("payment_paid"))
     if payment_paid is True:
-        queryset = queryset.filter(payment__actual_date__isnull=False)
+        queryset = queryset.filter(
+            payment__kind="premium", payment__actual_date__isnull=False
+        )
     elif payment_paid is False:
-        queryset = queryset.filter(payment__actual_date__isnull=True)
+        queryset = queryset.filter(
+            payment__kind="premium", payment__actual_date__isnull=True
+        )
 
     return queryset

@@ -109,6 +109,7 @@ class PolicyFilterSet(django_filters.FilterSet):
     def _unpaid_payment_exists(self):
         return Payment.objects.filter(
             policy=OuterRef("pk"),
+            kind=Payment.Kind.PREMIUM,
             deleted_at__isnull=True,
             actual_date__isnull=True,
         )

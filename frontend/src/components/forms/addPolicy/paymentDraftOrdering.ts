@@ -18,6 +18,8 @@ export const sortPaymentDraftEntries = (payments: PaymentDraft[]): PaymentDraftO
   payments
     .map((payment, sourceIndex) => ({ payment, sourceIndex }))
     .sort((left, right) => {
+      if ((left.payment.kind === 'pkv') !== (right.payment.kind === 'pkv'))
+        return left.payment.kind === 'pkv' ? 1 : -1;
       const leftWeight = getDateWeight(left.payment.scheduledDate);
       const rightWeight = getDateWeight(right.payment.scheduledDate);
 
@@ -34,4 +36,6 @@ export const sortPaymentDraftEntries = (payments: PaymentDraft[]): PaymentDraftO
     });
 
 export const getFirstScheduledPaymentEntry = (payments: PaymentDraft[]) =>
-  sortPaymentDraftEntries(payments).find((entry) => Boolean(entry.payment.scheduledDate));
+  sortPaymentDraftEntries(payments).find(
+    (entry) => entry.payment.kind !== 'pkv' && Boolean(entry.payment.scheduledDate),
+  );

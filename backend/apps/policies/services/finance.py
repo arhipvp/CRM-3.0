@@ -7,6 +7,7 @@ from apps.finances.models import FinancialRecord, Payment
 from django.db import IntegrityError, transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
+from ..finance_rules import payment_errors, prepare_new_policy_finances
 from ..models import Policy
 from ..permissions import user_can_modify_deal
 from .files import (
@@ -206,6 +207,33 @@ def _apply_payments(policy: Policy, drafts: list[dict]) -> None:
     }
     submitted_ids = {draft["id"] for draft in drafts if draft.get("id")}
 
+    pkv_count = 0
+    for draft in drafts:
+        existing = existing_payments.get(draft.get("id"))
+        if draft.get("id") and existing is None:
+            raise ValidationError({"detail": "Платёж не найден."})
+        kind = draft.get("kind", existing.kind if existing else Payment.Kind.PREMIUM)
+        if existing is not None and kind != existing.kind:
+            raise ValidationError(
+                {"payments": "Вид сохранённого платежа нельзя изменить."}
+            )
+        errors = payment_errors(
+            kind=kind,
+            amount=draft["amount"],
+            actual_date=draft.get("actual_date"),
+            channel=policy.sales_channel,
+            insurance_type=policy.insurance_type,
+            new_pkv=existing is None or existing.kind != kind,
+        )
+        if errors:
+            raise ValidationError({"payments": errors})
+        draft["kind"] = kind
+        pkv_count += kind == Payment.Kind.PKV
+    if pkv_count > 1:
+        raise ValidationError(
+            {"payments": "У полиса может быть только один платёж ПКВ."}
+        )
+
     for payment in existing_payments.values():
         if payment.id not in submitted_ids:
             _payment_statement_error(payment)
@@ -214,6 +242,7 @@ def _apply_payments(policy: Policy, drafts: list[dict]) -> None:
     for draft in drafts:
         payment_id = draft.get("id")
         payload = {
+            "kind": draft["kind"],
             "amount": draft["amount"],
             "description": draft.get("description") or "",
             "scheduled_date": draft.get("scheduled_date"),
@@ -265,6 +294,10 @@ def apply_policy_draft(
     if not deal:
         raise ValidationError({"deal": "Укажите сделку для полиса."})
     _ensure_edit_allowed(user, policy, deal)
+
+    data = data.copy()
+    if policy is None:
+        data = prepare_new_policy_finances(data)
 
     source_file_id = data.pop("source_file_id", None)
     source_file_ids = data.pop("source_file_ids", []) or []
