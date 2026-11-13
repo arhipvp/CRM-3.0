@@ -96,6 +96,11 @@ export function ActivityTimeline({ activities, isLoading = false }: ActivityTime
       {activities.map((activity, index) => {
         const isLast = index === activities.length - 1;
         const markerClass = getActionColorClass(activity.actionType);
+        const authorName = activity.userDisplayName?.trim();
+        const authorUsername = activity.userUsername?.trim();
+        const authorLabel = authorName
+          ? `${authorName}${authorUsername ? ` (@${authorUsername})` : ''}`
+          : authorUsername || 'Автор не указан';
         return (
           <div key={activity.id} className="relative flex gap-4">
             <div className="relative flex h-full w-10 flex-col items-center">
@@ -113,17 +118,9 @@ export function ActivityTimeline({ activities, isLoading = false }: ActivityTime
                 <span className="text-sm font-semibold text-slate-900">
                   {activity.actionTypeDisplay}
                 </span>
-                {activity.userUsername && (
-                  <span className="text-xs text-slate-600">
-                    •{' '}
-                    <ColoredLabel
-                      value={activity.userUsername}
-                      fallback="—"
-                      showDot={false}
-                      className="text-slate-600"
-                    />
-                  </span>
-                )}
+                <span className="text-xs text-slate-600">
+                  • <ColoredLabel value={authorLabel} showDot={false} className="text-slate-600" />
+                </span>
                 <span className="ml-auto text-xs text-slate-400">
                   {formatDateTime(activity.createdAt)}
                 </span>

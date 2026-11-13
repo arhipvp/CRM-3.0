@@ -1,3 +1,4 @@
+from apps.common.audit import get_audit_actor
 from apps.common.models import SoftDeleteModel
 from django.contrib.auth.models import User
 from django.db import models
@@ -156,6 +157,8 @@ class AuditLog(models.Model):
         related_name="audit_logs_created",
         help_text="Пользователь, совершивший действие",
     )
+    actor_name = models.CharField(max_length=301, blank=True, default="")
+    actor_username = models.CharField(max_length=150, blank=True, default="")
 
     # Тип объекта и его ID
     object_type = models.CharField(
@@ -197,5 +200,26 @@ class AuditLog(models.Model):
             models.Index(fields=["action", "-created_at"]),
         ]
 
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            if self.actor_id is None:
+                self.actor = get_audit_actor()
+            if self.actor_id is not None:
+                self.actor_name = self.actor.get_full_name().strip()
+                self.actor_username = self.actor.username
+        return super().save(*args, **kwargs)
+
+    @property
+    def display_actor_name(self):
+        if self.actor_name or self.actor_username:
+            return self.actor_name
+        return self.actor.get_full_name().strip() if self.actor_id else ""
+
+    @property
+    def display_actor_username(self):
+        if self.actor_name or self.actor_username:
+            return self.actor_username
+        return self.actor.username if self.actor_id else ""
+
     def __str__(self):
-        return f"{self.get_action_display()} {self.get_object_type_display()} ({self.object_name}) by {self.actor.username if self.actor else 'System'}"
+        return f"{self.get_action_display()} {self.get_object_type_display()} ({self.object_name}) by {self.display_actor_username or 'Unknown'}"

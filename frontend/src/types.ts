@@ -701,6 +701,7 @@ export interface ActivityLog {
   description: string;
   user?: string | null;
   userUsername?: string | null;
+  userDisplayName?: string | null;
   oldValue?: string;
   newValue?: string;
   createdAt: string;

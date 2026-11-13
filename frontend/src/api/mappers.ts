@@ -581,6 +581,7 @@ export const mapActivityLog = (raw: Record<string, unknown>): ActivityLog => ({
   description: toOptionalString(raw.description) ?? '',
   user: toOptionalString(raw.user),
   userUsername: toOptionalString(raw.user_username),
+  userDisplayName: toOptionalString(raw.user_display_name),
   oldValue: toOptionalString(raw.old_value),
   newValue: toOptionalString(raw.new_value),
   objectId: toOptionalString(raw.object_id),

@@ -1,6 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
-import { mapClient, mapDeal, mapDealTimelineEvent, mapTask } from '../mappers';
+import { mapActivityLog, mapClient, mapDeal, mapDealTimelineEvent, mapTask } from '../mappers';
+
+describe('mapActivityLog', () => {
+  it('maps the saved author name and login independently of the user reference', () => {
+    expect(
+      mapActivityLog({
+        id: 'audit-1',
+        user: null,
+        user_display_name: 'Иван Петров',
+        user_username: 'ivan',
+      }),
+    ).toMatchObject({ userDisplayName: 'Иван Петров', userUsername: 'ivan' });
+  });
+
+  it('accepts legacy entries without a saved author name', () => {
+    expect(mapActivityLog({ id: 'audit-1', user_username: 'ivan' })).toMatchObject({
+      userDisplayName: undefined,
+      userUsername: 'ivan',
+    });
+  });
+});
 
 describe('mapClient', () => {
   it('maps referrer identity and deletion status independently from the loaded client list', () => {

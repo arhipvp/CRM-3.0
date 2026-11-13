@@ -316,13 +316,15 @@ class RefreshTokenSerializer(serializers.Serializer):
 class AuditLogSerializer(serializers.ModelSerializer):
     """Сериализатор для журнала аудита"""
 
-    actor_username = serializers.CharField(
-        source="actor.username", read_only=True, allow_null=True
-    )
+    actor_username = serializers.SerializerMethodField()
+    actor_name = serializers.CharField(source="display_actor_name", read_only=True)
     object_type_display = serializers.CharField(
         source="get_object_type_display", read_only=True
     )
     action_display = serializers.CharField(source="get_action_display", read_only=True)
+
+    def get_actor_username(self, obj):
+        return obj.display_actor_username or None
 
     class Meta:
         model = AuditLog
@@ -330,6 +332,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
             "id",
             "actor",
             "actor_username",
+            "actor_name",
             "object_type",
             "object_type_display",
             "object_id",

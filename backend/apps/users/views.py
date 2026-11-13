@@ -235,7 +235,7 @@ class UserViewSet(ModelViewSet):
 class AuditLogViewSet(ModelViewSet):
     """ViewSet для просмотра журнала аудита (только чтение, требуется авторизация)"""
 
-    queryset = AuditLog.objects.all()
+    queryset = AuditLog.objects.select_related("actor")
     serializer_class = AuditLogSerializer
     permission_classes = [permissions.IsAuthenticated]
     pagination_class = StandardPageNumberPagination
@@ -318,7 +318,9 @@ class AuditLogViewSet(ModelViewSet):
                 {"detail": "Доступ запрещён"}, status=status.HTTP_403_FORBIDDEN
             )
 
-        queryset = AuditLog.objects.filter(actor_id=actor_id_value)
+        queryset = AuditLog.objects.select_related("actor").filter(
+            actor_id=actor_id_value
+        )
         page = self.paginate_queryset(queryset)
         if page is not None:
             serializer = self.get_serializer(page, many=True)

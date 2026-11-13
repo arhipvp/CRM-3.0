@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from io import BytesIO
 from urllib.parse import urlencode, urlsplit
 
+from apps.common.audit import audit_context as scoped_audit_context
 from django.conf import settings
 from django.core.handlers.wsgi import WSGIRequest
 from django.core.serializers.json import DjangoJSONEncoder
@@ -107,7 +108,8 @@ def _attach_audit_actor(sender, instance, **kwargs):
 def audit_context(user):
     token = _actor.set(user)
     try:
-        yield
+        with scoped_audit_context(user):
+            yield
     finally:
         _actor.reset(token)
 
