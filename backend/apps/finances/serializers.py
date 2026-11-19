@@ -6,6 +6,7 @@ from rest_framework import serializers
 from .models import FinancialRecord, Payment, Statement
 from .permissions import get_deal_from_payment
 from .services.balances import recalculate_payment_paid_balances
+from .services.record_dates import RECORD_DATE_ERROR, validate_record_date
 
 READABLE_RECORD_TYPES = {
     FinancialRecord.RecordType.INCOME: FinancialRecord.RecordType.INCOME.label,
@@ -218,6 +219,9 @@ class StatementSerializer(serializers.ModelSerializer):
 
 
 class FinancialRecordSerializer(serializers.ModelSerializer):
+    date = serializers.DateField(
+        required=False, allow_null=True, help_text=RECORD_DATE_ERROR
+    )
     payment_kind = serializers.CharField(source="payment.kind", read_only=True)
     payment_description = serializers.CharField(
         source="payment.description", read_only=True
@@ -309,6 +313,7 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         return getattr(client, "name", None) if client else None
 
     def validate(self, attrs):
+        validate_record_date(attrs, current_date=getattr(self.instance, "date", None))
         raw_record_type = self.initial_data.get(
             "record_type",
             self.initial_data.get("recordType"),
@@ -352,7 +357,16 @@ class FinancialRecordSerializer(serializers.ModelSerializer):
         locked_instance = FinancialRecord.objects.select_for_update().get(
             pk=instance.pk
         )
-        return super().update(locked_instance, validated_data)
+        if locked_instance.statement_id and locked_instance.statement.paid_at:
+            raise serializers.ValidationError(
+                "Нельзя изменять записи в выплаченной ведомости."
+            )
+        validate_record_date(validated_data, current_date=locked_instance.date)
+        validated_data.pop("date", None)
+        for field, value in validated_data.items():
+            setattr(locked_instance, field, value)
+        locked_instance.save(update_fields=[*validated_data, "updated_at"])
+        return locked_instance
 
 
 class InitialFinancialRecordSerializer(serializers.Serializer):
@@ -361,10 +375,16 @@ class InitialFinancialRecordSerializer(serializers.Serializer):
         choices=FinancialRecord.RecordType.choices,
         required=False,
     )
-    date = serializers.DateField(required=False, allow_null=True)
+    date = serializers.DateField(
+        required=False, allow_null=True, help_text=RECORD_DATE_ERROR
+    )
     description = serializers.CharField(required=False, allow_blank=True, default="")
     source = serializers.CharField(required=False, allow_blank=True, default="")
     note = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        validate_record_date(attrs)
+        return attrs
 
 
 class PaymentSerializer(serializers.ModelSerializer):

@@ -31,6 +31,7 @@ import type { FinancialRecordDraft } from './types';
 import {
   createEmptyRecord,
   createPaymentWithDefaultIncome,
+  withoutFinancialRecordDate,
   type PaymentDraft,
   type PolicyFormValues,
 } from './types';
@@ -907,7 +908,11 @@ export const useAddPolicyFormController = ({
         clientName: selectedClientName,
         startDate: startDate || null,
         endDate: endDate || null,
-        payments,
+        payments: payments.map((payment) => ({
+          ...payment,
+          incomes: payment.incomes.map(withoutFinancialRecordDate),
+          expenses: payment.expenses.map(withoutFinancialRecordDate),
+        })),
       });
     } catch (err) {
       setError(formatErrorMessage(err, 'Не удалось сохранить полис. Попробуйте позже.'));

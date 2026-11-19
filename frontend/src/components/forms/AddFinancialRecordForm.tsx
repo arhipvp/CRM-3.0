@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FinancialRecord } from '../../types';
 import { formatErrorMessage } from '../../utils/formatErrorMessage';
-import { DateInput } from '../common/forms/DateInput';
+import { formatDateRu } from '../../utils/formatting';
 import { FormActions } from '../common/forms/FormActions';
 import { FormError } from '../common/forms/FormError';
 import { FormField } from '../common/forms/FormField';
@@ -64,7 +64,6 @@ export function AddFinancialRecordForm({
     paymentId,
     recordType: resolveRecordType(record) ?? defaultRecordType ?? 'income',
     amount: record ? getCleanAmount(record.amount) : '',
-    date: record?.date || '',
     description: record?.description || '',
     source: record?.source || '',
     note: record?.note || '',
@@ -170,16 +169,13 @@ export function AddFinancialRecordForm({
           className={FORM_INPUT_DISABLED}
         />
       </FormField>
-      <FormField label="Дата" htmlFor="date">
-        <DateInput
-          id="date"
-          name="date"
-          value={formData.date || ''}
-          onChange={handleChange}
-          disabled={loading}
-          className={FORM_INPUT_DISABLED}
-        />
-      </FormField>
+      <div>
+        <p className="app-label">Фактическая дата</p>
+        <p className="mt-1 text-sm text-slate-700">
+          {record?.date ? formatDateRu(record.date) : 'Не оплачено'}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">Оплата отмечается через ведомости</p>
+      </div>
 
       <FormField label="Примечание" htmlFor="note">
         <textarea

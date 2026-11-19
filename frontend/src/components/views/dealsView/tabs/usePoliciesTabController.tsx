@@ -80,7 +80,6 @@ export function usePoliciesTabController({
   onOpenClient,
   onUploadAndRecognizePolicyFiles,
   onMarkPaymentPaid,
-  onMarkFinancialRecordPaid,
   onDealPreview,
   onDealSelect,
   policyRecognitionMessage,
@@ -94,9 +93,6 @@ export function usePoliciesTabController({
   const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
   const [paymentPaidDate, setPaymentPaidDate] = useState('');
   const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
-  const [recordToMarkPaidId, setRecordToMarkPaidId] = useState<string | null>(null);
-  const [recordPaidDate, setRecordPaidDate] = useState('');
-  const [recordPaidDateError, setRecordPaidDateError] = useState<string | null>(null);
   const [policyToMove, setPolicyToMove] = useState<Policy | null>(null);
   const [isMovingPolicy, setIsMovingPolicy] = useState(false);
   const { confirm, ConfirmDialogRenderer } = useConfirm();
@@ -253,34 +249,6 @@ export function usePoliciesTabController({
     closeMarkPaidPrompt();
   };
 
-  const closeMarkRecordPaidPrompt = () => {
-    setRecordToMarkPaidId(null);
-    setRecordPaidDate('');
-    setRecordPaidDateError(null);
-  };
-
-  const openMarkRecordPaidPrompt = (recordId: string) => {
-    setRecordToMarkPaidId(recordId);
-    setRecordPaidDate('');
-    setRecordPaidDateError(null);
-  };
-
-  const handleConfirmRecordMarkPaid = async () => {
-    if (!recordToMarkPaidId || !onMarkFinancialRecordPaid) {
-      return;
-    }
-    if (!recordPaidDate) {
-      setRecordPaidDateError('Укажите дату оплаты.');
-      return;
-    }
-    const confirmed = await confirm(confirmTexts.markFinancialRecordAsPaid(recordPaidDate));
-    if (!confirmed) {
-      return;
-    }
-    await onMarkFinancialRecordPaid(recordToMarkPaidId, recordPaidDate);
-    closeMarkRecordPaidPrompt();
-  };
-
   const handleConfirmMovePolicy = async (policyId: string, targetDealId: string) => {
     if (!onMovePolicy) {
       return;
@@ -307,12 +275,10 @@ export function usePoliciesTabController({
     kind: 'ready' as const,
     ConfirmDialogRenderer,
     closeMarkPaidPrompt,
-    closeMarkRecordPaidPrompt,
     deals,
     documentsByPolicyId,
     handleConfirmMarkPaid,
     handleConfirmMovePolicy,
-    handleConfirmRecordMarkPaid,
     handleOpenDeal,
     handleSortChange,
     handleUpdatePolicyRenewed,
@@ -324,23 +290,18 @@ export function usePoliciesTabController({
     onDeleteFinancialRecord,
     onDeletePayment,
     onDeletePolicy,
-    onMarkFinancialRecordPaid,
     onMarkPaymentPaid,
     onMovePolicy,
     onOpenClient,
     onRequestAddPolicy,
     onRequestEditPolicy,
     openMarkPaidPrompt,
-    openMarkRecordPaidPrompt,
     openingClientId,
     paymentPaidDate,
     paymentPaidDateError,
     paymentToMarkPaid,
     paymentsByPolicyMap,
     policyToMove,
-    recordPaidDate,
-    recordPaidDateError,
-    recordToMarkPaidId,
     renderPolicyFileUpload,
     selectedDeal,
     setCreatingPaymentPolicyId,
@@ -349,8 +310,6 @@ export function usePoliciesTabController({
     setPaymentPaidDate,
     setPaymentPaidDateError,
     setPolicyToMove,
-    setRecordPaidDate,
-    setRecordPaidDateError,
     setShowRenewedPolicies,
     setShowUnpaidPaymentsOnly,
     setShowUnpaidRecordsOnly,

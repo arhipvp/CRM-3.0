@@ -89,14 +89,12 @@ export const useFinanceActions = ({
           policyEndDate: values.policyEndDate,
           incomes: values.incomes?.map((record) => ({
             amount: Number(record.amount),
-            date: record.date || null,
             description: record.description,
             source: record.source,
             note: record.note,
           })),
           expenses: values.expenses?.map((record) => ({
             amount: Number(record.amount),
-            date: record.date || null,
             description: record.description,
             source: record.source,
             note: record.note,
@@ -335,7 +333,6 @@ export const useFinanceActions = ({
           paymentId,
           amount: normalizeFinancialRecordAmount(values),
           recordType: values.recordType,
-          date: values.date || null,
           description: values.description,
           source: values.source,
           note: values.note,
@@ -368,7 +365,6 @@ export const useFinanceActions = ({
         const updated = await updateFinancialRecord(recordId, {
           amount: normalizeFinancialRecordAmount(values),
           recordType: values.recordType,
-          date: values.date || null,
           description: values.description,
           source: values.source,
           note: values.note,
@@ -397,51 +393,6 @@ export const useFinanceActions = ({
       }
     },
     [setError, setFinancialRecordModal, updateAppData],
-  );
-
-  const handleMarkFinancialRecordPaid = useCallback(
-    async (recordId: string, paidDate: string) => {
-      const record = payments
-        .flatMap((payment) => payment.financialRecords ?? [])
-        .find((item) => item.id === recordId);
-      if (!record) {
-        return;
-      }
-      const resolvedRecordType = record.recordType === 'Расход' ? 'expense' : 'income';
-      const amount = parseAmountValue(record.amount);
-
-      try {
-        const updated = await updateFinancialRecord(recordId, {
-          recordType: resolvedRecordType,
-          amount: Math.abs(amount),
-          date: paidDate,
-          description: record.description ?? '',
-          source: record.source ?? '',
-          note: record.note ?? '',
-        });
-        updateAppData((prev) => {
-          const financialRecords = prev.financialRecords.map((item) =>
-            item.id === updated.id ? updated : item,
-          );
-          const payments = prev.payments.map((payment) =>
-            payment.id === updated.paymentId
-              ? {
-                  ...payment,
-                  financialRecords: (payment.financialRecords ?? []).map((item) =>
-                    item.id === updated.id ? updated : item,
-                  ),
-                }
-              : payment,
-          );
-          const statements = applyStatementAggregates(prev.statements ?? [], financialRecords);
-          return { financialRecords, payments, statements };
-        });
-      } catch (err) {
-        setError(formatErrorMessage(err, 'Ошибка при обновлении даты оплаты записи'));
-        throw err;
-      }
-    },
-    [payments, setError, updateAppData],
   );
 
   const handleDeleteFinancialRecord = useCallback(
@@ -690,7 +641,6 @@ export const useFinanceActions = ({
     handleMarkPaymentPaid,
     handleAddFinancialRecord,
     handleUpdateFinancialRecord,
-    handleMarkFinancialRecordPaid,
     handleDeleteFinancialRecord,
     handleCreateFinanceStatement,
     handleUpdateFinanceStatement,

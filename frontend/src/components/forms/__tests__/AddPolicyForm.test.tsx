@@ -46,6 +46,36 @@ const renderForm = (
   );
 
 describe('AddPolicyForm', () => {
+  it('displays legacy record dates without submitting them while retaining premium payment date', async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+    renderForm(
+      buildInitialValues([
+        {
+          amount: '10000',
+          scheduledDate: '2026-05-01',
+          actualDate: '2026-05-02',
+          incomes: [{ id: 'legacy-income', amount: '100', date: '2026-05-15' }],
+          expenses: [{ id: 'legacy-expense', amount: '50', date: '2026-05-16' }],
+        },
+      ]),
+      { onSubmit },
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Контрагенты и финансы' }));
+    expect(await screen.findByText('15.05.2026')).toBeInTheDocument();
+    expect(screen.getByText('16.05.2026')).toBeInTheDocument();
+    expect(screen.getAllByText('Оплата отмечается через ведомости')).toHaveLength(2);
+    expect(screen.getByTestId('incomes-record-date-accent').querySelector('input')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить полис' }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    const payment = onSubmit.mock.calls[0][0].payments[0];
+    expect(payment.actualDate).toBe('2026-05-02');
+    expect(payment.incomes[0]).toMatchObject({ id: 'legacy-income', amount: '100' });
+    expect(payment.incomes[0]).not.toHaveProperty('date');
+    expect(payment.expenses[0]).not.toHaveProperty('date');
+  });
+
   const channels = [
     { id: 'grisha', name: 'Гриша. Сбер', createdAt: '', updatedAt: '' },
     { id: 'foreign', name: 'Чужой полис', createdAt: '', updatedAt: '' },

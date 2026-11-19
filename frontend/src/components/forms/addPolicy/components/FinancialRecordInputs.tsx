@@ -1,5 +1,5 @@
 import React from 'react';
-import { DateInput } from '../../../common/forms/DateInput';
+import { formatDateRu } from '../../../../utils/formatting';
 import { IconButton } from '../../../common/Button';
 import { Panel } from '../../../common/layoutPrimitives';
 import type { FinancialRecordDraft } from '../types';
@@ -65,14 +65,10 @@ export const FinancialRecordInputs: React.FC<FinancialRecordInputsProps> = ({
             <label className="block text-xs font-semibold uppercase tracking-[0.2em] text-sky-800">
               Фактическая дата
             </label>
-            <p className="mt-1 text-[11px] text-sky-700">Дата поступления или списания</p>
-            <DateInput
-              value={record.date || ''}
-              onChange={(e) =>
-                onUpdateRecord(paymentIndex, type, recordIndex, 'date', e.target.value)
-              }
-              className="field field-input mt-2 border-sky-300 bg-white ring-2 ring-sky-100/80"
-            />
+            <p className="mt-1 text-[11px] text-sky-700">Оплата отмечается через ведомости</p>
+            <p className="mt-2 text-sm text-slate-700">
+              {record.date ? formatDateRu(record.date) : 'Не оплачено'}
+            </p>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

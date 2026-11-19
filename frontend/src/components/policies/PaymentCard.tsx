@@ -101,7 +101,7 @@ const renderRecordList = (
         const deleteBlockedReason = record.statementId
           ? 'Сначала уберите запись из ведомости.'
           : record.date
-            ? 'Сначала снимите фактическую дату записи.'
+            ? 'Запись проведена ранее без ведомости. Удаление недоступно.'
             : null;
 
         return (

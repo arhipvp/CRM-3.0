@@ -228,7 +228,6 @@ const mapDraftRecord = (record: PolicyDraftFinancialRecordPayload) => {
   return {
     ...(id ? { id } : {}),
     amount: record.amount,
-    date: record.date || null,
     description: record.description || '',
     source: record.source || '',
     note: record.note || '',

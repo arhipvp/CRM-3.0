@@ -3,6 +3,7 @@ import re
 from apps.clients.models import Client
 from apps.deals.models import Bank, Deal, InsuranceCompany, InsuranceType, SalesChannel
 from apps.finances.models import Payment
+from apps.finances.services.record_dates import RECORD_DATE_ERROR, validate_record_date
 from apps.insurance_requests.models import InsuranceRequest
 from rest_framework import serializers
 
@@ -289,10 +290,17 @@ class PolicySerializer(serializers.ModelSerializer):
 class PolicyDraftFinancialRecordSerializer(serializers.Serializer):
     id = serializers.UUIDField(required=False)
     amount = serializers.DecimalField(max_digits=12, decimal_places=2)
-    date = serializers.DateField(required=False, allow_null=True)
+    date = serializers.DateField(
+        required=False, allow_null=True, help_text=RECORD_DATE_ERROR
+    )
     description = serializers.CharField(required=False, allow_blank=True, default="")
     source = serializers.CharField(required=False, allow_blank=True, default="")
     note = serializers.CharField(required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        if not attrs.get("id"):
+            validate_record_date(attrs)
+        return attrs
 
 
 class PolicyDraftPaymentSerializer(serializers.Serializer):

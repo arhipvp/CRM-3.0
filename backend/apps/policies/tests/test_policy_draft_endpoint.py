@@ -53,7 +53,7 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
                     "incomes": [
                         {
                             "amount": "120.00",
-                            "date": "2026-01-11",
+                            "date": None,
                             "description": "Комиссия",
                             "source": "Агент",
                             "note": "income note",
@@ -62,7 +62,7 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
                     "expenses": [
                         {
                             "amount": "30.00",
-                            "date": "2026-01-12",
+                            "date": None,
                             "description": "Расход",
                         }
                     ],
@@ -122,6 +122,69 @@ class PolicyDraftEndpointTests(AuthenticatedAPITestCase):
         )
         self.assertEqual(Policy.objects.filter(number="DUPLICATE-DRAFT").count(), 1)
         self.assertEqual(Payment.objects.count(), 0)
+
+    def test_draft_create_rejects_dated_financial_records(self):
+        self.authenticate(self.seller)
+        for field in ("incomes", "expenses"):
+            with self.subTest(field=field):
+                payload = self._draft_payload()
+                payload["payments"][0][field][0]["date"] = "2026-01-11"
+                response = self.api_client.post(
+                    "/api/v1/policies/draft/", payload, format="json"
+                )
+                self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+                self.assertEqual(Policy.objects.count(), 0)
+                self.assertEqual(Payment.objects.count(), 0)
+
+    def test_draft_update_preserves_legacy_dates_and_rolls_back_date_changes(self):
+        self.authenticate(self.seller)
+        response = self.api_client.post(
+            "/api/v1/policies/draft/", self._draft_payload(), format="json"
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        policy = Policy.objects.get(number="DRAFT-001")
+        payment = Payment.objects.get(policy=policy)
+        income = payment.financial_records.get(record_type="income")
+        expense = payment.financial_records.get(record_type="expense")
+        FinancialRecord.objects.filter(pk=income.pk).update(date=date(2026, 1, 11))
+        for date_input in (
+            {},
+            {"date": "2026-01-11"},
+            {"date": None},
+            {"date": "2026-01-12"},
+        ):
+            with self.subTest(date_input=date_input):
+                payload = self._draft_payload(
+                    number="DRAFT-RENAMED",
+                    payments=[
+                        {
+                            "id": str(payment.pk),
+                            "amount": "900",
+                            "incomes": [
+                                {"id": str(income.pk), "amount": "125", **date_input}
+                            ],
+                            "expenses": [{"id": str(expense.pk), "amount": "35"}],
+                        }
+                    ],
+                )
+                response = self.api_client.patch(
+                    f"/api/v1/policies/{policy.pk}/draft/", payload, format="json"
+                )
+                allowed = "date" not in date_input or date_input["date"] == "2026-01-11"
+                self.assertEqual(response.status_code, 200 if allowed else 400)
+                income.refresh_from_db()
+                self.assertEqual(income.date, date(2026, 1, 11))
+                if not allowed:
+                    self.assertEqual(income.amount, Decimal("120"))
+                    policy.refresh_from_db()
+                    payment.refresh_from_db()
+                    self.assertEqual(policy.number, "DRAFT-001")
+                    self.assertEqual(payment.amount, Decimal("1000"))
+                Policy.objects.filter(pk=policy.pk).update(number="DRAFT-001")
+                Payment.objects.filter(pk=payment.pk).update(amount=Decimal("1000"))
+                FinancialRecord.objects.filter(pk=income.pk).update(
+                    amount=Decimal("120")
+                )
 
     def test_draft_create_recalculates_deal_deadline(self):
         self.authenticate(self.seller)

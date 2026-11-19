@@ -79,7 +79,6 @@ export const PoliciesTable = ({
   onRequestMovePolicy: setPolicyToMove,
   onMarkPaymentPaid: openMarkPaidPrompt,
   onDeletePayment,
-  onMarkFinancialRecordPaid: openMarkRecordPaidPrompt,
   onDeleteFinancialRecord,
   onRefreshPolicies: handleRefreshPolicies,
 }: PoliciesTableProps) => (
@@ -384,17 +383,6 @@ export const PoliciesTable = ({
                               <p className="truncate">{recordRow.line.comment}</p>
                               {!recordRow.record.statementId && !recordRow.record.date ? (
                                 <div className="flex flex-wrap gap-1 pt-1">
-                                  {openMarkRecordPaidPrompt ? (
-                                    <Button
-                                      type="button"
-                                      onClick={() => openMarkRecordPaidPrompt(recordRow.record.id)}
-                                      variant="quiet"
-                                      size="sm"
-                                      className="h-7 px-2 text-[11px]"
-                                    >
-                                      Проставить оплату
-                                    </Button>
-                                  ) : null}
                                   {onDeleteFinancialRecord ? (
                                     <Button
                                       type="button"
@@ -487,19 +475,6 @@ export const PoliciesTable = ({
                                 <p className="truncate">{recordRow.line.comment}</p>
                                 {!recordRow.record.statementId && !recordRow.record.date ? (
                                   <div className="flex flex-wrap gap-1 pt-1">
-                                    {openMarkRecordPaidPrompt ? (
-                                      <Button
-                                        type="button"
-                                        onClick={() =>
-                                          openMarkRecordPaidPrompt(recordRow.record.id)
-                                        }
-                                        variant="quiet"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                      >
-                                        Проставить оплату
-                                      </Button>
-                                    ) : null}
                                     {onDeleteFinancialRecord ? (
                                       <Button
                                         type="button"

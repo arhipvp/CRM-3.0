@@ -14,6 +14,7 @@ RECORD_MEANING = (
     "FinancialRecord represents agent commission/income or costs/expenses linked "
     "to a premium or PKV Payment. Its date means settlement of this commission or cost; "
     "null means unsettled. It does not mark the insurance premium paid. "
+    "Settlement dates can only be set or cleared through statements, not direct record writes. "
     "Returned amounts are signed RUB: income positive, expense negative; "
     "record_type is returned as the display label."
 )
@@ -68,19 +69,22 @@ FINANCE_TOOL_DESCRIPTIONS: dict[str, str] = {
     "crm_create_financial_records": (
         "Create an agent financial record for an existing premium Payment. "
         "In this tool use positive amount for income and negative amount for "
-        "expense; zero is allowed. Set date only when that commission or cost "
-        "was actually settled. " + RECORD_MEANING
+        "expense; zero is allowed. Omit date or send null; settle the record "
+        "through a statement. " + RECORD_MEANING
     ),
     "crm_update_financial_records": (
         "Edit an existing agent financial record. Its existing income/expense "
         "type is preserved, and the server normalizes amount to that type: "
         "changing the amount sign alone does not change the record type. "
-        "Records in a paid statement cannot be edited. " + RECORD_MEANING
+        "Omit date to preserve it; an unchanged date is accepted for compatibility, "
+        "but changing or clearing it is rejected. Records in a paid statement "
+        "cannot be edited. " + RECORD_MEANING
     ),
     "crm_delete_financial_records": (
         "Soft-delete an undated agent financial record. A record in any "
         "statement must first be removed from that statement; a dated record "
-        "cannot be deleted until its settlement date is cleared. " + RECORD_MEANING
+        "cannot be deleted. Cancel statement settlement before removing its records. "
+        "Legacy settled records without a statement remain unchanged. " + RECORD_MEANING
     ),
     "crm_financial_records_summary": (
         "Read totals and counts for filtered agent financial records. "
@@ -179,7 +183,8 @@ FINANCE_TOOL_DESCRIPTIONS: dict[str, str] = {
         "preview/apply. Missing/empty incomes creates one unsettled 1 RUB "
         "commission; missing/empty expenses creates unsettled 1 RUB entries "
         "for the counterparty and executor when present. Nonempty lists and "
-        "explicit zero amounts are preserved. actual_date pays only the "
+        "explicit zero amounts are preserved. New record dates must be omitted/null; "
+        "settle commissions/costs through statements. actual_date pays only the "
         "premium, never commissions/costs; paid_balance is not premium paid "
         "status. For document imports always pass data.source_file_ids: "
         "originals move, not copy. files_pending means saved policy with "
@@ -194,7 +199,8 @@ FINANCE_TOOL_DESCRIPTIONS: dict[str, str] = {
         "and statement safeguards; omitted/empty incomes/expenses removes "
         "existing financial entries. No 1 RUB defaults are added on editing. "
         "Payment actual_date pays only the premium; record date settles "
-        "commission/costs separately. Use crm_update_payments or "
+        "commission/costs separately and can only be changed through statements. "
+        "Omit existing record dates to preserve them. Use crm_update_payments or "
         "crm_update_financial_records for isolated field changes."
     ),
     "crm_recognize_policy": (
@@ -213,8 +219,9 @@ FINANCE_TOOL_DESCRIPTIONS: dict[str, str] = {
 _RECORD_FIELDS = {
     "date": (
         "Actual settlement date of this agent commission or expense, YYYY-MM-DD. "
-        "null means unsettled. On creation an omitted date is also unsettled; "
-        "an ordinary partial update preserves an omitted date. Independent of the insurance "
+        "null means unsettled. Creation accepts only omitted/null. Updates preserve "
+        "an omitted date and accept the unchanged value; changing or clearing it is rejected. "
+        "Set or clear settlement dates through statements. Independent of the insurance "
         "premium Payment.actual_date; never copy that date automatically."
     ),
     "description": (

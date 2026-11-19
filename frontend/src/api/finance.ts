@@ -127,14 +127,12 @@ export async function createPayment(data: {
       policy_end_date: data.policyEndDate || undefined,
       incomes: data.incomes?.map((record) => ({
         amount: record.amount,
-        date: record.date || null,
         description: record.description || '',
         source: record.source || '',
         note: record.note || '',
       })),
       expenses: data.expenses?.map((record) => ({
         amount: record.amount,
-        date: record.date || null,
         description: record.description || '',
         source: record.source || '',
         note: record.note || '',
@@ -143,7 +141,6 @@ export async function createPayment(data: {
         ? {
             amount: data.initialRecord.amount,
             record_type: data.initialRecord.recordType,
-            date: data.initialRecord.date || null,
             description: data.initialRecord.description || '',
             source: data.initialRecord.source || '',
             note: data.initialRecord.note || '',
@@ -296,7 +293,7 @@ export async function createFinancialRecord(data: {
       payment: data.paymentId,
       amount: data.amount,
       record_type: data.recordType,
-      date: data.date || null,
+      date: data.date,
       description: data.description || '',
       source: data.source || '',
       note: data.note || '',

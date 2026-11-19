@@ -70,6 +70,9 @@ describe('PaymentCard table-row variant', () => {
     fireEvent.click(detailButtons[0]);
 
     expect(screen.getByText('Комиссия')).toBeInTheDocument();
+    expect(
+      screen.getByTitle('Запись проведена ранее без ведомости. Удаление недоступно.'),
+    ).toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'Изменить' }));
     expect(onEditFinancialRecord).toHaveBeenCalledWith('income-1');
 

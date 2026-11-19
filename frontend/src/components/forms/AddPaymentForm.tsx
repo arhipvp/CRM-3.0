@@ -17,7 +17,11 @@ import { Panel } from '../common/layoutPrimitives';
 import { FinancialRecordInputs } from './addPolicy/components/FinancialRecordInputs';
 import { skipsAutomaticFinances } from './addPolicy/financeDefaults';
 import { buildDefaultPaymentExpenses } from './addPolicy/policyFormState';
-import { createEmptyRecord, createPaymentWithDefaultIncome } from './addPolicy/types';
+import {
+  createEmptyRecord,
+  createPaymentWithDefaultIncome,
+  withoutFinancialRecordDate,
+} from './addPolicy/types';
 import type { FinancialRecordDraft } from './addPolicy/types';
 
 export interface AddPaymentFormValues {
@@ -166,7 +170,12 @@ export function AddPaymentForm({
           !payment && policyEndDate !== (selectedPolicy?.endDate ?? '')
             ? policyEndDate || null
             : undefined,
-        ...(payment ? {} : records),
+        ...(payment
+          ? {}
+          : {
+              incomes: records.incomes.map(withoutFinancialRecordDate),
+              expenses: records.expenses.map(withoutFinancialRecordDate),
+            }),
       };
 
       await onSubmit(submission);

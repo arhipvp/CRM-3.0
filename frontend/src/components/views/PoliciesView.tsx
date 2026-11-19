@@ -45,7 +45,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   onDeleteFinancialRecord,
   onDeletePayment,
   onMarkPaymentPaid,
-  onMarkFinancialRecordPaid,
 }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const urlFilters = useMemo<FilterParams>(
@@ -71,9 +70,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
   const [paymentToMarkPaid, setPaymentToMarkPaid] = useState<Payment | null>(null);
   const [paymentPaidDate, setPaymentPaidDate] = useState('');
   const [paymentPaidDateError, setPaymentPaidDateError] = useState<string | null>(null);
-  const [recordToMarkPaidId, setRecordToMarkPaidId] = useState<string | null>(null);
-  const [recordPaidDate, setRecordPaidDate] = useState('');
-  const [recordPaidDateError, setRecordPaidDateError] = useState<string | null>(null);
   const [policyToMove, setPolicyToMove] = useState<Policy | null>(null);
   const [isMovingPolicy, setIsMovingPolicy] = useState(false);
   const [kpi, setKpi] = useState({
@@ -370,34 +366,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
     closeMarkPaidPrompt();
   };
 
-  const closeMarkRecordPaidPrompt = () => {
-    setRecordToMarkPaidId(null);
-    setRecordPaidDate('');
-    setRecordPaidDateError(null);
-  };
-
-  const openMarkRecordPaidPrompt = (recordId: string) => {
-    setRecordToMarkPaidId(recordId);
-    setRecordPaidDate('');
-    setRecordPaidDateError(null);
-  };
-
-  const handleConfirmRecordMarkPaid = async () => {
-    if (!recordToMarkPaidId || !onMarkFinancialRecordPaid) {
-      return;
-    }
-    if (!recordPaidDate) {
-      setRecordPaidDateError('Укажите дату оплаты.');
-      return;
-    }
-    const confirmed = await confirm(confirmTexts.markFinancialRecordAsPaid(recordPaidDate));
-    if (!confirmed) {
-      return;
-    }
-    await onMarkFinancialRecordPaid(recordToMarkPaidId, recordPaidDate);
-    closeMarkRecordPaidPrompt();
-  };
-
   const handleConfirmMovePolicy = async (policyId: string, targetDealId: string) => {
     if (!onMovePolicy) {
       return;
@@ -460,7 +428,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         onRequestMovePolicy={onMovePolicy ? setPolicyToMove : undefined}
         onMarkPaymentPaid={onMarkPaymentPaid ? openMarkPaidPrompt : undefined}
         onDeletePayment={onDeletePayment}
-        onMarkFinancialRecordPaid={onMarkFinancialRecordPaid ? openMarkRecordPaidPrompt : undefined}
         onDeleteFinancialRecord={onDeleteFinancialRecord}
         onRefreshPolicies={handleRefreshPolicies}
       />
@@ -472,9 +439,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         paymentToMarkPaid={paymentToMarkPaid}
         paymentPaidDate={paymentPaidDate}
         paymentPaidDateError={paymentPaidDateError}
-        recordToMarkPaidId={recordToMarkPaidId}
-        recordPaidDate={recordPaidDate}
-        recordPaidDateError={recordPaidDateError}
         policyToMove={policyToMove}
         deals={deals}
         isMovingPolicy={isMovingPolicy}
@@ -483,10 +447,6 @@ export const PoliciesView: React.FC<PoliciesViewProps> = ({
         onClearPaymentPaidDateError={() => setPaymentPaidDateError(null)}
         onConfirmMarkPaid={handleConfirmMarkPaid}
         onCancelMarkPaid={closeMarkPaidPrompt}
-        onRecordPaidDateChange={setRecordPaidDate}
-        onClearRecordPaidDateError={() => setRecordPaidDateError(null)}
-        onConfirmRecordMarkPaid={handleConfirmRecordMarkPaid}
-        onCancelRecordMarkPaid={closeMarkRecordPaidPrompt}
         onCancelMovePolicy={() => setPolicyToMove(null)}
         onConfirmMovePolicy={handleConfirmMovePolicy}
       />

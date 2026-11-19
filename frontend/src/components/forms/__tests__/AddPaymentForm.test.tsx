@@ -48,6 +48,9 @@ describe('AddPaymentForm', () => {
     expect(screen.getByText('Финансовые записи')).toBeInTheDocument();
     expect(screen.getByText('Доход #1')).toBeInTheDocument();
     expect(screen.getByText('Расход #1')).toBeInTheDocument();
+    expect(screen.getAllByText('Оплата отмечается через ведомости')).toHaveLength(2);
+    expect(screen.getByTestId('incomes-record-date-accent').querySelector('input')).toBeNull();
+    expect(screen.getByTestId('expenses-record-date-accent').querySelector('input')).toBeNull();
     expect(screen.getByDisplayValue('Комиссионное вознаграждение от Альфа')).toBeInTheDocument();
     expect(screen.getByLabelText('Дата окончания полиса')).toHaveValue('2026-12-31');
 
@@ -58,6 +61,8 @@ describe('AddPaymentForm', () => {
     fireEvent.submit(container.querySelector('form')!);
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0].incomes[0]).not.toHaveProperty('date');
+    expect(onSubmit.mock.calls[0][0].expenses[0]).not.toHaveProperty('date');
     expect(onSubmit).toHaveBeenCalledWith(
       expect.objectContaining({
         policyId: policy.id,

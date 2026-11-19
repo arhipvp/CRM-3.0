@@ -144,6 +144,33 @@ class McpDescriptionTests(SimpleTestCase):
             "request_id",
         )
 
+    def test_financial_dates_explain_statement_only_settlement(self):
+        for tool in ("crm_create_financial_records", "crm_update_financial_records"):
+            with self.subTest(tool=tool):
+                self.assert_terms(
+                    self.tools[tool]["description"], "only", "statement", "direct"
+                )
+                self.assert_terms(
+                    description(self.data_fields(tool)["date"]), "statement"
+                )
+        self.assert_terms(
+            self.tools["crm_update_financial_records"]["description"],
+            "unchanged",
+            "clearing",
+            "rejected",
+        )
+        fields = self.data_fields("crm_create_policy_draft")
+        for side in ("incomes", "expenses"):
+            self.assert_terms(
+                description(
+                    fields["payments"]["items"]["properties"][side]["items"][
+                        "properties"
+                    ]["date"]
+                ),
+                "statement",
+                "null",
+            )
+
     def test_draft_update_explains_graph_replacement(self):
         self.assert_terms(
             self.tools["crm_update_policy_draft"]["description"],

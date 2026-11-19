@@ -207,7 +207,7 @@ class PolicyImportFinanceTests(McpFixture):
         }
         expense = {
             "amount": "0.00",
-            "date": "2026-03-04",
+            "date": None,
             "description": "Явный расход",
             "source": "Назначение",
             "note": "Моё примечание расхода",
@@ -265,6 +265,60 @@ class PolicyImportFinanceTests(McpFixture):
                 self.assertEqual(payment[preserved], [explicit])
                 self.assertEqual(
                     len(payment[generated]), 2 if generated == "expenses" else 1
+                )
+
+    def test_dated_import_records_are_rejected_in_preview_and_legacy_apply(self):
+        for collection in ("incomes", "expenses"):
+            with self.subTest(collection=collection):
+                payload = self.payload(
+                    payments=[
+                        {
+                            "amount": "1000",
+                            collection: [{"amount": "100", "date": "2026-03-04"}],
+                        }
+                    ]
+                )
+                arguments = {"data": payload}
+                before = (
+                    Policy.objects.count(),
+                    Payment.objects.count(),
+                    FinancialRecord.objects.count(),
+                    McpMutation.objects.count(),
+                    AuditLog.objects.count(),
+                )
+                with patch("apps.policies.signals.ensure_policy_folder") as drive:
+                    result = self.call(
+                        "crm_preview_change",
+                        {
+                            "tool_name": "crm_create_policy_draft",
+                            "arguments": arguments,
+                        },
+                    )
+                    self.assertEqual(result["error"]["status"], 400, result)
+                    self.assertIn("payments", result["error"]["details"])
+                    with patch("apps.policies.serializers.validate_record_date"):
+                        legacy_preview, arguments = self.preview(payload)
+                    result = self.call(
+                        "crm_apply_change",
+                        {
+                            "tool_name": legacy_preview["tool_name"],
+                            "arguments": arguments,
+                            "preview_token": legacy_preview["preview_token"],
+                            "confirmed": True,
+                            "request_id": str(uuid.uuid4()),
+                        },
+                    )
+                drive.assert_not_called()
+                self.assertEqual(result["error"]["status"], 400, result)
+                self.assertEqual(
+                    before,
+                    (
+                        Policy.objects.count(),
+                        Payment.objects.count(),
+                        FinancialRecord.objects.count(),
+                        McpMutation.objects.count(),
+                        AuditLog.objects.count(),
+                    ),
                 )
 
     def test_create_draft_cannot_bypass_financial_preview(self):

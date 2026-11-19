@@ -467,7 +467,7 @@ describe('PoliciesTab', () => {
     });
   });
 
-  it('marks financial record as paid only after date selection and confirmation', async () => {
+  it('does not offer direct financial record settlement even when a callback is supplied', async () => {
     const onMarkFinancialRecordPaid = vi.fn().mockResolvedValue(undefined);
 
     setup({
@@ -493,16 +493,9 @@ describe('PoliciesTab', () => {
       ],
     });
 
-    fireEvent.click(screen.getAllByRole('button', { name: 'Проставить оплату' })[0]);
-    fireEvent.change(screen.getByLabelText('Дата оплаты'), {
-      target: { value: '2026-05-15' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: 'Продолжить' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Проставить дату' }));
-
-    await waitFor(() => {
-      expect(onMarkFinancialRecordPaid).toHaveBeenCalledWith('record-to-mark', '2026-05-15');
-    });
+    expect(screen.queryByRole('button', { name: 'Проставить оплату' })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Дата оплаты')).not.toBeInTheDocument();
+    expect(onMarkFinancialRecordPaid).not.toHaveBeenCalled();
   });
 
   it('hides financial record quick actions for records in statements', () => {

@@ -128,7 +128,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
                 "initial_record": {
                     "amount": "0.00",
                     "record_type": "income",
-                    "date": "2026-08-08",
+                    "date": None,
                     "description": "Initial",
                 },
             },
@@ -147,7 +147,7 @@ class FinanceAccessTests(AuthenticatedAPITestCase):
                 "policy": str(self.policy.id),
                 "incomes": [
                     {"amount": "100.00", "note": "Комиссия"},
-                    {"amount": "50.00", "date": "2026-08-08"},
+                    {"amount": "50.00", "date": None},
                 ],
                 "expenses": [{"amount": "20.00", "note": "Расход"}],
             },

@@ -38,12 +38,10 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
   const {
     ConfirmDialogRenderer,
     closeMarkPaidPrompt,
-    closeMarkRecordPaidPrompt,
     deals,
     documentsByPolicyId,
     handleConfirmMarkPaid,
     handleConfirmMovePolicy,
-    handleConfirmRecordMarkPaid,
     handleOpenDeal,
     handleSortChange,
     handleUpdatePolicyRenewed,
@@ -55,23 +53,18 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
     onDeleteFinancialRecord,
     onDeletePayment,
     onDeletePolicy,
-    onMarkFinancialRecordPaid,
     onMarkPaymentPaid,
     onMovePolicy,
     onOpenClient,
     onRequestAddPolicy,
     onRequestEditPolicy,
     openMarkPaidPrompt,
-    openMarkRecordPaidPrompt,
     openingClientId,
     paymentPaidDate,
     paymentPaidDateError,
     paymentToMarkPaid,
     paymentsByPolicyMap,
     policyToMove,
-    recordPaidDate,
-    recordPaidDateError,
-    recordToMarkPaidId,
     renderPolicyFileUpload,
     selectedDeal,
     setCreatingPaymentPolicyId,
@@ -80,8 +73,6 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
     setPaymentPaidDate,
     setPaymentPaidDateError,
     setPolicyToMove,
-    setRecordPaidDate,
-    setRecordPaidDateError,
     setShowRenewedPolicies,
     setShowUnpaidPaymentsOnly,
     setShowUnpaidRecordsOnly,
@@ -539,19 +530,6 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                 <p className="truncate">{recordRow.line.comment}</p>
                                 {!recordRow.record.statementId && !recordRow.record.date ? (
                                   <div className="flex flex-wrap gap-1 pt-1">
-                                    {onMarkFinancialRecordPaid ? (
-                                      <Button
-                                        type="button"
-                                        onClick={() =>
-                                          openMarkRecordPaidPrompt(recordRow.record.id)
-                                        }
-                                        variant="quiet"
-                                        size="sm"
-                                        className="h-7 px-2 text-[11px]"
-                                      >
-                                        Проставить оплату
-                                      </Button>
-                                    ) : null}
                                     <Button
                                       type="button"
                                       onClick={() =>
@@ -640,19 +618,6 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
                                   <p className="truncate">{recordRow.line.comment}</p>
                                   {!recordRow.record.statementId && !recordRow.record.date ? (
                                     <div className="flex flex-wrap gap-1 pt-1">
-                                      {onMarkFinancialRecordPaid ? (
-                                        <Button
-                                          type="button"
-                                          onClick={() =>
-                                            openMarkRecordPaidPrompt(recordRow.record.id)
-                                          }
-                                          variant="quiet"
-                                          size="sm"
-                                          className="h-7 px-2 text-[11px]"
-                                        >
-                                          Проставить оплату
-                                        </Button>
-                                      ) : null}
                                       <Button
                                         type="button"
                                         onClick={() =>
@@ -701,25 +666,6 @@ export function PoliciesTabView(viewModel: PoliciesTabViewModel) {
           void handleConfirmMarkPaid();
         }}
         onCancel={closeMarkPaidPrompt}
-        inputType="date"
-      />
-      <PromptDialog
-        isOpen={Boolean(recordToMarkPaidId)}
-        title="Проставить дату оплаты"
-        label="Дата оплаты"
-        value={recordPaidDate}
-        onChange={(value) => {
-          setRecordPaidDate(value);
-          if (recordPaidDateError) {
-            setRecordPaidDateError(null);
-          }
-        }}
-        error={recordPaidDateError}
-        confirmLabel="Продолжить"
-        onConfirm={() => {
-          void handleConfirmRecordMarkPaid();
-        }}
-        onCancel={closeMarkRecordPaidPrompt}
         inputType="date"
       />
       <ConfirmDialogRenderer />

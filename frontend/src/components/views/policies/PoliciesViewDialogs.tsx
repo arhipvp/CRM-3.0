@@ -12,9 +12,6 @@ interface PoliciesViewDialogsProps {
   paymentToMarkPaid: Payment | null;
   paymentPaidDate: string;
   paymentPaidDateError: string | null;
-  recordToMarkPaidId: string | null;
-  recordPaidDate: string;
-  recordPaidDateError: string | null;
   policyToMove: Policy | null;
   deals: Deal[];
   isMovingPolicy: boolean;
@@ -23,10 +20,6 @@ interface PoliciesViewDialogsProps {
   onClearPaymentPaidDateError: () => void;
   onConfirmMarkPaid: () => Promise<void>;
   onCancelMarkPaid: () => void;
-  onRecordPaidDateChange: Dispatch<SetStateAction<string>>;
-  onClearRecordPaidDateError: () => void;
-  onConfirmRecordMarkPaid: () => Promise<void>;
-  onCancelRecordMarkPaid: () => void;
   onCancelMovePolicy: () => void;
   onConfirmMovePolicy: (policyId: string, targetDealId: string) => Promise<void>;
 }
@@ -38,9 +31,6 @@ export const PoliciesViewDialogs = ({
   paymentToMarkPaid,
   paymentPaidDate,
   paymentPaidDateError,
-  recordToMarkPaidId,
-  recordPaidDate,
-  recordPaidDateError,
   policyToMove,
   deals,
   isMovingPolicy,
@@ -49,10 +39,6 @@ export const PoliciesViewDialogs = ({
   onClearPaymentPaidDateError,
   onConfirmMarkPaid: handleConfirmMarkPaid,
   onCancelMarkPaid: closeMarkPaidPrompt,
-  onRecordPaidDateChange: setRecordPaidDate,
-  onClearRecordPaidDateError,
-  onConfirmRecordMarkPaid: handleConfirmRecordMarkPaid,
-  onCancelRecordMarkPaid: closeMarkRecordPaidPrompt,
   onCancelMovePolicy,
   onConfirmMovePolicy: handleConfirmMovePolicy,
 }: PoliciesViewDialogsProps) => (
@@ -89,25 +75,6 @@ export const PoliciesViewDialogs = ({
         void handleConfirmMarkPaid();
       }}
       onCancel={closeMarkPaidPrompt}
-      inputType="date"
-    />
-    <PromptDialog
-      isOpen={Boolean(recordToMarkPaidId)}
-      title="Проставить дату оплаты"
-      label="Дата оплаты"
-      value={recordPaidDate}
-      onChange={(value) => {
-        setRecordPaidDate(value);
-        if (recordPaidDateError) {
-          onClearRecordPaidDateError();
-        }
-      }}
-      error={recordPaidDateError}
-      confirmLabel="Продолжить"
-      onConfirm={() => {
-        void handleConfirmRecordMarkPaid();
-      }}
-      onCancel={closeMarkRecordPaidPrompt}
       inputType="date"
     />
     <ConfirmDialogRenderer />

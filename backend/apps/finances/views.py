@@ -368,7 +368,7 @@ class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
                 {
                     "detail": (
                         "Нельзя удалить проведённую финансовую запись. "
-                        "Сначала снимите фактическую дату."
+                        "Историческая запись без ведомости доступна без изменения даты проведения."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,

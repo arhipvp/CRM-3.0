@@ -266,8 +266,9 @@ describe('createPolicyDraft', () => {
           {
             id: PAYMENT_ID,
             amount: '3375.59',
-            incomes: [{ id: INCOME_ID, amount: '3375.59' }],
-            expenses: [{ id: EXPENSE_ID, amount: '100.00' }],
+            actualDate: '2026-05-10',
+            incomes: [{ id: INCOME_ID, amount: '3375.59', date: '2026-05-15' }],
+            expenses: [{ id: EXPENSE_ID, amount: '100.00', date: '2026-05-16' }],
           },
         ],
       }),
@@ -280,6 +281,9 @@ describe('createPolicyDraft', () => {
     expect(payment.id).toBe(PAYMENT_ID);
     expect(income.id).toBe(INCOME_ID);
     expect(expense.id).toBe(EXPENSE_ID);
+    expect(payment.actual_date).toBe('2026-05-10');
+    expect(income).not.toHaveProperty('date');
+    expect(expense).not.toHaveProperty('date');
   });
 
   it.each([

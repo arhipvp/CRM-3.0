@@ -4,6 +4,7 @@ from apps.clients.models import Client
 from apps.deals.deadline_service import recalculate_deal_deadline
 from apps.deals.models import Deal
 from apps.finances.models import FinancialRecord, Payment
+from apps.finances.services.record_dates import validate_record_date
 from django.db import IntegrityError, transaction
 from rest_framework.exceptions import PermissionDenied, ValidationError
 
@@ -139,7 +140,10 @@ def _apply_records(payment: Payment, drafts: list[dict], record_type: str) -> se
         record.id: record
         for record in payment.financial_records.filter(
             deleted_at__isnull=True,
-        ).select_related("statement")
+        )
+        .select_for_update(of=("self",))
+        .select_related("statement")
+        .order_by("pk")
     }
 
     for draft in drafts:
@@ -150,7 +154,6 @@ def _apply_records(payment: Payment, drafts: list[dict], record_type: str) -> se
         payload = {
             "amount": amount,
             "record_type": record_type,
-            "date": draft.get("date"),
             "description": draft.get("description") or "",
             "source": draft.get("source") or "",
             "note": draft.get("note") or "",
@@ -160,13 +163,15 @@ def _apply_records(payment: Payment, drafts: list[dict], record_type: str) -> se
             record = existing_records.get(record_id)
             if not record:
                 raise ValidationError({"detail": "Финансовая запись не найдена."})
-            if _record_has_changes(record, **payload):
+            validate_record_date(draft, current_date=record.date)
+            if _record_has_changes(record, date=record.date, **payload):
                 _record_statement_error(record, delete=False)
                 for field, value in payload.items():
                     setattr(record, field, value)
-                record.save()
+                record.save(update_fields=[*payload, "updated_at"])
             continue
 
+        validate_record_date(draft)
         record = FinancialRecord.objects.create(
             payment=payment,
             **payload,

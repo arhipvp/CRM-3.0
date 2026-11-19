@@ -1,9 +1,13 @@
 import uuid
+from datetime import date
 from unittest.mock import patch
 
 from apps.clients.models import Client
+from apps.finances.models import FinancialRecord, Payment, Statement
 from apps.insurance_requests.models import ClientPassport
 from apps.notes.models import Note
+from apps.policies.models import Policy
+from apps.users.models import AuditLog
 from django.core import signing
 
 from ..contracts import Principal
@@ -13,6 +17,12 @@ from .test_tools import McpFixture
 
 
 class MutationTests(McpFixture):
+    def financial_payment(self):
+        policy = Policy.objects.create(
+            deal=self.deal, client=self.customer, number="MCP-FINANCE-DATES"
+        )
+        return Payment.objects.create(policy=policy, deal=self.deal, amount="1000")
+
     def preview(self, tool="crm_update_clients", arguments=None):
         return self.call(
             "crm_preview_change",
@@ -204,3 +214,160 @@ class MutationTests(McpFixture):
         )
         self.assertEqual(result["error"]["code"], "invalid_arguments")
         self.assertEqual(Note.objects.count(), before)
+
+    def test_dated_record_creation_is_rejected_in_preview_and_legacy_apply(self):
+        payment = self.financial_payment()
+        arguments = {
+            "data": {"payment": str(payment.pk), "amount": "100", "date": "2026-03-04"}
+        }
+        before = (
+            FinancialRecord.objects.count(),
+            McpMutation.objects.count(),
+            AuditLog.objects.count(),
+        )
+        result = self.preview("crm_create_financial_records", arguments)
+        self.assertEqual(result["error"]["status"], 400, result)
+        self.assertIn("date", result["error"]["details"])
+        # A preview issued before this rule was deployed must be revalidated.
+        with patch("apps.finances.serializers.validate_record_date"):
+            legacy_preview = self.preview("crm_create_financial_records", arguments)
+        self.assertNotIn("error", legacy_preview, legacy_preview)
+        result = self.apply(legacy_preview, arguments)
+        self.assertEqual(result["error"]["status"], 400, result)
+        self.assertEqual(
+            before,
+            (
+                FinancialRecord.objects.count(),
+                McpMutation.objects.count(),
+                AuditLog.objects.count(),
+            ),
+        )
+        payment.refresh_from_db()
+        self.assertEqual(payment.paid_balance, 0)
+
+    def test_record_creation_with_omitted_or_null_date_stays_unpaid(self):
+        payment = self.financial_payment()
+        for supplied_date in ({}, {"date": None}):
+            with self.subTest(supplied_date=supplied_date):
+                arguments = {
+                    "data": {
+                        "payment": str(payment.pk),
+                        "amount": "100",
+                        **supplied_date,
+                    }
+                }
+                preview = self.preview("crm_create_financial_records", arguments)
+                self.assertNotIn("error", preview, preview)
+                result = self.apply(preview, arguments)
+                self.assertNotIn("error", result, result)
+                self.assertIsNone(
+                    FinancialRecord.objects.get(pk=result["data"]["id"]).date
+                )
+        payment.refresh_from_db()
+        self.assertEqual(payment.paid_balance, 0)
+
+    def test_nested_payment_dates_are_rejected_without_payment_or_record_side_effects(
+        self,
+    ):
+        existing = self.financial_payment()
+        for field in ("initial_record", "incomes", "expenses"):
+            with self.subTest(field=field):
+                nested = {"amount": "100", "date": "2026-03-04"}
+                arguments = {
+                    "data": {
+                        "policy": str(existing.policy_id),
+                        "amount": "1000",
+                        field: nested if field == "initial_record" else [nested],
+                    }
+                }
+                before = (
+                    Payment.objects.count(),
+                    FinancialRecord.objects.count(),
+                    McpMutation.objects.count(),
+                    AuditLog.objects.count(),
+                )
+                result = self.preview("crm_create_payments", arguments)
+                self.assertEqual(result["error"]["status"], 400, result)
+                self.assertIn(field, result["error"]["details"])
+                with patch("apps.finances.serializers.validate_record_date"):
+                    legacy_preview = self.preview("crm_create_payments", arguments)
+                self.assertNotIn("error", legacy_preview, legacy_preview)
+                result = self.apply(legacy_preview, arguments)
+                self.assertEqual(result["error"]["status"], 400, result)
+                self.assertEqual(
+                    before,
+                    (
+                        Payment.objects.count(),
+                        FinancialRecord.objects.count(),
+                        McpMutation.objects.count(),
+                        AuditLog.objects.count(),
+                    ),
+                )
+
+    def test_legacy_record_date_can_be_preserved_but_not_changed_or_cleared(self):
+        payment = self.financial_payment()
+        record = FinancialRecord.objects.create(
+            payment=payment, amount=100, date=date(2026, 3, 4)
+        )
+        for supplied_date in ({}, {"date": "2026-03-04"}):
+            with self.subTest(allowed=supplied_date):
+                arguments = {
+                    "id": str(record.pk),
+                    "data": {"note": "Описание обновлено", **supplied_date},
+                }
+                preview = self.preview("crm_update_financial_records", arguments)
+                self.assertNotIn("error", preview, preview)
+                result = self.apply(preview, arguments)
+                self.assertNotIn("error", result, result)
+                record.refresh_from_db()
+                self.assertEqual(record.date, date(2026, 3, 4))
+        for changed_date in (None, "2026-03-05"):
+            with self.subTest(rejected=changed_date):
+                arguments = {"id": str(record.pk), "data": {"date": changed_date}}
+                before = (McpMutation.objects.count(), AuditLog.objects.count())
+                result = self.preview("crm_update_financial_records", arguments)
+                self.assertEqual(result["error"]["status"], 400, result)
+                with patch("apps.finances.serializers.validate_record_date"):
+                    legacy_preview = self.preview(
+                        "crm_update_financial_records", arguments
+                    )
+                self.assertNotIn("error", legacy_preview, legacy_preview)
+                result = self.apply(legacy_preview, arguments)
+                self.assertEqual(result["error"]["status"], 400, result)
+                record.refresh_from_db()
+                self.assertEqual(record.date, date(2026, 3, 4))
+                self.assertEqual(
+                    before, (McpMutation.objects.count(), AuditLog.objects.count())
+                )
+
+    @patch("apps.finances.signals.ensure_statement_folder")
+    def test_statement_payment_and_admin_reopen_remain_the_date_write_path(
+        self, _drive
+    ):
+        payment = self.financial_payment()
+        statement = Statement.objects.create(
+            name="MCP выплата", statement_type="income", created_by=self.user
+        )
+        record = FinancialRecord.objects.create(
+            payment=payment, amount=100, statement=statement
+        )
+        arguments = {"id": str(statement.pk), "data": {"paid_at": "2026-03-04"}}
+        preview = self.preview("crm_statement_mark_paid", arguments)
+        self.assertNotIn("error", preview, preview)
+        result = self.apply(preview, arguments)
+        self.assertNotIn("error", result, result)
+        record.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertEqual(record.date, date(2026, 3, 4))
+        self.assertEqual(payment.paid_balance, 100)
+        self.user.is_staff = True
+        self.user.save(update_fields=["is_staff"])
+        arguments = {"id": str(statement.pk)}
+        preview = self.preview("crm_statement_reopen", arguments)
+        self.assertNotIn("error", preview, preview)
+        result = self.apply(preview, arguments)
+        self.assertNotIn("error", result, result)
+        record.refresh_from_db()
+        payment.refresh_from_db()
+        self.assertIsNone(record.date)
+        self.assertEqual(payment.paid_balance, 0)

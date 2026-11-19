@@ -8,6 +8,12 @@ export interface FinancialRecordDraft {
   note?: string;
 }
 
+export const withoutFinancialRecordDate = (record: FinancialRecordDraft): FinancialRecordDraft => {
+  const payload = { ...record };
+  delete payload.date;
+  return payload;
+};
+
 export interface PaymentDraft {
   id?: string;
   kind?: 'premium' | 'pkv';
