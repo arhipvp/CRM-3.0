@@ -182,7 +182,8 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                     Ведомости
                   </span>
                   <span className="text-sm text-slate-500 whitespace-nowrap">
-                    Показано: {statements.length} из {statementsTotalCount}
+                    Показано: {visibleStatements.length} из{' '}
+                    {showPaidStatements ? statementsTotalCount : visibleStatements.length}
                   </span>
                 </div>
                 <p className="text-sm text-slate-600">
@@ -220,7 +221,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                   </label>
                 </div>
               )}
-              {!shouldShowStatementsPendingState && statementsHasMore && (
+              {!shouldShowStatementsPendingState && showPaidStatements && statementsHasMore && (
                 <div className="border-t border-slate-200 p-3 text-center">
                   <Button
                     type="button"
@@ -229,7 +230,7 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                     disabled={isLoadingMoreStatements}
                     onClick={() => void onLoadMoreStatements?.()}
                   >
-                    {isLoadingMoreStatements ? 'Загружаем…' : 'Показать ещё ведомости'}
+                    {isLoadingMoreStatements ? 'Загружаем…' : 'Показать ещё оплаченные ведомости'}
                   </Button>
                 </div>
               )}

@@ -93,6 +93,64 @@ beforeEach(() => {
 });
 
 describe('CommissionsView', () => {
+  it('shows all unpaid statements and loads more only when paid statements are visible', async () => {
+    const user = userEvent.setup();
+    const onLoadMoreStatements = vi.fn();
+    const statement: Statement = {
+      id: 'unpaid-1',
+      name: 'Первая неоплаченная',
+      statementType: 'income',
+      status: 'draft',
+      totalAmount: '0',
+      recordsCount: 0,
+      createdAt: '2026-03-06T10:00:00Z',
+      updatedAt: '2026-03-06T10:00:00Z',
+    };
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[]}
+            statements={[
+              statement,
+              { ...statement, id: 'unpaid-2', name: 'Вторая неоплаченная' },
+              {
+                ...statement,
+                id: 'paid-1',
+                name: 'Оплаченная ведомость',
+                paidAt: '2026-03-07',
+              },
+            ]}
+            salesChannels={[]}
+            statementsTotalCount={10}
+            statementsHasMore
+            onLoadMoreStatements={onLoadMoreStatements}
+            onCreateStatement={vi.fn()}
+            hasCommissionsSnapshotLoaded
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole('button', { name: /Вторая неоплаченная/ })).toBeInTheDocument();
+    expect(screen.getByText('Показано: 2 из 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Показать ещё/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Оплаченная ведомость/ })).not.toBeInTheDocument();
+
+    await user.click(screen.getByLabelText('Показывать оплаченные ведомости'));
+
+    expect(screen.getByText('Показано: 3 из 10')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Оплаченная ведомость/ })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Показать ещё оплаченные ведомости' }));
+    expect(onLoadMoreStatements).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByLabelText('Показывать оплаченные ведомости'));
+    expect(screen.getByText('Показано: 2 из 2')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Показать ещё/ })).not.toBeInTheDocument();
+  });
+
   it('shows a route-level loading state while statements snapshot is loading', () => {
     render(
       <MemoryRouter>

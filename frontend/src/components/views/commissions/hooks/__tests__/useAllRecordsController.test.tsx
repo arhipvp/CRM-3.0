@@ -1,4 +1,4 @@
-import { act, renderHook as renderHookBase } from '@testing-library/react';
+import { act, renderHook as renderHookBase, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -9,6 +9,7 @@ import {
   fetchFinancialRecordsWithPagination,
 } from '../../../../../api';
 import { useAllRecordsController } from '../useAllRecordsController';
+import type { FinancialRecord, Statement } from '../../../../../types';
 
 vi.mock('../../../../../api', async () => {
   const actual = await vi.importActual<typeof import('../../../../../api')>('../../../../../api');
@@ -53,6 +54,17 @@ const emptyPayload = {
   results: [],
 };
 
+const buildRecord = (id: string): FinancialRecord => ({
+  id,
+  paymentId: `payment-${id}`,
+  amount: '100',
+  recordType: 'Доход',
+  createdAt: '2026-01-01T00:00:00Z',
+  updatedAt: '2026-01-01T00:00:00Z',
+});
+
+const workingFilters = { payment_paid: true, without_statement: true, unpaid_only: true };
+
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
   let reject!: (reason?: unknown) => void;
@@ -95,6 +107,211 @@ describe('useAllRecordsController', () => {
 
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
   });
+
+  it('loads all working records automatically and publishes the complete result together', async () => {
+    const secondPage = deferred<Awaited<ReturnType<typeof fetchFinancialRecordsWithPagination>>>();
+    mockedFetchFinancialRecordsWithPagination
+      .mockResolvedValueOnce({
+        ...emptyPayload,
+        count: 2,
+        next: '?page=2',
+        results: [buildRecord('first')],
+      })
+      .mockReturnValueOnce(secondPage.promise);
+    const { result } = renderHook(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+
+    await waitFor(() => expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(2));
+    expect(result.current).toMatchObject({
+      showUnpaidPayments: false,
+      showStatementRecords: false,
+      showPaidRecords: false,
+      showZeroSaldo: true,
+      isAllRecordsLoading: true,
+      allRecords: [],
+      canResetAllRecordsFilters: false,
+    });
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      { ...workingFilters, projection: 'table', page: 2, page_size: 200 },
+      expect.any(Object),
+    );
+    await act(async () =>
+      secondPage.resolve({ ...emptyPayload, count: 2, results: [buildRecord('second')] }),
+    );
+    expect(result.current.allRecords.map(({ id }) => id)).toEqual(['first', 'second']);
+    expect(result.current.allRecordsTotalCount).toBe(2);
+    expect(result.current.allRecordsHasMore).toBe(false);
+    expect(result.current.isAllRecordsLoading).toBe(false);
+    expect(mockedFetchFinancialRecordsSummary).toHaveBeenCalledWith(
+      workingFilters,
+      expect.any(Object),
+    );
+  });
+
+  it.each([
+    ['setShowUnpaidPayments', true],
+    ['setShowStatementRecords', true],
+    ['setShowPaidRecords', true],
+    ['setShowZeroSaldo', false],
+  ] as const)('returns to manual pagination when %s changes', async (setter, value) => {
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload);
+    const { result } = renderHook(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+    await waitFor(() => expect(result.current.isAllRecordsLoading).toBe(false));
+    mockedFetchFinancialRecordsWithPagination.mockClear();
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
+      ...emptyPayload,
+      count: 2,
+      next: '?page=2',
+      results: [buildRecord('first')],
+    });
+    await act(async () => result.current[setter](value));
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinancialRecordsWithPagination.mock.calls[0][0]).not.toHaveProperty(
+      'page_size',
+    );
+    expect(result.current.allRecordsHasMore).toBe(true);
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
+      ...emptyPayload,
+      count: 2,
+      results: [buildRecord('second')],
+    });
+    await act(async () => result.current.loadAllRecords('more'));
+    expect(result.current.allRecords.map(({ id }) => id)).toEqual(['first', 'second']);
+    expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2 }),
+      expect.any(Object),
+    );
+  });
+
+  it('loads every page with additional search, date, channel and record-type filters', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?fr_search=invoice&fr_search_exclude=1&fr_record_type=expense&fr_sales_channel=channel-1&fr_payment_date_from=2026-03-01&fr_payment_date_to=2026-03-31',
+    );
+    mockedFetchFinancialRecordsWithPagination
+      .mockResolvedValueOnce({
+        ...emptyPayload,
+        count: 2,
+        next: '?page=2',
+        results: [buildRecord('first')],
+      })
+      .mockResolvedValueOnce({ ...emptyPayload, count: 2, results: [buildRecord('second')] });
+    const { result } = renderHookAtCurrentLocation(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+    await waitFor(() => expect(result.current.allRecords).toHaveLength(2));
+    for (const [filters] of mockedFetchFinancialRecordsWithPagination.mock.calls) {
+      expect(filters).toMatchObject({
+        ...workingFilters,
+        page_size: 200,
+        search: 'invoice',
+        search_exclude: true,
+        record_type: 'expense',
+        sales_channel_ids: 'channel-1',
+        payment_scheduled_date_from: '2026-03-01',
+        payment_scheduled_date_to: '2026-03-31',
+      });
+    }
+  });
+
+  it('preserves explicit URL toggles and resets to the working defaults', async () => {
+    window.history.replaceState(
+      null,
+      '',
+      '/?fr_show_unpaid_payments=1&fr_show_statement_records=1&fr_show_paid_records=1&fr_show_zero_saldo=0',
+    );
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload);
+    const { result } = renderHookAtCurrentLocation(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(result.current).toMatchObject({
+      showUnpaidPayments: true,
+      showStatementRecords: true,
+      showPaidRecords: true,
+      showZeroSaldo: false,
+    });
+    expect(routerSearch).toContain('fr_show_unpaid_payments=1');
+    expect(routerSearch).toContain('fr_show_statement_records=1');
+    expect(routerSearch).toContain('fr_show_paid_records=1');
+    await act(async () => result.current.resetAllRecordsFilters());
+    expect(result.current).toMatchObject({
+      showUnpaidPayments: false,
+      showStatementRecords: false,
+      showPaidRecords: false,
+      showZeroSaldo: true,
+      canResetAllRecordsFilters: false,
+    });
+    expect(routerSearch).toBe('');
+  });
+
+  it.each(['income', 'expense'] as const)(
+    'selecting a %s statement clears extra filters and applies working defaults',
+    async (statementType) => {
+      mockedFetchFinancialRecordsWithPagination.mockResolvedValue(emptyPayload);
+      const statement: Statement = {
+        id: 'statement-1',
+        name: 'Ведомость',
+        statementType,
+        status: 'draft',
+        createdAt: '',
+        updatedAt: '',
+      };
+      const { result } = renderHookAtCurrentLocation(() =>
+        useAllRecordsController({
+          viewMode: 'all',
+          statementsById: new Map([[statement.id, statement]]),
+        }),
+      );
+      await act(async () => {
+        await Promise.resolve();
+      });
+      await act(async () => {
+        result.current.applyAllRecordsSearch('invoice', true);
+        result.current.setSalesChannelFilter(['channel-1']);
+        result.current.setPaymentScheduledDateFrom('2026-03-01');
+        result.current.setPaymentScheduledDateTo('2026-03-31');
+        result.current.setShowUnpaidPayments(true);
+        result.current.setShowStatementRecords(true);
+        result.current.setShowPaidRecords(true);
+        result.current.setShowZeroSaldo(false);
+      });
+      await act(async () => result.current.setTargetStatementId(statement.id));
+      expect(result.current).toMatchObject({
+        targetStatementId: statement.id,
+        recordTypeFilter: statementType,
+        isRecordTypeLocked: true,
+        showUnpaidPayments: false,
+        showStatementRecords: false,
+        showPaidRecords: false,
+        showZeroSaldo: true,
+        allRecordsSearchInput: '',
+        allRecordsSearchExcludeInput: false,
+        salesChannelFilter: [],
+        paymentScheduledDateFrom: '',
+        paymentScheduledDateTo: '',
+      });
+      expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        {
+          ...workingFilters,
+          record_type: statementType,
+          projection: 'table',
+          page: 1,
+          page_size: 200,
+        },
+        expect.any(Object),
+      );
+      expect(routerSearch).not.toContain('fr_search');
+      expect(routerSearch).not.toContain('fr_sales_channel');
+      expect(routerSearch).not.toContain('fr_payment_date');
+    },
+  );
 
   it('reuses the first all-records page when switching tabs without filter changes', async () => {
     mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
@@ -368,6 +585,7 @@ describe('useAllRecordsController', () => {
     });
 
     expect(mockedExportFinancialRecordsXlsx).toHaveBeenCalledWith({
+      ...workingFilters,
       sales_channel_ids: 'channel-1,channel-2',
     });
   });
@@ -448,7 +666,62 @@ describe('useAllRecordsController', () => {
     expect(result.current.allRecordsTotalCount).toBe(0);
   });
 
+  it('discards an aborted intermediate page when filters change during full loading', async () => {
+    const oldPage = deferred<Awaited<ReturnType<typeof fetchFinancialRecordsWithPagination>>>();
+    mockedFetchFinancialRecordsWithPagination
+      .mockResolvedValueOnce({
+        ...emptyPayload,
+        count: 2,
+        next: '?page=2',
+        results: [buildRecord('old-first')],
+      })
+      .mockReturnValueOnce(oldPage.promise)
+      .mockResolvedValueOnce({ ...emptyPayload, count: 1, results: [buildRecord('fresh')] });
+    const { result } = renderHook(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+    await waitFor(() => expect(mockedFetchFinancialRecordsWithPagination).toHaveBeenCalledTimes(2));
+    const oldSignal = mockedFetchFinancialRecordsWithPagination.mock.calls[1][1]?.signal;
+    await act(async () => result.current.applyAllRecordsSearch('fresh'));
+    expect(oldSignal?.aborted).toBe(true);
+    await waitFor(() => expect(result.current.allRecords.map(({ id }) => id)).toEqual(['fresh']));
+    await act(async () =>
+      oldPage.resolve({ ...emptyPayload, count: 2, results: [buildRecord('old-second')] }),
+    );
+    expect(result.current.allRecords.map(({ id }) => id)).toEqual(['fresh']);
+    expect(result.current.allRecordsTotalCount).toBe(1);
+    expect(result.current.allRecordsError).toBeNull();
+  });
+
+  it('reports an intermediate page failure without publishing partial records and can retry', async () => {
+    mockedFetchFinancialRecordsWithPagination
+      .mockResolvedValueOnce({
+        ...emptyPayload,
+        count: 2,
+        next: '?page=2',
+        results: [buildRecord('first')],
+      })
+      .mockRejectedValueOnce(new Error('Page failed'));
+    const { result } = renderHook(() =>
+      useAllRecordsController({ viewMode: 'all', statementsById: new Map() }),
+    );
+    await waitFor(() => expect(result.current.allRecordsError).toContain('Page failed'));
+    expect(result.current.allRecords).toEqual([]);
+    expect(result.current.allRecordsTotalCount).toBe(0);
+    expect(result.current.allRecordsSummary).toBeNull();
+    expect(result.current.isAllRecordsLoading).toBe(false);
+    mockedFetchFinancialRecordsWithPagination.mockResolvedValue({
+      ...emptyPayload,
+      count: 1,
+      results: [buildRecord('retry')],
+    });
+    await act(async () => result.current.loadAllRecords('reset'));
+    expect(result.current.allRecords.map(({ id }) => id)).toEqual(['retry']);
+    expect(result.current.allRecordsError).toBeNull();
+  });
+
   it('does not append records from stale load-more request after search changes', async () => {
+    window.history.replaceState(null, '', '/?fr_show_unpaid_payments=1');
     mockedFetchFinancialRecordsWithPagination.mockResolvedValueOnce({
       count: 2,
       next: '/financial_records/?page=2',
@@ -481,7 +754,7 @@ describe('useAllRecordsController', () => {
       .mockReturnValueOnce(loadMoreRequest.promise as never)
       .mockReturnValueOnce(newSearchRequest.promise as never);
 
-    const { result } = renderHook(() =>
+    const { result } = renderHookAtCurrentLocation(() =>
       useAllRecordsController({
         viewMode: 'all',
         statementsById: new Map(),

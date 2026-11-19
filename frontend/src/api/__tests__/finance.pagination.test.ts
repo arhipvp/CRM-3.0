@@ -105,16 +105,16 @@ describe('finance pagination', () => {
       });
 
     const options = { headers: { 'X-Test': '1' } };
-    const result = await fetchFinanceStatements({ ordering: '-created_at' }, options);
+    const result = await fetchFinanceStatements({ ordering: '-created_at', paid: false }, options);
 
     expect(request).toHaveBeenNthCalledWith(
       1,
-      '/finance_statements/?ordering=-created_at&page=1&page_size=200',
+      '/finance_statements/?ordering=-created_at&paid=false&page=1&page_size=200',
       options,
     );
     expect(request).toHaveBeenNthCalledWith(
       2,
-      '/finance_statements/?ordering=-created_at&page=2&page_size=200',
+      '/finance_statements/?ordering=-created_at&paid=false&page=2&page_size=200',
       options,
     );
     expect(result.map((statement) => statement.id)).toEqual(['statement-1', 'statement-2']);

@@ -10,6 +10,7 @@ import {
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
+  fetchFinanceStatements,
   fetchFinanceStatementsWithPagination,
   fetchPaymentsWithPagination,
   fetchSalesChannels,
@@ -24,6 +25,7 @@ vi.mock('../../api', () => ({
   fetchClientsWithPagination: vi.fn(),
   fetchDealsWithPagination: vi.fn(),
   fetchFinancialRecordsWithPagination: vi.fn(),
+  fetchFinanceStatements: vi.fn(),
   fetchFinanceStatementsWithPagination: vi.fn(),
   fetchPaymentsWithPagination: vi.fn(),
   fetchSalesChannels: vi.fn(),
@@ -35,6 +37,7 @@ const mockedFetchClients = vi.mocked(fetchClientsWithPagination);
 const mockedFetchClientById = vi.mocked(fetchClientById);
 const mockedFetchDealsWithPagination = vi.mocked(fetchDealsWithPagination);
 const mockedFetchFinancialRecordsWithPagination = vi.mocked(fetchFinancialRecordsWithPagination);
+const mockedFetchAllUnpaidStatements = vi.mocked(fetchFinanceStatements);
 const mockedFetchFinanceStatements = vi.mocked(fetchFinanceStatementsWithPagination);
 const mockedFetchPaymentsWithPagination = vi.mocked(fetchPaymentsWithPagination);
 const mockedFetchSalesChannels = vi.mocked(fetchSalesChannels);
@@ -55,6 +58,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   mockedFetchClients.mockResolvedValue({ count: 0, next: null, previous: null, results: [] });
   mockedFetchUsers.mockResolvedValue([]);
+  mockedFetchAllUnpaidStatements.mockResolvedValue([]);
   mockedFetchSalesChannels.mockResolvedValue([]);
   mockedFetchDealsWithPagination.mockResolvedValue({
     count: 1,
@@ -620,10 +624,12 @@ describe('useAppData loading strategy', () => {
     });
     expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(1, {
       page: 1,
+      paid: true,
       show_deleted: true,
     });
     expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(2, {
       page: 2,
+      paid: true,
       show_deleted: true,
     });
 
@@ -635,12 +641,94 @@ describe('useAppData loading strategy', () => {
     });
     expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(3, {
       page: 1,
+      paid: true,
       show_deleted: false,
     });
     expect(mockedFetchFinanceStatements).toHaveBeenNthCalledWith(4, {
       page: 2,
+      paid: true,
       show_deleted: false,
     });
+    expect(mockedFetchAllUnpaidStatements).toHaveBeenNthCalledWith(1, {
+      paid: false,
+      show_deleted: true,
+    });
+    expect(mockedFetchAllUnpaidStatements).toHaveBeenNthCalledWith(2, {
+      paid: false,
+      show_deleted: false,
+    });
+  });
+
+  it('loads all unpaid statements and paginates only paid statements without duplicates', async () => {
+    const unpaid = Array.from({ length: 55 }, (_, index) => ({
+      id: `unpaid-${index}`,
+      name: `Unpaid ${index}`,
+      statementType: 'income' as const,
+      status: 'draft' as const,
+      paidAt: null,
+      createdAt: '2026-01-02T00:00:00Z',
+      updatedAt: '2026-01-02T00:00:00Z',
+    }));
+    const paid = {
+      ...unpaid[0],
+      id: 'paid-1',
+      paidAt: '2026-01-04',
+      status: 'paid' as const,
+      createdAt: '2026-01-04T00:00:00Z',
+    };
+    mockedFetchAllUnpaidStatements.mockResolvedValue(unpaid);
+    mockedFetchFinanceStatements
+      .mockResolvedValueOnce({ count: 2, next: '/next', previous: null, results: [paid] })
+      .mockResolvedValueOnce({
+        count: 2,
+        next: null,
+        previous: '/previous',
+        results: [
+          { ...paid, name: 'Stale duplicate' },
+          { ...paid, id: 'paid-2', createdAt: '2026-01-01T00:00:00Z' },
+        ],
+      });
+    const { result } = renderHook(() => useAppData());
+    await act(async () => {
+      await result.current.ensureCommissionsDataLoaded();
+    });
+    expect(result.current.dataState.statements).toHaveLength(56);
+    expect(result.current.statementsTotalCount).toBe(57);
+    expect(result.current.statementsHasMore).toBe(true);
+    await act(async () => {
+      await result.current.loadMoreStatements();
+    });
+    expect(mockedFetchAllUnpaidStatements).toHaveBeenCalledTimes(1);
+    expect(mockedFetchFinanceStatements).toHaveBeenLastCalledWith({
+      page: 2,
+      paid: true,
+      show_deleted: false,
+    });
+    expect(result.current.dataState.statements.map((statement) => statement.id)).toEqual([
+      'paid-1',
+      ...unpaid.map((statement) => statement.id),
+      'paid-2',
+    ]);
+    expect(result.current.statementsTotalCount).toBe(57);
+    expect(result.current.statementsHasMore).toBe(false);
+    expect(result.current.dataState.statements[0].name).toBe(paid.name);
+  });
+
+  it('publishes the unpaid and paid snapshots together after both requests complete', async () => {
+    const unpaid = deferred<Awaited<ReturnType<typeof fetchFinanceStatements>>>();
+    mockedFetchAllUnpaidStatements.mockReturnValueOnce(unpaid.promise);
+    const { result } = renderHook(() => useAppData());
+    let loading: Promise<void> | undefined;
+    await act(async () => {
+      loading = result.current.ensureCommissionsDataLoaded();
+    });
+    expect(result.current.hasCommissionsSnapshotLoaded).toBe(false);
+    expect(result.current.isCommissionsDataLoading).toBe(true);
+    await act(async () => {
+      unpaid.resolve([]);
+      await loading;
+    });
+    expect(result.current.hasCommissionsSnapshotLoaded).toBe(true);
   });
 
   it('ignores an old first page when the deleted filter changes during loading', async () => {
@@ -714,7 +802,11 @@ describe('useAppData loading strategy', () => {
       });
       await oldLoad;
     });
-    expect(mockedFetchFinanceStatements).toHaveBeenLastCalledWith({ page: 1, show_deleted: true });
+    expect(mockedFetchFinanceStatements).toHaveBeenLastCalledWith({
+      page: 1,
+      paid: true,
+      show_deleted: true,
+    });
     expect(result.current.dataState.statements).toEqual([]);
     expect(result.current.statementsTotalCount).toBe(0);
     expect(result.current.isLoadingMoreStatements).toBe(false);

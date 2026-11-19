@@ -102,13 +102,13 @@ export const useAllRecordsController = ({
     readBooleanParam(initialQueryParams, QUERY_KEYS.searchExclude, false),
   );
   const [showUnpaidPayments, setShowUnpaidPayments] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showUnpaidPayments, true),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showUnpaidPayments, false),
   );
   const [showStatementRecords, setShowStatementRecords] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showStatementRecords, true),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showStatementRecords, false),
   );
   const [showPaidRecords, setShowPaidRecords] = useState(() =>
-    readBooleanParam(initialQueryParams, QUERY_KEYS.showPaidRecords, true),
+    readBooleanParam(initialQueryParams, QUERY_KEYS.showPaidRecords, false),
   );
   const [showZeroSaldo, setShowZeroSaldo] = useState(() =>
     readBooleanParam(initialQueryParams, QUERY_KEYS.showZeroSaldo, true),
@@ -122,7 +122,7 @@ export const useAllRecordsController = ({
   const [allRecordsSortDirection, setAllRecordsSortDirection] = useState<'asc' | 'desc'>(() =>
     initialQueryParams.get(QUERY_KEYS.sortDirection) === 'desc' ? 'desc' : 'asc',
   );
-  const [targetStatementId, setTargetStatementId] = useState(
+  const [targetStatementId, setTargetStatementIdState] = useState(
     () => initialQueryParams.get(QUERY_KEYS.targetStatement) ?? '',
   );
   const [salesChannelFilter, setSalesChannelFilter] = useState<string[]>(() =>
@@ -171,21 +171,41 @@ export const useAllRecordsController = ({
     [targetStatementId, viewMode],
   );
 
+  const setTargetStatementId = useCallback(
+    (statementId: string) => {
+      setTargetStatementIdState(statementId);
+      if (!statementId) {
+        setRecordTypeFilter('all');
+        return;
+      }
+      setShowUnpaidPayments(false);
+      setShowStatementRecords(false);
+      setShowPaidRecords(false);
+      setShowZeroSaldo(true);
+      setAllRecordsSearchInput('');
+      setAllRecordsSearchApplied('');
+      setAllRecordsSearchExcludeInput(false);
+      setAllRecordsSearchExcludeApplied(false);
+      setSalesChannelFilter([]);
+      setPaymentScheduledDateFrom('');
+      setPaymentScheduledDateTo('');
+      const statement = statementsById.get(statementId);
+      setRecordTypeFilter(statement?.statementType === 'expense' ? 'expense' : 'income');
+    },
+    [statementsById],
+  );
+
+  const targetStatementType = statementsById.get(targetStatementId)?.statementType;
+
   useEffect(() => {
-    if (viewMode !== 'all') {
+    if (viewMode !== 'all' || !targetStatementId || !targetStatementType) {
       return;
     }
-    if (!targetStatementId) {
-      setRecordTypeFilter('all');
-      return;
-    }
-    const statement = statementsById.get(targetStatementId);
-    if (!statement) {
-      setRecordTypeFilter('all');
-      return;
-    }
-    setRecordTypeFilter(statement.statementType === 'income' ? 'income' : 'expense');
-  }, [statementsById, targetStatementId, viewMode]);
+    setRecordTypeFilter(targetStatementType === 'income' ? 'income' : 'expense');
+  }, [targetStatementType, targetStatementId, viewMode]);
+
+  const loadAllMatchingRecords =
+    !showUnpaidPayments && !showStatementRecords && !showPaidRecords && showZeroSaldo;
 
   const buildAllRecordsFilters = useCallback(() => {
     const filters: FilterParams = {};
@@ -263,14 +283,14 @@ export const useAllRecordsController = ({
         params.set(QUERY_KEYS.searchExclude, '1');
       }
     }
-    if (!showUnpaidPayments) {
-      params.set(QUERY_KEYS.showUnpaidPayments, '0');
+    if (showUnpaidPayments) {
+      params.set(QUERY_KEYS.showUnpaidPayments, '1');
     }
-    if (!showStatementRecords) {
-      params.set(QUERY_KEYS.showStatementRecords, '0');
+    if (showStatementRecords) {
+      params.set(QUERY_KEYS.showStatementRecords, '1');
     }
-    if (!showPaidRecords) {
-      params.set(QUERY_KEYS.showPaidRecords, '0');
+    if (showPaidRecords) {
+      params.set(QUERY_KEYS.showPaidRecords, '1');
     }
     if (!showZeroSaldo) {
       params.set(QUERY_KEYS.showZeroSaldo, '0');
@@ -327,14 +347,14 @@ export const useAllRecordsController = ({
     const searchExclude = readBooleanParam(params, QUERY_KEYS.searchExclude, false);
     setAllRecordsSearchExcludeInput(searchExclude);
     setAllRecordsSearchExcludeApplied(searchExclude);
-    setShowUnpaidPayments(readBooleanParam(params, QUERY_KEYS.showUnpaidPayments, true));
-    setShowStatementRecords(readBooleanParam(params, QUERY_KEYS.showStatementRecords, true));
-    setShowPaidRecords(readBooleanParam(params, QUERY_KEYS.showPaidRecords, true));
+    setShowUnpaidPayments(readBooleanParam(params, QUERY_KEYS.showUnpaidPayments, false));
+    setShowStatementRecords(readBooleanParam(params, QUERY_KEYS.showStatementRecords, false));
+    setShowPaidRecords(readBooleanParam(params, QUERY_KEYS.showPaidRecords, false));
     setShowZeroSaldo(readBooleanParam(params, QUERY_KEYS.showZeroSaldo, true));
     setRecordTypeFilter(readRecordTypeParam(params));
     setAllRecordsSortKey(readSortKeyParam(params));
     setAllRecordsSortDirection(params.get(QUERY_KEYS.sortDirection) === 'desc' ? 'desc' : 'asc');
-    setTargetStatementId(params.get(QUERY_KEYS.targetStatement) ?? '');
+    setTargetStatementIdState(params.get(QUERY_KEYS.targetStatement) ?? '');
     const salesChannels = readCsvParam(params, QUERY_KEYS.salesChannel);
     setSalesChannelFilter((current) =>
       areStringArraysEqual(current, salesChannels) ? current : salesChannels,
@@ -371,10 +391,32 @@ export const useAllRecordsController = ({
 
   const canResetAllRecordsFilters = useMemo(
     () =>
-      activeAllRecordsFilterCount > 0 ||
+      showUnpaidPayments ||
+      showStatementRecords ||
+      showPaidRecords ||
+      !showZeroSaldo ||
+      recordTypeFilter !== 'all' ||
+      Boolean(targetStatementId) ||
+      salesChannelFilter.length > 0 ||
+      Boolean(paymentScheduledDateFrom) ||
+      Boolean(paymentScheduledDateTo) ||
+      allRecordsSearchExcludeInput ||
       allRecordsSortKey !== 'none' ||
       Boolean(allRecordsSearchInput),
-    [activeAllRecordsFilterCount, allRecordsSearchInput, allRecordsSortKey],
+    [
+      showUnpaidPayments,
+      showStatementRecords,
+      showPaidRecords,
+      showZeroSaldo,
+      recordTypeFilter,
+      targetStatementId,
+      salesChannelFilter,
+      paymentScheduledDateFrom,
+      paymentScheduledDateTo,
+      allRecordsSearchExcludeInput,
+      allRecordsSearchInput,
+      allRecordsSortKey,
+    ],
   );
 
   const allRecordsFilterKey = useMemo(
@@ -410,14 +452,14 @@ export const useAllRecordsController = ({
     setAllRecordsSearchApplied('');
     setAllRecordsSearchExcludeInput(false);
     setAllRecordsSearchExcludeApplied(false);
-    setShowUnpaidPayments(true);
-    setShowStatementRecords(true);
-    setShowPaidRecords(true);
+    setShowUnpaidPayments(false);
+    setShowStatementRecords(false);
+    setShowPaidRecords(false);
     setShowZeroSaldo(true);
     setRecordTypeFilter('all');
     setAllRecordsSortKey('none');
     setAllRecordsSortDirection('asc');
-    setTargetStatementId('');
+    setTargetStatementIdState('');
     setSalesChannelFilter([]);
     setPaymentScheduledDateFrom('');
     setPaymentScheduledDateTo('');
@@ -428,11 +470,13 @@ export const useAllRecordsController = ({
     setShowStatementRecords(false);
     setShowPaidRecords(false);
     setShowZeroSaldo(false);
-    setTargetStatementId('');
+    setTargetStatementIdState('');
+    setRecordTypeFilter('all');
   }, []);
 
   const loadAllRecords = useCallback(
     async (mode: 'reset' | 'more') => {
+      if (mode === 'more' && loadAllMatchingRecords) return;
       allRecordsRequestRef.current += 1;
       const requestId = allRecordsRequestRef.current;
       allRecordsAbortControllerRef.current?.abort();
@@ -451,35 +495,66 @@ export const useAllRecordsController = ({
       try {
         const [payload, summary] = await Promise.all([
           fetchFinancialRecordsWithPagination(
-            { ...filters, projection: 'table', page: nextPage },
+            {
+              ...filters,
+              projection: 'table',
+              page: nextPage,
+              ...(loadAllMatchingRecords ? { page_size: 200 } : {}),
+            },
             { signal: controller.signal },
           ),
           mode === 'reset'
             ? fetchFinancialRecordsSummary(filters, { signal: controller.signal })
             : Promise.resolve(null),
         ]);
-        if (requestId !== allRecordsRequestRef.current) {
+        const results = [...payload.results];
+        let lastPage = nextPage;
+        let hasMore = Boolean(payload.next);
+        while (loadAllMatchingRecords && hasMore) {
+          if (
+            controller.signal.aborted ||
+            requestId !== allRecordsRequestRef.current ||
+            currentFiltersKeyRef.current !== filtersKey
+          )
+            return;
+          lastPage += 1;
+          const page = await fetchFinancialRecordsWithPagination(
+            { ...filters, projection: 'table', page: lastPage, page_size: 200 },
+            { signal: controller.signal },
+          );
+          results.push(...page.results);
+          hasMore = Boolean(page.next);
+        }
+        if (
+          controller.signal.aborted ||
+          requestId !== allRecordsRequestRef.current ||
+          currentFiltersKeyRef.current !== filtersKey
+        ) {
           return;
         }
         setAllRecordsTotalCount(payload.count || 0);
         if (summary) setAllRecordsSummary(summary);
-        setAllRecordsHasMore(Boolean(payload.next));
-        allRecordsPageRef.current = nextPage;
+        setAllRecordsHasMore(hasMore);
+        allRecordsPageRef.current = lastPage;
         if (mode === 'reset') {
           loadedFirstPageFiltersKeyRef.current = filtersKey;
         }
-        setAllRecords((prev) =>
-          mode === 'more' ? [...prev, ...payload.results] : payload.results,
-        );
+        setAllRecords((prev) => (mode === 'more' ? [...prev, ...results] : results));
       } catch (error) {
         if (controller.signal.aborted) {
           return;
         }
-        if (requestId !== allRecordsRequestRef.current) {
+        if (
+          requestId !== allRecordsRequestRef.current ||
+          currentFiltersKeyRef.current !== filtersKey
+        ) {
           return;
         }
         if (mode === 'reset') {
           setAllRecords([]);
+          setAllRecordsSummary(null);
+          setAllRecordsTotalCount(0);
+          loadedFirstPageFiltersKeyRef.current = null;
         }
         setAllRecordsHasMore(false);
         setAllRecordsError(formatErrorMessage(error, 'Не удалось загрузить финансовые записи.'));
@@ -491,7 +566,7 @@ export const useAllRecordsController = ({
         }
       }
     },
-    [buildAllRecordsFilters],
+    [buildAllRecordsFilters, loadAllMatchingRecords],
   );
 
   const exportAllRecords = useCallback(async () => {
@@ -510,6 +585,7 @@ export const useAllRecordsController = ({
   }, [buildAllRecordsFilters]);
 
   useEffect(() => {
+    allRecordsAbortControllerRef.current?.abort();
     if (viewMode !== 'all') {
       return;
     }

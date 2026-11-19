@@ -6,6 +6,7 @@ import {
   fetchClientsWithPagination,
   fetchDealsWithPagination,
   fetchFinancialRecordsWithPagination,
+  fetchFinanceStatements,
   fetchFinanceStatementsWithPagination,
   fetchPaymentsWithPagination,
   fetchPoliciesWithPagination,
@@ -69,6 +70,11 @@ const dataReducer = (state: AppDataState, action: AppDataAction): AppDataState =
 const hasFinancePayload = (payload: Partial<AppDataState>) =>
   'payments' in payload || 'financialRecords' in payload || 'statements' in payload;
 
+const mergeStatements = (...groups: Statement[][]): Statement[] =>
+  Array.from(new Map(groups.flat().map((statement) => [statement.id, statement])).values()).sort(
+    (left, right) => right.createdAt.localeCompare(left.createdAt),
+  );
+
 type RefreshDealsOptions = {
   force?: boolean;
   preserveLoadedCount?: boolean;
@@ -91,6 +97,7 @@ export const useAppData = () => {
   const [hasCommissionsSnapshotLoaded, setHasCommissionsSnapshotLoaded] = useState(false);
   const [statementsPage, setStatementsPage] = useState(1);
   const [statementsTotalCount, setStatementsTotalCount] = useState(0);
+  const unpaidStatementsCountRef = useRef(0);
   const [statementsHasMore, setStatementsHasMore] = useState(false);
   const [isLoadingMoreStatements, setIsLoadingMoreStatements] = useState(false);
   const [isFinanceDataLoading, setIsFinanceDataLoading] = useState(false);
@@ -585,10 +592,14 @@ export const useAppData = () => {
         try {
           while (commissionsRequestRef.current === requestId) {
             const startedRevision = financeRevisionRef.current;
-            const statementsPageData = await fetchFinanceStatementsWithPagination({
-              page: 1,
-              show_deleted: showDeleted,
-            });
+            const [unpaidStatements, statementsPageData] = await Promise.all([
+              fetchFinanceStatements({ paid: false, show_deleted: showDeleted }),
+              fetchFinanceStatementsWithPagination({
+                page: 1,
+                paid: true,
+                show_deleted: showDeleted,
+              }),
+            ]);
             if (commissionsRequestRef.current !== requestId) {
               return;
             }
@@ -596,10 +607,11 @@ export const useAppData = () => {
               continue;
             }
             setAppData({
-              statements: statementsPageData.results,
+              statements: mergeStatements(unpaidStatements, statementsPageData.results),
             });
+            unpaidStatementsCountRef.current = unpaidStatements.length;
             setStatementsPage(1);
-            setStatementsTotalCount(statementsPageData.count);
+            setStatementsTotalCount(unpaidStatements.length + statementsPageData.count);
             setStatementsHasMore(Boolean(statementsPageData.next));
             commissionsDataLoadedRef.current = true;
             setHasCommissionsSnapshotLoaded(true);
@@ -634,19 +646,21 @@ export const useAppData = () => {
       const nextPage = statementsPage + 1;
       const payload = await fetchFinanceStatementsWithPagination({
         page: nextPage,
+        paid: true,
         show_deleted: commissionsShowDeletedRef.current,
       });
       if (commissionsRequestRef.current !== requestId) return;
+      const existingStatementIds = new Set(
+        dataStateRef.current.statements.map((statement) => statement.id),
+      );
       setAppData({
-        statements: [
-          ...dataStateRef.current.statements,
-          ...payload.results.filter(
-            (item) => !dataStateRef.current.statements.some((current) => current.id === item.id),
-          ),
-        ],
+        statements: mergeStatements(
+          dataStateRef.current.statements,
+          payload.results.filter((statement) => !existingStatementIds.has(statement.id)),
+        ),
       });
       setStatementsPage(nextPage);
-      setStatementsTotalCount(payload.count);
+      setStatementsTotalCount(unpaidStatementsCountRef.current + payload.count);
       setStatementsHasMore(Boolean(payload.next));
     } catch (err) {
       if (commissionsRequestRef.current !== requestId) return;
