@@ -67,9 +67,6 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
     statementRecordsError,
     loadStatementRecords,
     recordsTable,
-    statementRecordsHasMore,
-    isStatementRecordsLoading,
-    isStatementRecordsLoadingMore,
     statementFilesTab,
     policyEditError,
     allRecordsSearchInput,
@@ -487,21 +484,6 @@ export const CommissionsContent = ({ model }: { model: CommissionsController }) 
                             </div>
                           )}
                           {recordsTable}
-                          {statementRecordsHasMore && (
-                            <div className="mt-4 flex justify-center">
-                              <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                disabled={
-                                  isStatementRecordsLoading || isStatementRecordsLoadingMore
-                                }
-                                onClick={() => void loadStatementRecords('more')}
-                              >
-                                {isStatementRecordsLoadingMore ? 'Загружаем...' : 'Показать ещё'}
-                              </Button>
-                            </div>
-                          )}
                         </div>
                         <div
                           role="tabpanel"

@@ -14,6 +14,7 @@ from apps.common.drive import (
     serialize_drive_error,
     upload_file_to_drive,
 )
+from apps.common.pagination import StandardPageNumberPagination
 from apps.common.permissions import EditProtectedMixin
 from apps.common.services import manage_drive_files
 from apps.deals.permissions import build_deal_visibility_q
@@ -51,6 +52,7 @@ from rest_framework.exceptions import PermissionDenied, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.settings import api_settings
 from rest_framework.views import APIView
 
 from .filters import PaymentFilterSet
@@ -117,11 +119,22 @@ class StatementApplyAmountSerializer(serializers.Serializer):
     value = serializers.DecimalField(max_digits=12, decimal_places=4)
 
 
+class FinancialRecordPagination(StandardPageNumberPagination):
+    page_size = api_settings.PAGE_SIZE
+
+    def get_page_size(self, request):
+        if request.query_params.get("statement"):
+            return super().get_page_size(request)
+        return self.page_size
+
+
 class FinancialRecordViewSet(EditProtectedMixin, viewsets.ModelViewSet):
     """ViewSet для финансовых записей (доход/расход)"""
 
     serializer_class = FinancialRecordSerializer
+    pagination_class = FinancialRecordPagination
     ordering_fields = [
+        "id",
         "created_at",
         "updated_at",
         "date",
@@ -653,53 +666,71 @@ class StatementViewSet(EditProtectedMixin, viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="apply-amount")
     def apply_amount(self, request, *args, **kwargs):
-        statement = self.get_object()
-        if statement.paid_at:
-            raise ValidationError("Нельзя изменять выплаченную ведомость.")
-
+        statement_id = self.get_object().pk
         serializer = StatementApplyAmountSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         mode = serializer.validated_data["mode"]
         value = abs(serializer.validated_data["value"])
 
-        records = list(records_with_paid_balance(statement))
-        self._validate_record_access(records)
-
         updated_records = []
         unchanged = 0
         skipped_reasons = {"zero_balance": 0}
 
-        for record in records:
-            if mode == "percent":
-                base = abs(getattr(record, "payment_paid_balance", Decimal("0")) or 0)
-                if base <= 0:
-                    skipped_reasons["zero_balance"] += 1
-                    continue
-                absolute_amount = quantize_money((base * value) / Decimal("100"))
-            else:
-                absolute_amount = quantize_money(value)
-
-            next_amount = normalize_statement_amount(record, absolute_amount)
-            if quantize_money(record.amount) == next_amount:
-                unchanged += 1
-                continue
-
-            record.amount = next_amount
-            record.updated_at = timezone.now()
-            updated_records.append(record)
-
         with transaction.atomic():
+            statement = get_object_or_404(
+                Statement.objects.select_for_update(), pk=statement_id
+            )
+            if statement.paid_at:
+                raise ValidationError("Нельзя изменять выплаченную ведомость.")
+
+            records = list(
+                records_with_paid_balance(statement)
+                .prefetch_related(None)
+                .select_for_update(of=("self",))
+                .order_by("pk")
+            )
+            self._validate_record_access(records)
+            is_income = statement.statement_type == Statement.TYPE_INCOME
+            amount_field = FinancialRecord._meta.get_field("amount")
+            updated_at = timezone.now()
+            for record in records:
+                if mode == "percent":
+                    base = abs(
+                        record.amount if is_income else record.payment_paid_balance
+                    )
+                    if not is_income and not base:
+                        skipped_reasons["zero_balance"] += 1
+                        continue
+                    absolute_amount = quantize_money((base * value) / Decimal("100"))
+                else:
+                    absolute_amount = quantize_money(value)
+
+                next_amount = normalize_statement_amount(record, absolute_amount)
+                if record.amount == next_amount:
+                    unchanged += 1
+                    continue
+
+                try:
+                    amount_field.run_validators(next_amount)
+                except DjangoValidationError as exc:
+                    raise ValidationError({"value": exc.messages}) from exc
+
+                record.amount = next_amount
+                record.updated_at = updated_at
+                updated_records.append(record)
+
             if updated_records:
                 FinancialRecord.objects.bulk_update(
                     updated_records, ["amount", "updated_at"]
                 )
-                statement.updated_at = timezone.now()
                 statement.save(update_fields=["updated_at"])
                 recalculate_payment_paid_balances(
                     record.payment_id for record in updated_records
                 )
 
-        response_records = list(records_with_paid_balance(statement))
+            response_records = list(records_with_paid_balance(statement))
+            self._set_statement_summary(statement)
+
         payload = {
             "updated": len(updated_records),
             "unchanged": unchanged,

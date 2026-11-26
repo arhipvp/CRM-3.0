@@ -250,8 +250,6 @@ export const useCommissionsController = ({
     statementRecords,
     isStatementRecordsLoading,
     statementRecordsError,
-    statementRecordsHasMore,
-    isStatementRecordsLoadingMore,
     loadStatementRecords,
     toggleAmountSort,
     getAmountSortIndicator,
@@ -269,8 +267,8 @@ export const useCommissionsController = ({
     isApplyingStatementAmount,
     savingRecordIds,
     recordAmountErrors,
-    getAbsoluteSaldoBase,
-    getPercentFromSaldo,
+    getRecordPercentBase,
+    getAbsoluteAmountFromDraft,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,
@@ -279,6 +277,10 @@ export const useCommissionsController = ({
     toggleStatementAmountMode,
     applyStatementAmountToRows,
   } = useRecordAmountEditing({
+    incomeStatementId:
+      viewMode === 'statements' && selectedStatement?.statementType === 'income'
+        ? selectedStatement.id
+        : undefined,
     onUpdateFinancialRecord: async (recordId, values) => {
       await onUpdateFinancialRecord?.(recordId, values);
       await onRefreshStatements?.();
@@ -539,8 +541,8 @@ export const useCommissionsController = ({
       onToggleCommentSort={toggleCommentSort}
       getCommentSortLabel={getCommentSortLabel}
       getCommentSortIndicator={getCommentSortIndicator}
-      getPercentFromSaldo={getPercentFromSaldo}
-      getAbsoluteSaldoBase={getAbsoluteSaldoBase}
+      getRecordPercentBase={getRecordPercentBase}
+      getAbsoluteAmountFromDraft={getAbsoluteAmountFromDraft}
       onRecordAmountChange={handleRecordAmountChange}
       onRecordAmountBlur={handleRecordAmountBlur}
       onCancelRecordAmountEdit={cancelRecordAmountEdit}
@@ -651,9 +653,6 @@ export const useCommissionsController = ({
     statementRecordsError,
     loadStatementRecords,
     recordsTable,
-    statementRecordsHasMore,
-    isStatementRecordsLoading,
-    isStatementRecordsLoadingMore,
     statementFilesTab,
     policyEditError,
     allRecordsSearchInput,

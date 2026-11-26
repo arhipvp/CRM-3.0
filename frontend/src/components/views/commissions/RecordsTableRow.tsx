@@ -2,7 +2,7 @@ import { memo } from 'react';
 
 import type { Policy, Statement } from '../../../types';
 import { formatCurrencyRu, formatDateRu } from '../../../utils/formatting';
-import { normalizeNumericAmount, parseNumericAmount } from '../../../utils/parseNumericAmount';
+import { normalizeNumericAmount } from '../../../utils/parseNumericAmount';
 import { Button } from '../../common/Button';
 import { TABLE_CELL_CLASS_SM, TABLE_ROW_CLASS } from '../../common/tableStyles';
 import type { AmountDraft, IncomeExpenseRow } from './RecordsTable';
@@ -19,14 +19,16 @@ interface RecordsTableRowProps {
   isSavingAmount?: boolean;
   amountError?: string;
   isRecordAmountEditable: boolean;
+  isIncomeStatement: boolean;
+  isApplyingStatementAmount: boolean;
   editingPolicyRecordId?: string | null;
   normalizeText: (value?: string | null) => string;
   onToggleRecordSelection: (row: IncomeExpenseRow) => void;
   onOpenDeal: (dealId: string) => void;
   onDealSelect?: (dealId: string) => void;
   onRequestEditPolicy?: (row: IncomeExpenseRow) => Promise<void> | void;
-  getPercentFromSaldo: (row: IncomeExpenseRow, absoluteAmount: number) => string;
-  getAbsoluteSaldoBase: (row: IncomeExpenseRow) => number;
+  getRecordPercentBase: (row: IncomeExpenseRow) => number | null;
+  getAbsoluteAmountFromDraft: (row: IncomeExpenseRow, draft: AmountDraft) => number | null;
   onRecordAmountChange: (recordId: string, value: string) => void;
   onRecordAmountBlur: (row: IncomeExpenseRow) => Promise<void> | void;
   onCancelRecordAmountEdit?: (recordId: string) => void;
@@ -45,14 +47,16 @@ export const RecordsTableRow = memo(function RecordsTableRow({
   isSavingAmount = false,
   amountError,
   isRecordAmountEditable,
+  isIncomeStatement,
+  isApplyingStatementAmount,
   editingPolicyRecordId = null,
   normalizeText,
   onToggleRecordSelection,
   onOpenDeal,
   onDealSelect,
   onRequestEditPolicy,
-  getPercentFromSaldo,
-  getAbsoluteSaldoBase,
+  getRecordPercentBase,
+  getAbsoluteAmountFromDraft,
   onRecordAmountChange,
   onRecordAmountBlur,
   onCancelRecordAmountEdit,
@@ -112,18 +116,16 @@ export const RecordsTableRow = memo(function RecordsTableRow({
     .map((value) => normalizeText(value?.toString().trim()))
     .filter(Boolean);
   const amountMode: AmountDraft['mode'] = amountDraft?.mode ?? 'rub';
-  const amountValue =
-    amountDraft?.value ??
-    (amountMode === 'rub'
-      ? Math.abs(recordAmount).toString()
-      : getPercentFromSaldo(row, Math.abs(recordAmount)));
-  const saldoBase = getAbsoluteSaldoBase(row);
-  const parsedAmountValue = parseNumericAmount(amountValue);
+  const amountValue = amountDraft?.value ?? Math.abs(recordAmount).toString();
+  const percentBase = getRecordPercentBase(row);
+  const percentBaseLabel = isIncomeStatement
+    ? formatCurrencyRu(Math.abs(recordAmount))
+    : paymentBalanceLabel;
+  const percentBasis = isIncomeStatement ? 'текущей суммы записи' : 'сальдо';
   const percentPreviewAmount =
-    amountMode === 'percent' && Number.isFinite(parsedAmountValue) && saldoBase > 0
-      ? (saldoBase * parsedAmountValue) / 100
-      : null;
+    amountDraft?.mode === 'percent' ? getAbsoluteAmountFromDraft(row, amountDraft) : null;
   const isRecordLocked = Boolean(recordStatement?.paidAt);
+  const isAmountControlDisabled = isRecordLocked || isSavingAmount || isApplyingStatementAmount;
   const statementNote = recordStatement
     ? recordStatement.paidAt
       ? `Ведомость от ${formatDateRu(recordStatement.paidAt)}: ${normalizeText(recordStatement.name)}`
@@ -273,7 +275,7 @@ export const RecordsTableRow = memo(function RecordsTableRow({
                     onCancelRecordAmountEdit?.(row.recordId);
                   }
                 }}
-                disabled={isRecordLocked || isSavingAmount}
+                disabled={isAmountControlDisabled}
                 aria-invalid={Boolean(amountError)}
                 aria-describedby={amountError ? `record-amount-error-${row.recordId}` : undefined}
                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
@@ -285,18 +287,18 @@ export const RecordsTableRow = memo(function RecordsTableRow({
             <Button
               type="button"
               onClick={() => onToggleRecordAmountMode(row)}
-              disabled={isRecordLocked || (amountMode === 'rub' && saldoBase <= 0)}
+              disabled={isAmountControlDisabled || (amountMode === 'rub' && percentBase === null)}
               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
               title={
-                amountMode === 'rub'
-                  ? saldoBase > 0
-                    ? 'Ввести в процентах от Сальдо'
-                    : 'Нельзя посчитать процент: Сальдо равно 0'
-                  : 'Ввести сумму в рублях'
+                amountMode === 'percent'
+                  ? 'Ввести сумму в рублях'
+                  : percentBase === null
+                    ? 'Нельзя посчитать процент: сальдо равно 0'
+                    : `Ввести в процентах от ${percentBasis}`
               }
               aria-label={
                 amountMode === 'rub'
-                  ? 'Переключить ввод суммы на проценты от сальдо'
+                  ? `Переключить ввод суммы на проценты от ${percentBasis}`
                   : 'Переключить ввод суммы на рубли'
               }
             >
@@ -317,8 +319,8 @@ export const RecordsTableRow = memo(function RecordsTableRow({
         {isRecordAmountEditable && amountMode === 'percent' && (
           <p className="mt-1 text-[11px] text-slate-500">
             {percentPreviewAmount === null
-              ? `Процент от Сальдо: ${paymentBalanceLabel}`
-              : `≈ ${formatCurrencyRu(percentPreviewAmount)} от ${paymentBalanceLabel}`}
+              ? `Процент от ${percentBasis}: ${percentBaseLabel}`
+              : `≈ ${formatCurrencyRu(percentPreviewAmount)} от ${percentBaseLabel}`}
           </p>
         )}
       </td>

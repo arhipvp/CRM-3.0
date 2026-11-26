@@ -102,8 +102,8 @@ const renderTable = ({
       onToggleAmountSort={vi.fn()}
       getAmountSortLabel={() => 'не сортируется'}
       getAmountSortIndicator={() => '↕'}
-      getPercentFromSaldo={() => '0'}
-      getAbsoluteSaldoBase={() => 0}
+      getRecordPercentBase={() => null}
+      getAbsoluteAmountFromDraft={() => null}
       onRecordAmountChange={onRecordAmountChange}
       onRecordAmountBlur={vi.fn()}
       onToggleRecordAmountMode={vi.fn()}

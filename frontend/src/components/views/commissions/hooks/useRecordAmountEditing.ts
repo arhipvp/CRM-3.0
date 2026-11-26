@@ -1,14 +1,13 @@
 import { useCallback, useState } from 'react';
 
 import type { AddFinancialRecordFormValues } from '../../../forms/AddFinancialRecordForm';
-import type { IncomeExpenseRow } from '../RecordsTable';
+import type { AmountDraft, IncomeExpenseRow } from '../RecordsTable';
 import type { StatementAmountApplyMode, StatementAmountApplyResult } from '../../../../types';
 import { normalizeNumericAmount, parseNumericAmount } from '../../../../utils/parseNumericAmount';
 import { formatErrorMessage } from '../../../../utils/formatErrorMessage';
 
-type AmountDraft = { mode: 'rub' | 'percent'; value: string };
-
 interface UseRecordAmountEditingArgs {
+  incomeStatementId?: string;
   onUpdateFinancialRecord?: (
     recordId: string,
     values: AddFinancialRecordFormValues,
@@ -22,7 +21,16 @@ interface UseRecordAmountEditingArgs {
 
 const normalizeAbsoluteAmount = (value: number) => value.toFixed(2).replace(/\.?0+$/, '');
 
+const applyPercentToRecordAmount = (amount: number, percent: string) => {
+  const [whole, fraction = ''] = percent.replace(/^[+-]/, '').split('.');
+  const scaledPercent = BigInt(whole + fraction);
+  const divisor = 100n * 10n ** BigInt(fraction.length);
+  const amountInKopecks = BigInt(Math.round(amount * 100));
+  return Number((amountInKopecks * scaledPercent + divisor / 2n) / divisor) / 100;
+};
+
 export const useRecordAmountEditing = ({
+  incomeStatementId,
   onUpdateFinancialRecord,
   onApplyStatementAmount,
   isRowAmountLocked,
@@ -35,43 +43,47 @@ export const useRecordAmountEditing = ({
   const [isApplyingStatementAmount, setIsApplyingStatementAmount] = useState(false);
   const [savingRecordIds, setSavingRecordIds] = useState<Set<string>>(new Set());
   const [recordAmountErrors, setRecordAmountErrors] = useState<Record<string, string>>({});
+  const [draftIncomeStatementId, setDraftIncomeStatementId] = useState(incomeStatementId);
 
-  const getAbsoluteSaldoBase = useCallback((row: IncomeExpenseRow) => {
-    const value = Number(row.paymentPaidBalance ?? 0);
-    if (!Number.isFinite(value)) {
-      return 0;
-    }
-    return Math.abs(value);
-  }, []);
+  if (draftIncomeStatementId !== incomeStatementId) {
+    setDraftIncomeStatementId(incomeStatementId);
+    setAmountDrafts({});
+  }
 
-  const getPercentFromSaldo = useCallback(
-    (row: IncomeExpenseRow, absoluteAmount: number) => {
-      const base = getAbsoluteSaldoBase(row);
-      if (!Number.isFinite(absoluteAmount) || base <= 0) {
-        return '';
+  const usesRecordAmountForPercent = useCallback(
+    (row: IncomeExpenseRow) => Boolean(incomeStatementId && row.statementId === incomeStatementId),
+    [incomeStatementId],
+  );
+  const getRecordPercentBase = useCallback(
+    (row: IncomeExpenseRow) => {
+      if (usesRecordAmountForPercent(row)) {
+        return Math.abs(row.recordAmount);
       }
-      const percent = (Math.abs(absoluteAmount) / base) * 100;
-      return percent.toFixed(2).replace(/\.?0+$/, '');
+      const saldo = Math.abs(row.paymentPaidBalance ?? 0);
+      return Number.isFinite(saldo) && saldo > 0 ? saldo : null;
     },
-    [getAbsoluteSaldoBase],
+    [usesRecordAmountForPercent],
   );
 
   const getAbsoluteAmountFromDraft = useCallback(
     (row: IncomeExpenseRow, draft: AmountDraft) => {
-      const parsed = parseNumericAmount(draft.value);
-      if (!Number.isFinite(parsed)) {
+      const normalized = normalizeNumericAmount(draft.value);
+      if (normalized === null) {
         return null;
       }
       if (draft.mode === 'rub') {
-        return Math.abs(parsed);
+        return Math.abs(Number(normalized));
       }
-      const base = getAbsoluteSaldoBase(row);
-      if (base <= 0) {
+      const base = getRecordPercentBase(row);
+      if (base === null) {
         return null;
       }
-      return Math.abs((base * parsed) / 100);
+      const amount = usesRecordAmountForPercent(row)
+        ? applyPercentToRecordAmount(base, normalized)
+        : (base * Math.abs(Number(normalized))) / 100;
+      return Number.isFinite(amount) ? amount : null;
     },
-    [getAbsoluteSaldoBase],
+    [getRecordPercentBase, usesRecordAmountForPercent],
   );
 
   const buildRecordUpdateValues = useCallback(
@@ -108,47 +120,36 @@ export const useRecordAmountEditing = ({
     (row: IncomeExpenseRow) => {
       setAmountDrafts((prev) => {
         const current = prev[row.recordId];
-        const currentMode: AmountDraft['mode'] = current?.mode ?? 'rub';
-        const nextMode: AmountDraft['mode'] = currentMode === 'rub' ? 'percent' : 'rub';
-
-        const base = getAbsoluteSaldoBase(row);
-        const currentValue = current?.value;
-        const currentNumber = currentValue !== undefined ? parseNumericAmount(currentValue) : NaN;
-
-        if (nextMode === 'percent') {
-          if (base <= 0) {
+        if (current?.mode !== 'percent') {
+          const base = getRecordPercentBase(row);
+          if (base === null) {
             return prev;
           }
+          const currentNumber = parseNumericAmount(current?.value);
           const absoluteAmount = Number.isFinite(currentNumber)
-            ? currentNumber
+            ? Math.abs(currentNumber)
             : Math.abs(row.recordAmount);
+          const percent = base === 0 ? 100 : (absoluteAmount / base) * 100;
           return {
             ...prev,
-            [row.recordId]: { mode: 'percent', value: getPercentFromSaldo(row, absoluteAmount) },
+            [row.recordId]: { mode: 'percent', value: normalizeAbsoluteAmount(percent) },
           };
         }
 
-        if (currentMode === 'percent' && base > 0) {
-          const percent = Number.isFinite(currentNumber) ? currentNumber : NaN;
-          const absoluteAmount = Number.isFinite(percent) ? (base * percent) / 100 : NaN;
-          if (Number.isFinite(absoluteAmount)) {
-            return {
-              ...prev,
-              [row.recordId]: {
-                mode: 'rub',
-                value: normalizeAbsoluteAmount(absoluteAmount),
-              },
-            };
-          }
-        }
-
+        const absoluteAmount = getAbsoluteAmountFromDraft(row, current);
         return {
           ...prev,
-          [row.recordId]: { mode: 'rub', value: Math.abs(row.recordAmount).toString() },
+          [row.recordId]: {
+            mode: 'rub',
+            value:
+              absoluteAmount === null
+                ? Math.abs(row.recordAmount).toString()
+                : normalizeAbsoluteAmount(absoluteAmount),
+          },
         };
       });
     },
-    [getAbsoluteSaldoBase, getPercentFromSaldo],
+    [getAbsoluteAmountFromDraft, getRecordPercentBase],
   );
 
   const handleRecordAmountBlur = useCallback(
@@ -272,8 +273,8 @@ export const useRecordAmountEditing = ({
     isApplyingStatementAmount,
     savingRecordIds,
     recordAmountErrors,
-    getAbsoluteSaldoBase,
-    getPercentFromSaldo,
+    getRecordPercentBase,
+    getAbsoluteAmountFromDraft,
     handleRecordAmountChange,
     toggleRecordAmountMode,
     handleRecordAmountBlur,

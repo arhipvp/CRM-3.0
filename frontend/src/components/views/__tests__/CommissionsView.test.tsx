@@ -223,7 +223,7 @@ describe('CommissionsView', () => {
     expect(await screen.findAllByText('Клиент А')).toHaveLength(2);
     expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledWith(
       'statement-1',
-      expect.objectContaining({ page: 1, page_size: 50 }),
+      expect.objectContaining({ page: 1, page_size: 200 }),
       expect.any(Object),
     );
     expect(mockedFetchFinancialRecordsWithPagination).not.toHaveBeenCalled();
@@ -371,7 +371,7 @@ describe('CommissionsView', () => {
     expect(beforeToggle[1]).toHaveTextContent('Клиент Б');
     expect(mockedFetchStatementFinancialRecords).toHaveBeenLastCalledWith(
       'statement-1',
-      expect.objectContaining({ ordering: 'amount,-date' }),
+      expect.objectContaining({ ordering: 'amount,-date,id' }),
       expect.any(Object),
     );
 
@@ -392,6 +392,136 @@ describe('CommissionsView', () => {
       mode: 'percent',
       value: '10',
     });
+  }, 10000);
+
+  it('edits individual and bulk percentages in an income statement with zero payment balance', async () => {
+    const user = userEvent.setup();
+    const onUpdateFinancialRecord = vi.fn().mockResolvedValue(undefined);
+    const statement: Statement = {
+      id: 'statement-1',
+      name: 'Доходная ведомость',
+      statementType: 'income',
+      status: 'draft',
+      recordsCount: 1,
+      createdAt: '2026-03-06T10:00:00Z',
+      updatedAt: '2026-03-06T10:00:00Z',
+    };
+    const onApplyStatementAmount = vi.fn().mockResolvedValue({
+      updated: 1,
+      unchanged: 0,
+      skipped: 0,
+      skippedReasons: {},
+      records: [],
+      statement,
+    });
+    mockedFetchStatementFinancialRecords.mockResolvedValue({
+      count: 1,
+      next: null,
+      previous: null,
+      results: [buildFinancialRecord({ statementId: statement.id, amount: '0.29' })],
+    });
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[]}
+            statements={[statement]}
+            salesChannels={[]}
+            hasCommissionsSnapshotLoaded
+            onUpdateFinancialRecord={onUpdateFinancialRecord}
+            onApplyStatementAmount={onApplyStatementAmount}
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    const rowToggle = (
+      await screen.findAllByRole('button', {
+        name: 'Переключить ввод суммы на проценты от текущей суммы записи',
+      })
+    )[0];
+    expect(rowToggle).toBeEnabled();
+    const row = within(rowToggle.closest('tr')!);
+    await user.click(rowToggle);
+    const rowInput = row.getByRole('spinbutton');
+    expect(rowInput).toHaveValue(100);
+    await user.clear(rowInput);
+    await user.type(rowInput, '50');
+    expect(row.getByText(/≈ 0,15\s₽ от 0,29\s₽/)).toBeInTheDocument();
+    await user.keyboard('{Enter}');
+    await waitFor(() =>
+      expect(onUpdateFinancialRecord).toHaveBeenCalledWith(
+        'record-policy-1',
+        expect.objectContaining({ amount: '0.15', recordType: 'income' }),
+      ),
+    );
+
+    const bulkToggle = screen.getAllByRole('button', {
+      name: 'Переключить ввод суммы на проценты',
+    })[0];
+    await waitFor(() => expect(bulkToggle).toBeEnabled());
+    expect(bulkToggle).toHaveAttribute('title', 'Ввести процент от текущей суммы каждой записи');
+    await user.click(bulkToggle);
+    await user.type(screen.getAllByLabelText('Общая сумма для всей ведомости')[0], '50');
+    await user.click(screen.getAllByRole('button', { name: 'Применить ко всей ведомости' })[0]);
+    expect(onApplyStatementAmount).toHaveBeenCalledWith(statement.id, {
+      mode: 'percent',
+      value: '50',
+    });
+  }, 10000);
+
+  it('renders all records from every statement page without a load-more action', async () => {
+    const statement: Statement = {
+      id: 'statement-1',
+      name: 'Большая ведомость',
+      statementType: 'income',
+      status: 'draft',
+      recordsCount: 201,
+      createdAt: '2026-03-06T10:00:00Z',
+      updatedAt: '2026-03-06T10:00:00Z',
+    };
+    const records = Array.from({ length: 201 }, (_, index) =>
+      buildFinancialRecord({
+        id: `record-${index + 1}`,
+        statementId: statement.id,
+        policyClientName: `Запись ${index + 1}`,
+      }),
+    );
+    mockedFetchStatementFinancialRecords
+      .mockResolvedValueOnce({
+        count: 201,
+        next: '?page=2',
+        previous: null,
+        results: records.slice(0, 200),
+      })
+      .mockResolvedValueOnce({
+        count: 201,
+        next: null,
+        previous: '?page=1',
+        results: records.slice(200),
+      });
+
+    render(
+      <MemoryRouter>
+        <NotificationProvider>
+          <CommissionsView
+            payments={[]}
+            policies={[]}
+            statements={[statement]}
+            salesChannels={[]}
+            hasCommissionsSnapshotLoaded
+          />
+        </NotificationProvider>
+      </MemoryRouter>,
+    );
+
+    const recordsPanel = within(await screen.findByRole('tabpanel', { name: 'Записи' }));
+    expect(await recordsPanel.findByText('Запись 201')).toBeVisible();
+    expect(recordsPanel.getAllByText(/^Запись \d+$/)).toHaveLength(201);
+    expect(mockedFetchStatementFinancialRecords).toHaveBeenCalledTimes(2);
+    expect(recordsPanel.queryByRole('button', { name: 'Показать ещё' })).not.toBeInTheDocument();
   }, 10000);
 
   it('opens policy edit modal from all records using a policy already in local state', async () => {

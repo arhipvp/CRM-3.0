@@ -12,7 +12,6 @@ import { RecordsTableRow } from './RecordsTableRow';
 
 export type AllRecordsSortKey = 'none' | 'payment' | 'paymentDate' | 'saldo' | 'comment' | 'amount';
 export type AmountDraft = { mode: 'rub' | 'percent'; value: string };
-export type StatementAmountDraft = AmountDraft;
 export type IncomeExpenseKind = 'income' | 'expense';
 const SORT_LABEL_CLASS = 'text-[11px] font-semibold uppercase tracking-wide text-slate-900';
 const SORT_BUTTON_BASE_CLASS =
@@ -60,7 +59,7 @@ interface RecordsTableProps {
   amountDrafts: Record<string, AmountDraft>;
   savingRecordIds?: Set<string>;
   recordAmountErrors?: Record<string, string>;
-  statementAmountDraft: StatementAmountDraft;
+  statementAmountDraft: AmountDraft;
   isApplyingStatementAmount: boolean;
   isAttaching?: boolean;
   isAllRecordsLoading: boolean;
@@ -88,8 +87,8 @@ interface RecordsTableProps {
   onToggleCommentSort: () => void;
   getCommentSortLabel: () => string;
   getCommentSortIndicator: () => string;
-  getPercentFromSaldo: (row: IncomeExpenseRow, absoluteAmount: number) => string;
-  getAbsoluteSaldoBase: (row: IncomeExpenseRow) => number;
+  getRecordPercentBase: (row: IncomeExpenseRow) => number | null;
+  getAbsoluteAmountFromDraft: (row: IncomeExpenseRow, draft: AmountDraft) => number | null;
   onRecordAmountChange: (recordId: string, value: string) => void;
   onRecordAmountBlur: (row: IncomeExpenseRow) => Promise<void> | void;
   onCancelRecordAmountEdit?: (recordId: string) => void;
@@ -143,8 +142,8 @@ export const RecordsTable = ({
   onToggleCommentSort,
   getCommentSortLabel,
   getCommentSortIndicator,
-  getPercentFromSaldo,
-  getAbsoluteSaldoBase,
+  getRecordPercentBase,
+  getAbsoluteAmountFromDraft,
   onRecordAmountChange,
   onRecordAmountBlur,
   onCancelRecordAmountEdit,
@@ -157,12 +156,17 @@ export const RecordsTable = ({
     viewMode === 'statements'
       ? filteredRows.filter((row) => !statementsById.get(row.statementId ?? '')?.paidAt)
       : [];
-  const hasStatementPercentEligibleRows = editableStatementRows.some(
-    (row) => getAbsoluteSaldoBase(row) > 0,
-  );
+  const canToggleStatementPercent =
+    statementAmountDraft.mode === 'percent' ||
+    editableStatementRows.some((row) => getRecordPercentBase(row) !== null);
+  const isIncomeStatement =
+    viewMode === 'statements' && selectedStatement?.statementType === 'income';
   const isStatementAmountControlDisabled =
     !isRecordAmountEditable ||
+    isApplyingStatementAmount ||
     isSelectedStatementPaid ||
+    isStatementRecordsLoading ||
+    savingRecordIds.size > 0 ||
     !selectedStatement ||
     editableStatementRows.length === 0;
   const statementAmountSuffix = statementAmountDraft.mode === 'rub' ? '₽' : '%';
@@ -171,9 +175,11 @@ export const RecordsTable = ({
       ? 'Переключить ввод суммы на проценты'
       : 'Переключить ввод суммы на рубли';
   const statementAmountModeToggleTitle =
-    statementAmountDraft.mode === 'rub'
-      ? 'Ввести значение в процентах от сальдо'
-      : 'Ввести значение в рублях';
+    statementAmountDraft.mode === 'percent'
+      ? 'Ввести значение в рублях'
+      : isIncomeStatement
+        ? 'Ввести процент от текущей суммы каждой записи'
+        : 'Ввести значение в процентах от сальдо';
   const selectedRecordIdSet = useMemo(() => new Set(selectedRecordIds), [selectedRecordIds]);
 
   return (
@@ -397,9 +403,7 @@ export const RecordsTable = ({
                                     onStatementAmountChange(normalized);
                                   }
                                 }}
-                                disabled={
-                                  isStatementAmountControlDisabled || isApplyingStatementAmount
-                                }
+                                disabled={isStatementAmountControlDisabled}
                                 className="w-full rounded-lg border border-slate-200 bg-white px-2 py-0.5 pr-7 text-[11px] normal-case text-slate-700 focus:border-sky-500 focus:outline-none focus:ring focus:ring-sky-100 disabled:bg-slate-50"
                                 aria-label="Общая сумма для всей ведомости"
                               />
@@ -411,17 +415,13 @@ export const RecordsTable = ({
                               type="button"
                               onClick={onToggleStatementAmountMode}
                               disabled={
-                                isStatementAmountControlDisabled ||
-                                isApplyingStatementAmount ||
-                                (statementAmountDraft.mode === 'rub' &&
-                                  !hasStatementPercentEligibleRows)
+                                isStatementAmountControlDisabled || !canToggleStatementPercent
                               }
                               className="rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] font-semibold normal-case text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
                               title={
-                                statementAmountDraft.mode === 'rub' &&
-                                !hasStatementPercentEligibleRows
-                                  ? 'Нельзя включить проценты: у записей нет сальдо'
-                                  : statementAmountModeToggleTitle
+                                canToggleStatementPercent
+                                  ? statementAmountModeToggleTitle
+                                  : 'Нельзя включить проценты: у записей нет сальдо'
                               }
                               aria-label={statementAmountModeToggleLabel}
                             >
@@ -432,9 +432,7 @@ export const RecordsTable = ({
                             type="button"
                             onClick={() => void onApplyStatementAmount()}
                             disabled={
-                              isStatementAmountControlDisabled ||
-                              isApplyingStatementAmount ||
-                              !statementAmountDraft.value.trim()
+                              isStatementAmountControlDisabled || !statementAmountDraft.value.trim()
                             }
                             className="rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] font-semibold normal-case text-sky-700 transition hover:bg-sky-100 disabled:cursor-not-allowed disabled:opacity-60"
                           >
@@ -479,8 +477,10 @@ export const RecordsTable = ({
                   onOpenDeal={onOpenDeal}
                   onDealSelect={onDealSelect}
                   onRequestEditPolicy={onRequestEditPolicy}
-                  getPercentFromSaldo={getPercentFromSaldo}
-                  getAbsoluteSaldoBase={getAbsoluteSaldoBase}
+                  isIncomeStatement={isIncomeStatement}
+                  isApplyingStatementAmount={viewMode === 'statements' && isApplyingStatementAmount}
+                  getRecordPercentBase={getRecordPercentBase}
+                  getAbsoluteAmountFromDraft={getAbsoluteAmountFromDraft}
                   onRecordAmountChange={onRecordAmountChange}
                   onRecordAmountBlur={onRecordAmountBlur}
                   onCancelRecordAmountEdit={onCancelRecordAmountEdit}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import { fetchStatementFinancialRecordsWithPagination } from '../../../../api';
 import type { FinancialRecord } from '../../../../types';
@@ -16,106 +16,83 @@ export const useStatementRecordsController = ({
   const [statementRecords, setStatementRecords] = useState<FinancialRecord[]>([]);
   const [isStatementRecordsLoading, setIsStatementRecordsLoading] = useState(false);
   const [statementRecordsError, setStatementRecordsError] = useState<string | null>(null);
-  const [statementRecordsHasMore, setStatementRecordsHasMore] = useState(false);
-  const [isStatementRecordsLoadingMore, setIsStatementRecordsLoadingMore] = useState(false);
   const [amountOrdering, setAmountOrdering] = useState<'none' | 'asc' | 'desc'>('none');
   const [commentOrdering, setCommentOrdering] = useState<'none' | 'asc' | 'desc'>('none');
-  const requestRef = useRef(0);
-  const pageRef = useRef(1);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const queryRef = useRef<{ statementId: string; ordering: string } | null>(null);
+  const statementId = viewMode === 'statements' ? selectedStatementId : null;
+  const ordering =
+    commentOrdering !== 'none'
+      ? `${commentOrdering === 'desc' ? '-' : ''}record_comment_sort,-date,-created_at,id`
+      : amountOrdering !== 'none'
+        ? `${amountOrdering === 'desc' ? '-' : ''}amount,-date,id`
+        : '-date,-created_at,id';
 
-  const loadStatementRecords = useCallback(
-    async (mode: 'reset' | 'more' = 'reset') => {
-      if (viewMode !== 'statements' || !selectedStatementId) {
-        requestRef.current += 1;
-        abortControllerRef.current?.abort();
-        setIsStatementRecordsLoadingMore(false);
-        setStatementRecords([]);
-        setStatementRecordsError(null);
-        setIsStatementRecordsLoading(false);
-        setStatementRecordsHasMore(false);
-        return;
-      }
-
-      requestRef.current += 1;
-      const requestId = requestRef.current;
+  useLayoutEffect(() => {
+    queryRef.current = statementId ? { statementId, ordering } : null;
+    return () => {
+      queryRef.current = null;
       abortControllerRef.current?.abort();
-      const controller = new AbortController();
-      abortControllerRef.current = controller;
-      if (mode === 'reset') {
-        pageRef.current = 0;
-        setStatementRecordsHasMore(false);
-        setIsStatementRecordsLoading(true);
-        setStatementRecordsError(null);
-      } else {
-        setIsStatementRecordsLoadingMore(true);
-      }
-      const nextPage = mode === 'more' ? pageRef.current + 1 : 1;
+    };
+  }, [ordering, statementId]);
 
-      try {
+  const loadStatementRecords = useCallback(async () => {
+    abortControllerRef.current?.abort();
+    const query = queryRef.current;
+    setStatementRecordsError(null);
+    if (!query) {
+      setStatementRecords([]);
+      setIsStatementRecordsLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsStatementRecordsLoading(true);
+
+    const records: FinancialRecord[] = [];
+    let page = 1;
+    try {
+      while (!controller.signal.aborted) {
         const payload = await fetchStatementFinancialRecordsWithPagination(
-          selectedStatementId,
-          {
-            page: nextPage,
-            page_size: 50,
-            ordering:
-              commentOrdering !== 'none'
-                ? commentOrdering === 'asc'
-                  ? 'record_comment_sort,-date,-created_at'
-                  : '-record_comment_sort,-date,-created_at'
-                : amountOrdering === 'none'
-                  ? '-date,-created_at'
-                  : amountOrdering === 'asc'
-                    ? 'amount,-date'
-                    : '-amount,-date',
-          },
+          query.statementId,
+          { page, page_size: 200, ordering: query.ordering },
           { signal: controller.signal },
         );
-        if (requestRef.current !== requestId) {
+        if (controller.signal.aborted) {
           return;
         }
-        pageRef.current = nextPage;
-        setStatementRecordsHasMore(Boolean(payload.next));
-        setStatementRecords((previous) =>
-          mode === 'more' ? [...previous, ...payload.results] : payload.results,
-        );
-      } catch (error) {
-        if (controller.signal.aborted || requestRef.current !== requestId) {
-          return;
+        records.push(...payload.results);
+        if (!payload.next) {
+          setStatementRecords(records);
+          break;
         }
-        if (mode === 'reset') {
-          setStatementRecords([]);
-        }
-        setStatementRecordsError(
-          formatErrorMessage(error, 'Не удалось загрузить записи выбранной ведомости.'),
-        );
-      } finally {
-        if (requestRef.current === requestId) {
-          abortControllerRef.current = null;
-          setIsStatementRecordsLoading(false);
-          setIsStatementRecordsLoadingMore(false);
-        }
+        page += 1;
       }
-    },
-    [amountOrdering, commentOrdering, selectedStatementId, viewMode],
-  );
+    } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
+      setStatementRecords([]);
+      setStatementRecordsError(
+        formatErrorMessage(error, 'Не удалось загрузить записи выбранной ведомости.'),
+      );
+    } finally {
+      if (!controller.signal.aborted) {
+        abortControllerRef.current = null;
+        setIsStatementRecordsLoading(false);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     void loadStatementRecords();
-  }, [loadStatementRecords]);
-
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-  }, []);
+  }, [loadStatementRecords, ordering, statementId]);
 
   return {
     statementRecords,
     isStatementRecordsLoading,
     statementRecordsError,
-    statementRecordsHasMore,
-    isStatementRecordsLoadingMore,
     loadStatementRecords,
     toggleAmountSort: () =>
       setAmountOrdering((value) => {

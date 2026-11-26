@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { fetchStatementFinancialRecordsWithPagination } from '../../../../../api';
+import type { FinancialRecord } from '../../../../../types';
 import { useStatementRecordsController } from '../useStatementRecordsController';
 
 vi.mock('../../../../../api', async () => {
@@ -24,7 +25,7 @@ const deferred = <T,>() => {
   return { promise, resolve };
 };
 
-const emptyPage = {
+const emptyPage: Awaited<ReturnType<typeof fetchStatementFinancialRecordsWithPagination>> = {
   count: 0,
   next: null,
   previous: null,
@@ -36,13 +37,20 @@ describe('useStatementRecordsController', () => {
     mockedFetchStatementFinancialRecordsWithPagination.mockReset();
   });
 
-  it('restarts from the first page when the selected statement changes during loading', async () => {
-    const firstLoad = deferred<typeof emptyPage>();
-    const secondLoad = deferred<typeof emptyPage>();
+  it('cancels the previous statement when switching while its second page is loading', async () => {
+    const oldSecondPage = deferred<typeof emptyPage>();
+    const record: FinancialRecord = {
+      id: 'record-1',
+      paymentId: 'payment-1',
+      amount: '100',
+      statementId: 'statement-2',
+      createdAt: '2026-03-01T00:00:00Z',
+      updatedAt: '2026-03-01T00:00:00Z',
+    };
     mockedFetchStatementFinancialRecordsWithPagination
-      .mockReturnValueOnce(firstLoad.promise as never)
-      .mockReturnValueOnce(secondLoad.promise as never)
-      .mockResolvedValueOnce(emptyPage as never);
+      .mockResolvedValueOnce({ ...emptyPage, next: '?page=2' })
+      .mockReturnValueOnce(oldSecondPage.promise)
+      .mockResolvedValueOnce({ ...emptyPage, count: 1, results: [record] });
 
     const { result, rerender } = renderHook(
       ({ statementId }) =>
@@ -54,27 +62,35 @@ describe('useStatementRecordsController', () => {
     );
 
     await waitFor(() => {
-      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenCalledTimes(1);
+      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
+        'statement-1',
+        { page: 2, page_size: 200, ordering: '-date,-created_at,id' },
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
+      );
     });
 
     rerender({ statementId: 'statement-2' });
     await waitFor(() => {
-      expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenCalledTimes(2);
+      expect(result.current.statementRecords).toEqual([record]);
     });
+    const oldSignal = mockedFetchStatementFinancialRecordsWithPagination.mock.calls[1][2]?.signal;
+    expect(oldSignal?.aborted).toBe(true);
 
     await act(async () => {
-      await result.current.loadStatementRecords('more');
+      oldSecondPage.resolve({ ...emptyPage, next: '?page=3' });
     });
 
+    expect(result.current.statementRecords).toEqual([record]);
+    expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenCalledTimes(3);
     expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
       'statement-2',
-      { page: 1, page_size: 50, ordering: '-date,-created_at' },
+      { page: 1, page_size: 200, ordering: '-date,-created_at,id' },
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
 
   it('cycles comment ordering from the default date order to ascending, descending, and back', async () => {
-    mockedFetchStatementFinancialRecordsWithPagination.mockResolvedValue(emptyPage as never);
+    mockedFetchStatementFinancialRecordsWithPagination.mockResolvedValue(emptyPage);
 
     const { result } = renderHook(() =>
       useStatementRecordsController({
@@ -86,7 +102,7 @@ describe('useStatementRecordsController', () => {
     await waitFor(() => {
       expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
         'statement-1',
-        { page: 1, page_size: 50, ordering: '-date,-created_at' },
+        { page: 1, page_size: 200, ordering: '-date,-created_at,id' },
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -97,7 +113,7 @@ describe('useStatementRecordsController', () => {
     await waitFor(() => {
       expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
         'statement-1',
-        { page: 1, page_size: 50, ordering: 'record_comment_sort,-date,-created_at' },
+        { page: 1, page_size: 200, ordering: 'record_comment_sort,-date,-created_at,id' },
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -110,7 +126,7 @@ describe('useStatementRecordsController', () => {
     await waitFor(() => {
       expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
         'statement-1',
-        { page: 1, page_size: 50, ordering: '-record_comment_sort,-date,-created_at' },
+        { page: 1, page_size: 200, ordering: '-record_comment_sort,-date,-created_at,id' },
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });
@@ -123,7 +139,7 @@ describe('useStatementRecordsController', () => {
     await waitFor(() => {
       expect(mockedFetchStatementFinancialRecordsWithPagination).toHaveBeenLastCalledWith(
         'statement-1',
-        { page: 1, page_size: 50, ordering: '-date,-created_at' },
+        { page: 1, page_size: 200, ordering: '-date,-created_at,id' },
         expect.objectContaining({ signal: expect.any(AbortSignal) }),
       );
     });

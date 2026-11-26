@@ -1122,29 +1122,73 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         self.assertEqual(self.expense_record.amount, Decimal("-150.00"))
         self.assertEqual(self.zero_expense_record.amount, Decimal("-150.00"))
 
-    def test_apply_amount_percent_uses_payment_paid_balance_and_skips_zero_balance(
+    def test_apply_amount_income_percent_uses_each_current_record_amount(self):
+        self.authenticate(self.seller)
+        statement = Statement.objects.create(
+            name="Income Percent Sheet",
+            statement_type="income",
+            created_by=self.seller,
+        )
+        FinancialRecord.objects.create(
+            payment=self.payment,
+            amount=Decimal("1000.00"),
+            date=timezone.now().date(),
+        )
+        payment_without_balance = Payment.objects.create(
+            deal=self.deal, amount=Decimal("500.00"), description="No balance"
+        )
+        records = [
+            FinancialRecord.objects.create(
+                payment=payment, amount=Decimal(amount), statement=statement
+            )
+            for payment, amount in [
+                (self.payment, "113.52"),
+                (payment_without_balance, "0.29"),
+                (payment_without_balance, "0.00"),
+            ]
+        ]
+
+        response = self.api_client.post(
+            f"/api/v1/finance_statements/{statement.id}/apply-amount/",
+            {"mode": "percent", "value": "50"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        payload = response.json()
+        self.assertEqual(payload["updated"], 2)
+        self.assertEqual(payload["unchanged"], 1)
+        self.assertEqual(payload["skipped"], 0)
+        self.assertEqual(
+            Decimal(str(payload["statement"]["total_amount"])), Decimal("56.91")
+        )
+        for record, expected in zip(records, ["56.76", "0.15", "0.00"], strict=True):
+            record.refresh_from_db()
+            self.assertEqual(record.amount, Decimal(expected))
+
+    def test_apply_amount_expense_percent_uses_payment_paid_balance_and_skips_zero_balance(
         self,
     ):
         self.authenticate(self.seller)
         statement = Statement.objects.create(
             name="Percent Sheet",
-            statement_type="income",
+            statement_type="expense",
             created_by=self.seller,
         )
         second_payment = Payment.objects.create(
             deal=self.deal, amount=Decimal("2000.00"), description="Second"
         )
         first_record = FinancialRecord.objects.create(
-            payment=self.payment, amount=Decimal("10.00"), statement=statement
+            payment=self.payment, amount=Decimal("-10.00"), statement=statement
         )
         second_record = FinancialRecord.objects.create(
-            payment=second_payment, amount=Decimal("20.00"), statement=statement
+            payment=second_payment, amount=Decimal("-20.00"), statement=statement
         )
         zero_balance_record = FinancialRecord.objects.create(
             payment=Payment.objects.create(
                 deal=self.deal, amount=Decimal("500.00"), description="No balance"
             ),
-            amount=Decimal("30.00"),
+            amount=Decimal("-30.00"),
             statement=statement,
         )
         FinancialRecord.objects.create(
@@ -1173,9 +1217,9 @@ class FinanceStatementTests(AuthenticatedAPITestCase):
         first_record.refresh_from_db()
         second_record.refresh_from_db()
         zero_balance_record.refresh_from_db()
-        self.assertEqual(first_record.amount, Decimal("100.00"))
-        self.assertEqual(second_record.amount, Decimal("250.00"))
-        self.assertEqual(zero_balance_record.amount, Decimal("30.00"))
+        self.assertEqual(first_record.amount, Decimal("-100.00"))
+        self.assertEqual(second_record.amount, Decimal("-250.00"))
+        self.assertEqual(zero_balance_record.amount, Decimal("-30.00"))
 
     def test_apply_amount_reports_unchanged_without_touching_record_updated_at(self):
         self.authenticate(self.seller)
@@ -1708,6 +1752,43 @@ class FinancialRecordFilterTests(AuthenticatedAPITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         results = self._extract_results(response)
         self.assertEqual([item["id"] for item in results], [str(self.policy_record.id)])
+
+    def test_statement_pages_keep_all_records_in_order_when_amounts_and_dates_match(
+        self,
+    ):
+        self.authenticate(self.seller)
+        records = FinancialRecord.objects.bulk_create(
+            [
+                FinancialRecord(
+                    payment=self.policy_record.payment,
+                    statement=self.statement,
+                    amount=self.policy_record.amount,
+                    date=self.policy_record.date,
+                )
+                for _ in range(200)
+            ]
+        )
+        response = self.api_client.get(
+            "/api/v1/financial_records/",
+            {
+                "statement": str(self.statement.id),
+                "page_size": 200,
+                "ordering": "amount,-date,id",
+            },
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        first_page = response.json()
+        self.assertEqual(first_page["count"], 201)
+        self.assertEqual(len(first_page["results"]), 200)
+        response = self.api_client.get(first_page["next"])
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        last_page = response.json()
+        self.assertIsNone(last_page["next"])
+        self.assertEqual(
+            [row["id"] for row in first_page["results"] + last_page["results"]],
+            sorted(str(record.id) for record in [self.policy_record, *records]),
+        )
 
     def test_record_type_labels_are_readable(self):
         self.authenticate(self.seller)

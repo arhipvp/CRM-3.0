@@ -179,10 +179,18 @@ class McpDescriptionTests(SimpleTestCase):
             ("delet", "remov"),
         )
 
-    def test_statement_percent_base_is_financial_balance_not_premium(self):
+    def test_statement_percent_base_depends_on_statement_type(self):
         fields = self.data_fields("crm_statement_apply_amount")
         text = description(fields["value"])
-        self.assert_terms(text, "percent", "paid_balance", "premium", "not")
+        self.assert_terms(
+            text,
+            "percent",
+            "income",
+            "current",
+            "record amount",
+            "expense",
+            "paid_balance",
+        )
         self.assert_terms(
             self.tools["crm_statement_mark_paid"]["description"],
             "paid_at",

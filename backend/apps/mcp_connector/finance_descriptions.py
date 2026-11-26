@@ -143,9 +143,10 @@ FINANCE_TOOL_DESCRIPTIONS: dict[str, str] = {
     ),
     "crm_statement_apply_amount": (
         "Set amounts for records in an unpaid statement. mode=rub uses the "
-        "absolute RUB value for each record. mode=percent uses a percentage of "
-        "abs(payment_paid_balance), the linked payment's settled commission/cost "
-        "balance, NOT its insurance premium; zero-balance records are skipped. "
+        "absolute RUB value for each record. mode=percent uses each record's "
+        "current amount in an income statement. In an expense statement, it uses "
+        "the linked payment's absolute settled balance (payment_paid_balance) "
+        "and skips records with zero balance. "
         "Amounts are rounded to kopecks and retain each record's income/expense "
         "sign. It neither marks the records settled nor pays the premium."
     ),
@@ -503,16 +504,16 @@ FINANCE_FIELD_DESCRIPTIONS: dict[str, dict[str, str]] = {
     },
     "StatementApplyAmountSerializer": {
         "mode": (
-            "rub sets an absolute RUB amount on each statement record; percent "
-            "uses a percentage of abs(linked Payment.paid_balance), the settled "
-            "commission/cost balance. It is NOT a percentage of premium amount."
+            "rub sets an absolute RUB amount on each statement record. percent "
+            "uses the current record amount for income statements and the linked "
+            "payment's absolute settled balance (paid_balance) for expense statements."
         ),
         "value": (
             "Absolute amount for mode=rub, or percentage points for mode=percent "
-            "(10 means 10%, not 0.10). Server uses abs(value), rounds resulting "
-            "amounts to kopecks, preserves income/expense type, and skips "
-            "zero-balance records in percent mode. The percentage base is "
-            "abs(payment_paid_balance), NOT the insurance premium amount."
+            "(10 means 10%). Server uses abs(value), rounds amounts to kopecks, "
+            "and preserves the record type. The percentage base is the current "
+            "record amount for income statements and abs(payment_paid_balance) for "
+            "expense statements. Zero balances are skipped in expense statements."
         ),
     },
     "StatementMarkPaidSerializer": {
